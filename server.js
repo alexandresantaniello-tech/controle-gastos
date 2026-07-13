@@ -16,6 +16,7 @@ Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto
 {
   "valor": (número, ex: 150.50),
   "tipo": ("entrada" ou "saida"),
+  "categoria": (categoria da transação, inferida do nome do estabelecimento/recebedor e contexto; use uma categoria curta e específica, ex: "Transporte", "Padaria", "Comida na rua", "Mercado", "Farmácia/Saúde", "Lazer", "Assinaturas", "Contas/Serviços", "Salário", "Cliente/Serviço prestado", "Transferência entre contas", "Outros"),
   "instituicao": (nome do banco/fintech, ou "desconhecido" se não identificar),
   "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido"),
   "data": (data da transação no formato DD/MM/AAAA, ou "desconhecido")

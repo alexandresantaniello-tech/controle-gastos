@@ -308,6 +308,27 @@ function transacoesDoPeriodo() {
   });
 }
 
+function agruparPorChave(transacoes, chave) {
+  const grupos = {};
+  transacoes.forEach(t => {
+    const k = t[chave] || 'Não identificado';
+    if (!grupos[k]) grupos[k] = { chave: k, total: 0, quantidade: 0 };
+    grupos[k].total += Number(t.valor || 0);
+    grupos[k].quantidade += 1;
+  });
+  return Object.values(grupos).sort((a, b) => b.total - a.total);
+}
+
+function linhasAgrupadasHtml(grupos, classeCor) {
+  if (grupos.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
+  return grupos.map(g => `
+    <div class="relatorio-resumo-linha">
+      <span>${g.chave} <span style="color:#9a9aa2">(${g.quantidade}x)</span></span>
+      <strong class="${classeCor}">${formatarMoeda(g.total)}</strong>
+    </div>
+  `).join('');
+}
+
 function renderizarRelatorio() {
   const tiposEl = document.getElementById('periodoTipos');
   tiposEl.innerHTML = TIPOS_PERIODO.map(tp =>
@@ -318,22 +339,33 @@ function renderizarRelatorio() {
   document.getElementById('tituloPeriodo').textContent = label;
 
   const transacoes = transacoesDoPeriodo();
-  const totalEntradas = transacoes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
-  const totalSaidas = transacoes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const saidas = transacoes.filter(t => t.tipo === 'saida');
+  const entradas = transacoes.filter(t => t.tipo === 'entrada');
+  const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
+
+  const saidasPorCategoria = agruparPorChave(saidas, 'categoria');
+  const entradasPorCliente = agruparPorChave(entradas, 'local');
 
   document.getElementById('resumoRelatorio').innerHTML = `
     <div class="relatorio-resumo-linha"><span>Transações</span><strong>${transacoes.length}</strong></div>
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
+    <div class="grupo-dia">Saídas por categoria</div>
+    ${linhasAgrupadasHtml(saidasPorCategoria, 'saida')}
+    <div class="grupo-dia">Entradas por cliente/origem</div>
+    ${linhasAgrupadasHtml(entradasPorCliente, 'entrada')}
   `;
 }
 
 function textoResumoRelatorio() {
   const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
   const transacoes = transacoesDoPeriodo();
-  const totalEntradas = transacoes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
-  const totalSaidas = transacoes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const saidas = transacoes.filter(t => t.tipo === 'saida');
+  const entradas = transacoes.filter(t => t.tipo === 'entrada');
+  const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
   const tipoLabel = TIPOS_PERIODO.find(tp => tp.chave === tipoPeriodo).label;
 
   let texto = `Relatório ${tipoLabel} — ${label}\n\n`;
@@ -341,14 +373,27 @@ function textoResumoRelatorio() {
   texto += `Entradas: ${formatarMoeda(totalEntradas)}\n`;
   texto += `Saídas: ${formatarMoeda(totalSaidas)}\n`;
   texto += `Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
+
+  const saidasPorCategoria = agruparPorChave(saidas, 'categoria');
+  if (saidasPorCategoria.length > 0) {
+    texto += `\nSaídas por categoria:\n`;
+    saidasPorCategoria.forEach(g => { texto += `- ${g.chave} (${g.quantidade}x): ${formatarMoeda(g.total)}\n`; });
+  }
+
+  const entradasPorCliente = agruparPorChave(entradas, 'local');
+  if (entradasPorCliente.length > 0) {
+    texto += `\nEntradas por cliente/origem:\n`;
+    entradasPorCliente.forEach(g => { texto += `- ${g.chave} (${g.quantidade}x): ${formatarMoeda(g.total)}\n`; });
+  }
+
   return texto;
 }
 
 function gerarCsv() {
   const transacoes = transacoesDoPeriodo();
-  let csv = 'Data,Tipo,Valor,Instituicao,Local\n';
+  let csv = 'Data,Tipo,Categoria,Valor,Instituicao,Local\n';
   transacoes.forEach(t => {
-    const linha = [t.data || '', t.tipo || '', t.valor || 0, t.instituicao || '', t.local || '']
+    const linha = [t.data || '', t.tipo || '', t.categoria || '', t.valor || 0, t.instituicao || '', t.local || '']
       .map(campo => `"${String(campo).replace(/"/g, '""')}"`)
       .join(',');
     csv += linha + '\n';
@@ -531,7 +576,7 @@ function renderizarTransacao(t) {
         <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
         <span class="valor">${formatarMoeda(t.valor)}</span>
       </div>
-      <div class="detalhes">${t.data || '-'} · ${t.instituicao || '-'} · ${t.local || '-'}</div>
+      <div class="detalhes">${t.data || '-'} · ${t.categoria || '-'} · ${t.local || '-'}</div>
     </div>
     <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
   `;
