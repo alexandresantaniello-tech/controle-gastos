@@ -49,19 +49,6 @@ async function lerComprovante(buffer, mediaType) {
   return JSON.parse(jsonMatch[0]);
 }
 
-app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
-  }
-  try {
-    const dados = await lerComprovante(req.file.buffer, req.file.mimetype);
-    res.json(dados);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Falha ao processar a imagem', detalhe: err.message });
-  }
-});
-
 // Recebe o compartilhamento nativo do celular (menu "Compartilhar" do Android/iOS via PWA)
 app.post('/share-target', upload.single('receipt'), async (req, res) => {
   let dadosJson = 'null';
