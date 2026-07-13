@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Gastos</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<meta name="theme-color" content="#0f1115">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: #0f1115;
+    color: #e8e8ea;
+    margin: 0;
+    padding: 24px;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  p.subtitle { color: #9a9aa2; margin-top: 0; font-size: 0.9rem; }
+  .card {
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .drop-zone {
+    border: 2px dashed #3a3f4b;
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #5b8cff; }
+  .drop-zone input { display: none; }
+  #preview { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 12px; display: none; }
+  button {
+    background: #5b8cff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    margin-top: 12px;
+  }
+  button:disabled { background: #3a3f4b; cursor: not-allowed; }
+  button.secondary { background: transparent; border: 1px solid #3a3f4b; color: #e8e8ea; }
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; }
+  .summary .box { flex: 1; min-width: 140px; background: #1a1d24; border: 1px solid #2a2e37; border-radius: 12px; padding: 16px; }
+  .summary .box .label { font-size: 0.8rem; color: #9a9aa2; }
+  .summary .box .value { font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
+  .entrada { color: #4ade80; }
+  .saida { color: #f87171; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #2a2e37; }
+  th { color: #9a9aa2; font-weight: 500; font-size: 0.8rem; }
+  .status { font-size: 0.85rem; color: #9a9aa2; margin-top: 8px; min-height: 1.2em; }
+  .status.error { color: #f87171; }
+  .empty { color: #9a9aa2; text-align: center; padding: 20px; font-size: 0.9rem; }
+  .row-actions { cursor: pointer; color: #9a9aa2; }
+  .row-actions:hover { color: #f87171; }
+</style>
+</head>
+<body>
+
+<h1>Controle de Gastos</h1>
+<p class="subtitle">Compartilhe o comprovante, sem conectar sua conta bancária. Tudo fica salvo só neste navegador.</p>
+
+<div class="card">
+  <div class="drop-zone" id="dropZone">
+    <div id="dropText">Clique ou arraste o print do comprovante aqui</div>
+    <img id="preview">
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+  <button id="sendBtn" disabled>Analisar comprovante</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="summary">
+  <div class="box">
+    <div class="label">Entradas</div>
+    <div class="value entrada" id="totalEntradas">R$ 0,00</div>
+  </div>
+  <div class="box">
+    <div class="label">Saídas</div>
+    <div class="value saida" id="totalSaidas">R$ 0,00</div>
+  </div>
+  <div class="box">
+    <div class="label">Saldo</div>
+    <div class="value" id="saldo">R$ 0,00</div>
+  </div>
+</div>
+
+<div class="card">
+  <table id="tabela">
+    <thead>
+      <tr><th>Data</th><th>Tipo</th><th>Valor</th><th>Instituição</th><th>Local</th><th></th></tr>
+    </thead>
+    <tbody id="tabelaBody"></tbody>
+  </table>
+  <div class="empty" id="emptyMsg">Nenhuma transação ainda.</div>
+</div>
+
+<script>
+const STORAGE_KEY = 'controle_gastos_transacoes';
+let imagemSelecionada = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const dropText = document.getElementById('dropText');
+const sendBtn = document.getElementById('sendBtn');
+const status = document.getElementById('status');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData.items;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      handleFile(item.getAsFile());
+      break;
+    }
+  }
+});
+
+function handleFile(file) {
+  imagemSelecionada = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    dropText.textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+  sendBtn.disabled = false;
+  status.textContent = '';
+  status.className = 'status';
+}
+
+sendBtn.addEventListener('click', async () => {
+  if (!imagemSelecionada) return;
+  sendBtn.disabled = true;
+  status.textContent = 'Analisando comprovante...';
+  status.className = 'status';
+
+  const formData = new FormData();
+  formData.append('receipt', imagemSelecionada);
+
+  try {
+    const resp = await fetch('/api/parse-receipt', { method: 'POST', body: formData });
+    const dados = await resp.json();
+
+    if (dados.erro) {
+      status.textContent = 'Erro: ' + dados.erro;
+      status.className = 'status error';
+      sendBtn.disabled = false;
+      return;
+    }
+
+    adicionarTransacao(dados);
+    resetForm();
+    status.textContent = 'Transação adicionada com sucesso.';
+  } catch (err) {
+    status.textContent = 'Erro de conexão com o servidor.';
+    status.className = 'status error';
+    sendBtn.disabled = false;
+  }
+});
+
+function resetForm() {
+  imagemSelecionada = null;
+  preview.style.display = 'none';
+  preview.src = '';
+  dropText.textContent = 'Clique ou arraste o print do comprovante aqui';
+  fileInput.value = '';
+  sendBtn.disabled = true;
+}
+
+function carregarTransacoes() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function salvarTransacoes(lista) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+}
+
+function adicionarTransacao(dados) {
+  const lista = carregarTransacoes();
+  lista.unshift({ ...dados, id: Date.now() });
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+function removerTransacao(id) {
+  const lista = carregarTransacoes().filter(t => t.id !== id);
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+function formatarMoeda(valor) {
+  return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+}
+
+function renderizar() {
+  const lista = carregarTransacoes();
+  const tbody = document.getElementById('tabelaBody');
+  const emptyMsg = document.getElementById('emptyMsg');
+  tbody.innerHTML = '';
+
+  if (lista.length === 0) {
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+    lista.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${t.data || '-'}</td>
+        <td class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</td>
+        <td>${formatarMoeda(t.valor)}</td>
+        <td>${t.instituicao || '-'}</td>
+        <td>${t.local || '-'}</td>
+        <td class="row-actions" onclick="removerTransacao(${t.id})">✕</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const totalEntradas = lista.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = lista.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+
+  document.getElementById('totalEntradas').textContent = formatarMoeda(totalEntradas);
+  document.getElementById('totalSaidas').textContent = formatarMoeda(totalSaidas);
+  document.getElementById('saldo').textContent = formatarMoeda(totalEntradas - totalSaidas);
+}
+
+renderizar();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>
