@@ -85,6 +85,18 @@
     margin-top: 2px;
     overflow-wrap: break-word;
   }
+  .transacao .nota {
+    font-size: 0.8rem;
+    color: #e8e8ea;
+    margin-top: 4px;
+    cursor: pointer;
+    overflow-wrap: break-word;
+  }
+  .transacao .nota-vazia {
+    color: #5b8cff;
+    opacity: 0.7;
+  }
+  .transacao .nota:hover { opacity: 1; }
   .status { font-size: 0.85rem; color: #9a9aa2; margin-top: 8px; min-height: 1.2em; }
   .status.error { color: #f87171; }
   .empty { color: #9a9aa2; text-align: center; padding: 20px; font-size: 0.9rem; }
@@ -410,9 +422,9 @@ function textoResumoRelatorio() {
 
 function gerarCsv() {
   const transacoes = transacoesDoPeriodo();
-  let csv = 'Data,Tipo,Categoria,Valor,Instituicao,Local\n';
+  let csv = 'Data,Tipo,Categoria,Valor,Instituicao,Local,Observacao\n';
   transacoes.forEach(t => {
-    const linha = [t.data || '', t.tipo || '', t.categoria || '', t.valor || 0, t.instituicao || '', t.local || '']
+    const linha = [t.data || '', t.tipo || '', t.categoria || '', t.valor || 0, t.instituicao || '', t.local || '', t.observacao || '']
       .map(campo => `"${String(campo).replace(/"/g, '""')}"`)
       .join(',');
     csv += linha + '\n';
@@ -577,7 +589,19 @@ function adicionarTransacao(dados) {
 }
 
 function removerTransacao(id) {
+  if (!confirm('Tem certeza que quer excluir essa transação?')) return;
   const lista = carregarTransacoes().filter(t => t.id !== id);
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+function editarObservacao(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const nova = prompt('Observação:', t.observacao || '');
+  if (nova === null) return;
+  t.observacao = nova.trim();
   salvarTransacoes(lista);
   renderizar();
 }
@@ -589,6 +613,9 @@ function formatarMoeda(valor) {
 function renderizarTransacao(t) {
   const div = document.createElement('div');
   div.className = 'transacao';
+  const notaHtml = t.observacao
+    ? `<div class="nota" onclick="editarObservacao(${t.id})">📝 ${t.observacao}</div>`
+    : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">+ observação</div>`;
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
@@ -596,6 +623,7 @@ function renderizarTransacao(t) {
         <span class="valor">${formatarMoeda(t.valor)}</span>
       </div>
       <div class="detalhes">${t.data || '-'} · ${t.categoria || '-'} · ${t.local || '-'}</div>
+      ${notaHtml}
     </div>
     <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
   `;
