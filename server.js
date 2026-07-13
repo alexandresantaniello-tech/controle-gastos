@@ -21,7 +21,11 @@ Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto
 Se não conseguir identificar algum campo, use "desconhecido". Se a imagem não for um comprovante bancário, responda com {"erro": "imagem não reconhecida como comprovante"}.`;
 
 async function lerComprovante(buffer, mediaType) {
-  const base64Image = buffer.toString('base64');
+  const base64Data = buffer.toString('base64');
+  const isPdf = mediaType === 'application/pdf';
+  const conteudo = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
+    : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } };
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -30,7 +34,7 @@ async function lerComprovante(buffer, mediaType) {
       {
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Image } },
+          conteudo,
           { type: 'text', text: EXTRACTION_PROMPT },
         ],
       },

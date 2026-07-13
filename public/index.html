@@ -75,7 +75,7 @@
   <div class="drop-zone" id="dropZone">
     <div id="dropText">Clique ou arraste o print do comprovante aqui</div>
     <img id="preview">
-    <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="fileInput" accept="image/*,application/pdf">
   </div>
   <button id="sendBtn" disabled>Analisar comprovante</button>
   <div class="status" id="status"></div>
@@ -140,13 +140,18 @@ document.addEventListener('paste', (e) => {
 
 function handleFile(file) {
   imagemSelecionada = file;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    dropText.textContent = file.name;
-  };
-  reader.readAsDataURL(file);
+  if (file.type === 'application/pdf') {
+    preview.style.display = 'none';
+    dropText.textContent = '📄 ' + file.name;
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      dropText.textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+  }
   sendBtn.disabled = false;
   status.textContent = '';
   status.className = 'status';
