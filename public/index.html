@@ -38,6 +38,25 @@
     display: inline-block;
   }
   .upload-toggle:hover { color: #5b8cff; }
+  .dica-habito {
+    background: #1a2a3a;
+    border: 1px solid #2d4a63;
+    border-radius: 10px;
+    padding: 12px 32px 12px 14px;
+    font-size: 0.85rem;
+    color: #c8d6e5;
+    margin-bottom: 16px;
+    position: relative;
+    line-height: 1.4;
+  }
+  .dica-fechar {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    cursor: pointer;
+    color: #9a9aa2;
+  }
+  .dica-fechar:hover { color: #e8e8ea; }
   .drop-zone {
     border: 2px dashed #3a3f4b;
     border-radius: 12px;
@@ -157,6 +176,11 @@
 <h1>Controle de Gastos</h1>
 <p class="subtitle">Compartilhe o comprovante, sem conectar sua conta bancária. Tudo fica salvo só neste navegador.</p>
 
+<div class="dica-habito" id="dicaHabito">
+  💡 <strong>Dica:</strong> toda vez que seu banco te notificar uma transação (Pix, compra aprovada, etc.), aproveite a hora — tira o print e registra aqui na hora. Isso evita esquecer depois.
+  <span class="dica-fechar" onclick="fecharDica()">✕</span>
+</div>
+
 <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
 
 <div class="card" id="uploadCard" style="display:none;">
@@ -214,6 +238,15 @@
 
 <script>
 const STORAGE_KEY = 'controle_gastos_transacoes';
+const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
+
+function fecharDica() {
+  localStorage.setItem(DICA_FECHADA_KEY, '1');
+  document.getElementById('dicaHabito').style.display = 'none';
+}
+if (localStorage.getItem(DICA_FECHADA_KEY)) {
+  document.getElementById('dicaHabito').style.display = 'none';
+}
 const NOMES_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
 const hoje = new Date();
