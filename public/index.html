@@ -123,6 +123,21 @@
     margin: 16px 0 4px;
   }
   .grupo-dia:first-child { margin-top: 0; }
+  .periodo-tipos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .periodo-tipos button {
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    color: #9a9aa2;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    margin: 0;
+    border-radius: 20px;
+  }
+  .periodo-tipos button.ativo { background: #5b8cff; border-color: #5b8cff; color: white; }
+  .relatorio-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .relatorio-acoes button { flex: 1; min-width: 140px; }
+  .relatorio-resumo-linha { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; border-bottom: 1px solid #2a2e37; }
+  .relatorio-resumo-linha:last-child { border-bottom: none; }
 </style>
 </head>
 <body>
@@ -168,6 +183,23 @@
   <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
 </div>
 
+<div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
+
+<div class="card" id="relatorioCard" style="display:none;">
+  <div class="periodo-tipos" id="periodoTipos"></div>
+  <div class="mes-nav">
+    <button class="nav" onclick="mudarPeriodo(-1)">‹</button>
+    <div class="titulo" id="tituloPeriodo">-</div>
+    <button class="nav" onclick="mudarPeriodo(1)">›</button>
+  </div>
+  <div id="resumoRelatorio"></div>
+  <div class="relatorio-acoes">
+    <button onclick="compartilharResumo()">Compartilhar resumo</button>
+    <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
+  </div>
+  <div class="status" id="statusRelatorio"></div>
+</div>
+
 <script>
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const NOMES_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -188,6 +220,183 @@ function mudarMes(delta) {
   if (mesSelecionado > 11) { mesSelecionado = 0; anoSelecionado++; }
   if (mesSelecionado < 0) { mesSelecionado = 11; anoSelecionado--; }
   renderizar();
+}
+
+const TIPOS_PERIODO = [
+  { chave: 'dia', label: 'Diário' },
+  { chave: 'semana', label: 'Semanal' },
+  { chave: 'mes', label: 'Mensal' },
+  { chave: 'trimestre', label: 'Trimestral' },
+  { chave: 'semestre', label: 'Semestral' },
+  { chave: 'ano', label: 'Anual' },
+];
+let tipoPeriodo = 'mes';
+let ancoraPeriodo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+function dataDaTransacao(t) {
+  const d = parseData(t.data);
+  if (!d) return null;
+  return new Date(d.ano, d.mes, d.dia);
+}
+
+function calcularIntervalo(tipo, ancora) {
+  const ano = ancora.getFullYear();
+  const mes = ancora.getMonth();
+  const dia = ancora.getDate();
+
+  if (tipo === 'dia') {
+    const inicio = new Date(ano, mes, dia);
+    const fim = new Date(ano, mes, dia);
+    return { inicio, fim, label: inicio.toLocaleDateString('pt-BR') };
+  }
+  if (tipo === 'semana') {
+    const diaSemana = ancora.getDay();
+    const inicio = new Date(ano, mes, dia - diaSemana);
+    const fim = new Date(ano, mes, dia - diaSemana + 6);
+    return { inicio, fim, label: `${inicio.toLocaleDateString('pt-BR')} – ${fim.toLocaleDateString('pt-BR')}` };
+  }
+  if (tipo === 'mes') {
+    const inicio = new Date(ano, mes, 1);
+    const fim = new Date(ano, mes + 1, 0);
+    return { inicio, fim, label: `${NOMES_MESES[mes]} de ${ano}` };
+  }
+  if (tipo === 'trimestre') {
+    const q = Math.floor(mes / 3);
+    const inicio = new Date(ano, q * 3, 1);
+    const fim = new Date(ano, q * 3 + 3, 0);
+    return { inicio, fim, label: `${q + 1}º trimestre de ${ano}` };
+  }
+  if (tipo === 'semestre') {
+    const s = Math.floor(mes / 6);
+    const inicio = new Date(ano, s * 6, 1);
+    const fim = new Date(ano, s * 6 + 6, 0);
+    return { inicio, fim, label: `${s + 1}º semestre de ${ano}` };
+  }
+  // ano
+  const inicio = new Date(ano, 0, 1);
+  const fim = new Date(ano, 11, 31);
+  return { inicio, fim, label: `${ano}` };
+}
+
+function mudarPeriodo(delta) {
+  const passos = { dia: 1, semana: 7, mes: 0, trimestre: 0, semestre: 0, ano: 0 };
+  if (tipoPeriodo === 'dia' || tipoPeriodo === 'semana') {
+    ancoraPeriodo.setDate(ancoraPeriodo.getDate() + delta * passos[tipoPeriodo]);
+  } else if (tipoPeriodo === 'mes') {
+    ancoraPeriodo.setMonth(ancoraPeriodo.getMonth() + delta);
+  } else if (tipoPeriodo === 'trimestre') {
+    ancoraPeriodo.setMonth(ancoraPeriodo.getMonth() + delta * 3);
+  } else if (tipoPeriodo === 'semestre') {
+    ancoraPeriodo.setMonth(ancoraPeriodo.getMonth() + delta * 6);
+  } else if (tipoPeriodo === 'ano') {
+    ancoraPeriodo.setFullYear(ancoraPeriodo.getFullYear() + delta);
+  }
+  renderizarRelatorio();
+}
+
+function selecionarTipoPeriodo(tipo) {
+  tipoPeriodo = tipo;
+  renderizarRelatorio();
+}
+
+function transacoesDoPeriodo() {
+  const { inicio, fim } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  return carregarTransacoes().filter(t => {
+    const d = dataDaTransacao(t);
+    if (!d) return false;
+    return d >= inicio && d <= fim;
+  });
+}
+
+function renderizarRelatorio() {
+  const tiposEl = document.getElementById('periodoTipos');
+  tiposEl.innerHTML = TIPOS_PERIODO.map(tp =>
+    `<button class="${tp.chave === tipoPeriodo ? 'ativo' : ''}" onclick="selecionarTipoPeriodo('${tp.chave}')">${tp.label}</button>`
+  ).join('');
+
+  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  document.getElementById('tituloPeriodo').textContent = label;
+
+  const transacoes = transacoesDoPeriodo();
+  const totalEntradas = transacoes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = transacoes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+
+  document.getElementById('resumoRelatorio').innerHTML = `
+    <div class="relatorio-resumo-linha"><span>Transações</span><strong>${transacoes.length}</strong></div>
+    <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
+  `;
+}
+
+function textoResumoRelatorio() {
+  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const transacoes = transacoesDoPeriodo();
+  const totalEntradas = transacoes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = transacoes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const tipoLabel = TIPOS_PERIODO.find(tp => tp.chave === tipoPeriodo).label;
+
+  let texto = `Relatório ${tipoLabel} — ${label}\n\n`;
+  texto += `Transações: ${transacoes.length}\n`;
+  texto += `Entradas: ${formatarMoeda(totalEntradas)}\n`;
+  texto += `Saídas: ${formatarMoeda(totalSaidas)}\n`;
+  texto += `Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
+  return texto;
+}
+
+function gerarCsv() {
+  const transacoes = transacoesDoPeriodo();
+  let csv = 'Data,Tipo,Valor,Instituicao,Local\n';
+  transacoes.forEach(t => {
+    const linha = [t.data || '', t.tipo || '', t.valor || 0, t.instituicao || '', t.local || '']
+      .map(campo => `"${String(campo).replace(/"/g, '""')}"`)
+      .join(',');
+    csv += linha + '\n';
+  });
+  return csv;
+}
+
+async function compartilharResumo() {
+  const texto = textoResumoRelatorio();
+  const statusEl = document.getElementById('statusRelatorio');
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Relatório - Controle de Gastos', text: texto });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  await navigator.clipboard.writeText(texto);
+  statusEl.textContent = 'Resumo copiado (compartilhamento direto não disponível neste navegador).';
+}
+
+async function compartilharCsv() {
+  const csv = gerarCsv();
+  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const nomeArquivo = `gastos-${label.replace(/[^\w]+/g, '-')}.csv`;
+  const statusEl = document.getElementById('statusRelatorio');
+  const arquivo = new File([csv], nomeArquivo, { type: 'text/csv' });
+
+  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+    try {
+      await navigator.share({ files: [arquivo], title: 'Planilha de gastos' });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  await navigator.clipboard.writeText(csv);
+  statusEl.textContent = 'CSV copiado como texto (compartilhamento de arquivo não disponível neste navegador).';
+}
+
+function alternarRelatorio() {
+  const card = document.getElementById('relatorioCard');
+  const toggle = document.getElementById('relatorioToggle');
+  const abrindo = card.style.display === 'none';
+  card.style.display = abrindo ? 'block' : 'none';
+  toggle.textContent = abrindo ? '– Fechar relatórios' : '📊 Relatórios';
+  if (abrindo) renderizarRelatorio();
 }
 
 function alternarUpload() {
