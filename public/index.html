@@ -30,6 +30,14 @@
     padding: 20px;
     margin-bottom: 20px;
   }
+  .upload-toggle {
+    color: #9a9aa2;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-bottom: 16px;
+    display: inline-block;
+  }
+  .upload-toggle:hover { color: #5b8cff; }
   .drop-zone {
     border: 2px dashed #3a3f4b;
     border-radius: 12px;
@@ -122,7 +130,9 @@
 <h1>Controle de Gastos</h1>
 <p class="subtitle">Compartilhe o comprovante, sem conectar sua conta bancária. Tudo fica salvo só neste navegador.</p>
 
-<div class="card">
+<div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
+
+<div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
     <div id="dropText">Clique ou arraste o print/PDF do comprovante aqui (ou Ctrl+V)</div>
     <img id="preview">
@@ -178,6 +188,14 @@ function mudarMes(delta) {
   if (mesSelecionado > 11) { mesSelecionado = 0; anoSelecionado++; }
   if (mesSelecionado < 0) { mesSelecionado = 11; anoSelecionado--; }
   renderizar();
+}
+
+function alternarUpload() {
+  const card = document.getElementById('uploadCard');
+  const toggle = document.getElementById('uploadToggle');
+  const abrindo = card.style.display === 'none';
+  card.style.display = abrindo ? 'block' : 'none';
+  toggle.textContent = abrindo ? '– Fechar' : '+ Adicionar manualmente';
 }
 
 let imagemSelecionada = null;
@@ -252,6 +270,7 @@ sendBtn.addEventListener('click', async () => {
     adicionarTransacao(dados);
     resetForm();
     status.textContent = 'Transação adicionada com sucesso.';
+    setTimeout(alternarUpload, 1200);
   } catch (err) {
     status.textContent = 'Erro de conexão com o servidor.';
     status.className = 'status error';
