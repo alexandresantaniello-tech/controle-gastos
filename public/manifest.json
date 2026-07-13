@@ -2,6 +2,7 @@
   "name": "Controle de Gastos",
   "short_name": "Gastos",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f1115",
   "theme_color": "#0f1115",
@@ -15,7 +16,7 @@
     "enctype": "multipart/form-data",
     "params": {
       "files": [
-        { "name": "receipt", "accept": ["image/*"] }
+        { "name": "receipt", "accept": ["image/png", "image/jpeg", "image/webp", ".png", ".jpg", ".jpeg", ".webp"] }
       ]
     }
   }
