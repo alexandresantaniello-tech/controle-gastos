@@ -77,12 +77,45 @@
     font-size: 1.1rem;
   }
   .row-actions:hover { color: #f87171; }
+  .mes-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .mes-nav button.nav {
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    color: #e8e8ea;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    padding: 0;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .mes-nav .titulo { font-size: 1.05rem; font-weight: 600; text-transform: capitalize; }
+  .grupo-dia {
+    font-size: 0.75rem;
+    color: #9a9aa2;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin: 16px 0 4px;
+  }
+  .grupo-dia:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
 
 <h1>Controle de Gastos</h1>
 <p class="subtitle">Compartilhe o comprovante, sem conectar sua conta bancária. Tudo fica salvo só neste navegador.</p>
+
+<div class="mes-nav">
+  <button class="nav" onclick="mudarMes(-1)">‹</button>
+  <div class="titulo" id="tituloMes">-</div>
+  <button class="nav" onclick="mudarMes(1)">›</button>
+</div>
 
 <div class="summary">
   <div class="box">
@@ -101,11 +134,30 @@
 
 <div class="card">
   <div id="listaTransacoes"></div>
-  <div class="empty" id="emptyMsg">Nenhuma transação ainda.</div>
+  <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
 </div>
 
 <script>
 const STORAGE_KEY = 'controle_gastos_transacoes';
+const NOMES_MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+const hoje = new Date();
+let mesSelecionado = hoje.getMonth();
+let anoSelecionado = hoje.getFullYear();
+
+function parseData(dataStr) {
+  if (!dataStr) return null;
+  const m = dataStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  return { dia: parseInt(m[1], 10), mes: parseInt(m[2], 10) - 1, ano: parseInt(m[3], 10) };
+}
+
+function mudarMes(delta) {
+  mesSelecionado += delta;
+  if (mesSelecionado > 11) { mesSelecionado = 0; anoSelecionado++; }
+  if (mesSelecionado < 0) { mesSelecionado = 11; anoSelecionado--; }
+  renderizar();
+}
 
 function carregarTransacoes() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -133,35 +185,67 @@ function formatarMoeda(valor) {
   return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
+function renderizarTransacao(t) {
+  const div = document.createElement('div');
+  div.className = 'transacao';
+  div.innerHTML = `
+    <div class="info">
+      <div class="linha-topo">
+        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <span class="valor">${formatarMoeda(t.valor)}</span>
+      </div>
+      <div class="detalhes">${t.data || '-'} · ${t.instituicao || '-'} · ${t.local || '-'}</div>
+    </div>
+    <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
+  `;
+  return div;
+}
+
 function renderizar() {
-  const lista = carregarTransacoes();
+  const todas = carregarTransacoes();
   const container = document.getElementById('listaTransacoes');
   const emptyMsg = document.getElementById('emptyMsg');
   container.innerHTML = '';
 
-  if (lista.length === 0) {
+  document.getElementById('tituloMes').textContent = `${NOMES_MESES[mesSelecionado]} de ${anoSelecionado}`;
+
+  // Transações sem data reconhecida aparecem em todo mês, pra nunca ficarem escondidas
+  const doMes = todas.filter(t => {
+    const d = parseData(t.data);
+    if (!d) return true;
+    return d.mes === mesSelecionado && d.ano === anoSelecionado;
+  });
+
+  // Ordena por dia (mais recente primeiro); sem data reconhecida fica por último
+  doMes.sort((a, b) => {
+    const da = parseData(a.data), db = parseData(b.data);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return db.dia - da.dia;
+  });
+
+  if (doMes.length === 0) {
     emptyMsg.style.display = 'block';
   } else {
     emptyMsg.style.display = 'none';
-    lista.forEach(t => {
-      const div = document.createElement('div');
-      div.className = 'transacao';
-      div.innerHTML = `
-        <div class="info">
-          <div class="linha-topo">
-            <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-            <span class="valor">${formatarMoeda(t.valor)}</span>
-          </div>
-          <div class="detalhes">${t.data || '-'} · ${t.instituicao || '-'} · ${t.local || '-'}</div>
-        </div>
-        <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
-      `;
-      container.appendChild(div);
+    let diaAtual = null;
+    doMes.forEach(t => {
+      const d = parseData(t.data);
+      const chaveDia = d ? String(d.dia) : 'sem-data';
+      if (chaveDia !== diaAtual) {
+        diaAtual = chaveDia;
+        const header = document.createElement('div');
+        header.className = 'grupo-dia';
+        header.textContent = d ? `Dia ${d.dia}` : 'Data não identificada';
+        container.appendChild(header);
+      }
+      container.appendChild(renderizarTransacao(t));
     });
   }
 
-  const totalEntradas = lista.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
-  const totalSaidas = lista.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalEntradas = doMes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = doMes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
 
   document.getElementById('totalEntradas').textContent = formatarMoeda(totalEntradas);
   document.getElementById('totalSaidas').textContent = formatarMoeda(totalSaidas);
