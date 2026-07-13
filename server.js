@@ -7,7 +7,9 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-app.use(express.static('public'));
+app.use(express.static('public', {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
+}));
 
 const EXTRACTION_PROMPT = `Você recebe a imagem de um comprovante de transação bancária brasileira (Pix, transferência, débito ou crédito).
 Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:
