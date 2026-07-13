@@ -658,6 +658,19 @@ renderizar();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');
 }
+
+// Captura qualquer erro que hoje passaria em silencio, pra ficar visivel na tela
+function mostrarErroGlobal(mensagem) {
+  const statusEls = [document.getElementById('status'), document.getElementById('statusRelatorio')];
+  statusEls.forEach(el => {
+    if (el) {
+      el.textContent = 'Erro inesperado: ' + mensagem;
+      el.className = 'status error';
+    }
+  });
+}
+window.addEventListener('error', (e) => mostrarErroGlobal(e.message));
+window.addEventListener('unhandledrejection', (e) => mostrarErroGlobal(e.reason && e.reason.message ? e.reason.message : String(e.reason)));
 </script>
 </body>
 </html>
