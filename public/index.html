@@ -14,9 +14,12 @@
     background: #0f1115;
     color: #e8e8ea;
     margin: 0;
-    padding: 24px;
+    padding: 16px;
     max-width: 720px;
     margin-inline: auto;
+  }
+  @media (min-width: 480px) {
+    body { padding: 24px; }
   }
   h1 { font-size: 1.4rem; margin-bottom: 4px; }
   p.subtitle { color: #9a9aa2; margin-top: 0; font-size: 0.9rem; }
@@ -56,13 +59,34 @@
   .summary .box .value { font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
   .entrada { color: #4ade80; }
   .saida { color: #f87171; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.9rem; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #2a2e37; }
-  th { color: #9a9aa2; font-weight: 500; font-size: 0.8rem; }
+  .transacao {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #2a2e37;
+  }
+  .transacao:last-child { border-bottom: none; }
+  .transacao .info { min-width: 0; flex: 1; }
+  .transacao .linha-topo { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .transacao .valor { font-size: 1.05rem; font-weight: 600; }
+  .transacao .detalhes {
+    font-size: 0.8rem;
+    color: #9a9aa2;
+    margin-top: 2px;
+    overflow-wrap: break-word;
+  }
   .status { font-size: 0.85rem; color: #9a9aa2; margin-top: 8px; min-height: 1.2em; }
   .status.error { color: #f87171; }
   .empty { color: #9a9aa2; text-align: center; padding: 20px; font-size: 0.9rem; }
-  .row-actions { cursor: pointer; color: #9a9aa2; }
+  .row-actions {
+    cursor: pointer;
+    color: #9a9aa2;
+    flex-shrink: 0;
+    padding: 4px 8px;
+    font-size: 1.1rem;
+  }
   .row-actions:hover { color: #f87171; }
 </style>
 </head>
@@ -97,12 +121,7 @@
 </div>
 
 <div class="card">
-  <table id="tabela">
-    <thead>
-      <tr><th>Data</th><th>Tipo</th><th>Valor</th><th>Instituição</th><th>Local</th><th></th></tr>
-    </thead>
-    <tbody id="tabelaBody"></tbody>
-  </table>
+  <div id="listaTransacoes"></div>
   <div class="empty" id="emptyMsg">Nenhuma transação ainda.</div>
 </div>
 
@@ -224,25 +243,28 @@ function formatarMoeda(valor) {
 
 function renderizar() {
   const lista = carregarTransacoes();
-  const tbody = document.getElementById('tabelaBody');
+  const container = document.getElementById('listaTransacoes');
   const emptyMsg = document.getElementById('emptyMsg');
-  tbody.innerHTML = '';
+  container.innerHTML = '';
 
   if (lista.length === 0) {
     emptyMsg.style.display = 'block';
   } else {
     emptyMsg.style.display = 'none';
     lista.forEach(t => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${t.data || '-'}</td>
-        <td class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</td>
-        <td>${formatarMoeda(t.valor)}</td>
-        <td>${t.instituicao || '-'}</td>
-        <td>${t.local || '-'}</td>
-        <td class="row-actions" onclick="removerTransacao(${t.id})">✕</td>
+      const div = document.createElement('div');
+      div.className = 'transacao';
+      div.innerHTML = `
+        <div class="info">
+          <div class="linha-topo">
+            <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+            <span class="valor">${formatarMoeda(t.valor)}</span>
+          </div>
+          <div class="detalhes">${t.data || '-'} · ${t.instituicao || '-'} · ${t.local || '-'}</div>
+        </div>
+        <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
       `;
-      tbody.appendChild(tr);
+      container.appendChild(div);
     });
   }
 
