@@ -30,6 +30,17 @@
     padding: 20px;
     margin-bottom: 20px;
   }
+  .drop-zone {
+    border: 2px dashed #3a3f4b;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #5b8cff; }
+  .drop-zone input { display: none; }
+  #preview { max-width: 100%; max-height: 160px; border-radius: 8px; margin-top: 12px; display: none; }
   button {
     background: #5b8cff;
     color: white;
@@ -111,6 +122,16 @@
 <h1>Controle de Gastos</h1>
 <p class="subtitle">Compartilhe o comprovante, sem conectar sua conta bancária. Tudo fica salvo só neste navegador.</p>
 
+<div class="card">
+  <div class="drop-zone" id="dropZone">
+    <div id="dropText">Clique ou arraste o print/PDF do comprovante aqui (ou Ctrl+V)</div>
+    <img id="preview">
+    <input type="file" id="fileInput" accept="image/*,application/pdf">
+  </div>
+  <button id="sendBtn" disabled>Analisar comprovante</button>
+  <div class="status" id="status"></div>
+</div>
+
 <div class="mes-nav">
   <button class="nav" onclick="mudarMes(-1)">‹</button>
   <div class="titulo" id="tituloMes">-</div>
@@ -157,6 +178,94 @@ function mudarMes(delta) {
   if (mesSelecionado > 11) { mesSelecionado = 0; anoSelecionado++; }
   if (mesSelecionado < 0) { mesSelecionado = 11; anoSelecionado--; }
   renderizar();
+}
+
+let imagemSelecionada = null;
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const dropText = document.getElementById('dropText');
+const sendBtn = document.getElementById('sendBtn');
+const status = document.getElementById('status');
+const TEXTO_PADRAO_DROPZONE = 'Clique ou arraste o print/PDF do comprovante aqui (ou Ctrl+V)';
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData.items;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      handleFile(item.getAsFile());
+      break;
+    }
+  }
+});
+
+function handleFile(file) {
+  imagemSelecionada = file;
+  if (file.type === 'application/pdf') {
+    preview.style.display = 'none';
+    dropText.textContent = '📄 ' + file.name;
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      dropText.textContent = file.name;
+    };
+    reader.readAsDataURL(file);
+  }
+  sendBtn.disabled = false;
+  status.textContent = '';
+  status.className = 'status';
+}
+
+sendBtn.addEventListener('click', async () => {
+  if (!imagemSelecionada) return;
+  sendBtn.disabled = true;
+  status.textContent = 'Analisando comprovante...';
+  status.className = 'status';
+
+  const formData = new FormData();
+  formData.append('receipt', imagemSelecionada);
+
+  try {
+    const resp = await fetch('/api/parse-receipt', { method: 'POST', body: formData });
+    const dados = await resp.json();
+
+    if (dados.erro) {
+      status.textContent = 'Erro: ' + dados.erro;
+      status.className = 'status error';
+      sendBtn.disabled = false;
+      return;
+    }
+
+    adicionarTransacao(dados);
+    resetForm();
+    status.textContent = 'Transação adicionada com sucesso.';
+  } catch (err) {
+    status.textContent = 'Erro de conexão com o servidor.';
+    status.className = 'status error';
+    sendBtn.disabled = false;
+  }
+});
+
+function resetForm() {
+  imagemSelecionada = null;
+  preview.style.display = 'none';
+  preview.src = '';
+  dropText.textContent = TEXTO_PADRAO_DROPZONE;
+  fileInput.value = '';
+  sendBtn.disabled = true;
 }
 
 function carregarTransacoes() {
