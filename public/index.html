@@ -219,6 +219,11 @@
   <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
 </div>
 
+<div class="card" id="cardSemData" style="display:none;">
+  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
+  <div id="listaSemData"></div>
+</div>
+
 <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
 
 <div class="card" id="relatorioCard" style="display:none;">
@@ -254,10 +259,17 @@ let mesSelecionado = hoje.getMonth();
 let anoSelecionado = hoje.getFullYear();
 
 function parseData(dataStr) {
-  if (!dataStr) return null;
-  const m = dataStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!dataStr || typeof dataStr !== 'string') return null;
+  const limpo = dataStr.trim();
+  // Aceita DD/MM/AAAA ou DD-MM-AAAA, com ou sem zero a esquerda, ano de 2 ou 4 digitos
+  const m = limpo.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
   if (!m) return null;
-  return { dia: parseInt(m[1], 10), mes: parseInt(m[2], 10) - 1, ano: parseInt(m[3], 10) };
+  const dia = parseInt(m[1], 10);
+  const mes = parseInt(m[2], 10) - 1;
+  let ano = parseInt(m[3], 10);
+  if (ano < 100) ano += 2000;
+  if (dia < 1 || dia > 31 || mes < 0 || mes > 11) return null;
+  return { dia, mes, ano };
 }
 
 function mudarMes(delta) {
@@ -639,6 +651,46 @@ function editarObservacao(id) {
   renderizar();
 }
 
+function editarData(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const nova = prompt('Data (formato DD/MM/AAAA):', t.data && t.data !== 'desconhecido' ? t.data : '');
+  if (nova === null) return;
+  if (nova.trim() && !parseData(nova.trim())) {
+    alert('Data inválida. Use o formato DD/MM/AAAA, ex: 13/07/2026.');
+    return;
+  }
+  t.data = nova.trim();
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+function renderizarSemData(todas) {
+  const semData = todas.filter(t => !parseData(t.data));
+  const cardEl = document.getElementById('cardSemData');
+  const listaEl = document.getElementById('listaSemData');
+  if (semData.length === 0) {
+    cardEl.style.display = 'none';
+    return;
+  }
+  cardEl.style.display = 'block';
+  listaEl.innerHTML = '';
+  semData.forEach(t => {
+    const div = renderizarTransacao(t);
+    const detalhes = div.querySelector('.detalhes');
+    if (detalhes) {
+      const link = document.createElement('span');
+      link.textContent = ' · corrigir data';
+      link.style.color = '#5b8cff';
+      link.style.cursor = 'pointer';
+      link.onclick = () => editarData(t.id);
+      detalhes.appendChild(link);
+    }
+    listaEl.appendChild(div);
+  });
+}
+
 function formatarMoeda(valor) {
   return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
@@ -671,21 +723,15 @@ function renderizar() {
 
   document.getElementById('tituloMes').textContent = `${NOMES_MESES[mesSelecionado]} de ${anoSelecionado}`;
 
-  // Transações sem data reconhecida aparecem em todo mês, pra nunca ficarem escondidas
+  // So entra no mes quem tem data reconhecida batendo com mes/ano selecionado.
+  // Transacoes sem data NAO aparecem aqui (isso causava o mesmo lancamento
+  // "aparecendo" em varios meses ao mesmo tempo, dando impressao de bug aleatorio).
   const doMes = todas.filter(t => {
     const d = parseData(t.data);
-    if (!d) return true;
-    return d.mes === mesSelecionado && d.ano === anoSelecionado;
+    return d && d.mes === mesSelecionado && d.ano === anoSelecionado;
   });
 
-  // Ordena por dia (mais recente primeiro); sem data reconhecida fica por último
-  doMes.sort((a, b) => {
-    const da = parseData(a.data), db = parseData(b.data);
-    if (!da && !db) return 0;
-    if (!da) return 1;
-    if (!db) return -1;
-    return db.dia - da.dia;
-  });
+  doMes.sort((a, b) => parseData(b.data).dia - parseData(a.data).dia);
 
   if (doMes.length === 0) {
     emptyMsg.style.display = 'block';
@@ -694,17 +740,18 @@ function renderizar() {
     let diaAtual = null;
     doMes.forEach(t => {
       const d = parseData(t.data);
-      const chaveDia = d ? String(d.dia) : 'sem-data';
-      if (chaveDia !== diaAtual) {
-        diaAtual = chaveDia;
+      if (String(d.dia) !== diaAtual) {
+        diaAtual = String(d.dia);
         const header = document.createElement('div');
         header.className = 'grupo-dia';
-        header.textContent = d ? `Dia ${d.dia}` : 'Data não identificada';
+        header.textContent = `Dia ${d.dia}`;
         container.appendChild(header);
       }
       container.appendChild(renderizarTransacao(t));
     });
   }
+
+  renderizarSemData(todas);
 
   const totalEntradas = doMes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
   const totalSaidas = doMes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
