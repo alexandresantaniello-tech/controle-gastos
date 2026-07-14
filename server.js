@@ -15,7 +15,7 @@ const EXTRACTION_PROMPT = `Você recebe a imagem de um comprovante de transaçã
 Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:
 {
   "valor": (número, ex: 150.50),
-  "tipo": ("entrada" ou "saida"),
+  "tipo": ("entrada" se o dinheiro foi RECEBIDO/creditado na conta do usuário, "saida" se foi ENVIADO/debitado da conta do usuário. Preste atenção especial: textos como "você recebeu", "Pix recebido", "creditado", ou valores em VERDE geralmente indicam entrada; textos como "você enviou", "Pix enviado", "pagamento", "debitado", ou valores em VERMELHO/CINZA geralmente indicam saída. Não confunda o nome de quem aparece no comprovante com a direção — o importante é se o dinheiro ENTROU ou SAIU da conta de quem é dono do comprovante),
   "categoria": (categoria da transação, inferida do nome do estabelecimento/recebedor e contexto; use uma categoria curta e específica, ex: "Transporte", "Padaria", "Comida na rua", "Mercado", "Farmácia/Saúde", "Lazer", "Assinaturas", "Contas/Serviços", "Salário", "Cliente/Serviço prestado", "Transferência entre contas", "Outros"),
   "instituicao": (nome do banco/fintech, ou "desconhecido" se não identificar),
   "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido"),
