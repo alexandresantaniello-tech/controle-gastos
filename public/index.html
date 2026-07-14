@@ -655,6 +655,16 @@ function removerTransacao(id) {
   if (!confirm('Tem certeza que quer excluir essa transação?')) return;
   const lista = carregarTransacoes().filter(t => t.id !== id);
   salvarTransacoes(lista);
+
+  // Confirma que a gravacao realmente aconteceu, relendo direto do armazenamento.
+  // Se o item ainda estiver la, algo falhou ao salvar - avisa na hora em vez de
+  // deixar o usuario descobrir só depois de fechar e abrir o app de novo.
+  const confirmacao = carregarTransacoes();
+  const aindaExiste = confirmacao.some(t => t.id === id);
+  if (aindaExiste) {
+    alert('⚠️ A exclusão pode não ter sido salva corretamente. Tente excluir de novo, e evite fechar o app logo em seguida.');
+  }
+
   renderizar();
 }
 
