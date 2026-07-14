@@ -16,7 +16,7 @@
     "enctype": "multipart/form-data",
     "params": {
       "files": [
-        { "name": "receipt", "accept": ["image/png", "image/jpeg", "image/webp", "application/pdf", ".png", ".jpg", ".jpeg", ".webp", ".pdf"] }
+        { "name": "receipt", "accept": ["image/png", "image/jpeg", "image/webp", ".png", ".jpg", ".jpeg", ".webp"] }
       ]
     }
   }

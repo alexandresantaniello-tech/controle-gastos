@@ -25,10 +25,6 @@ Se não conseguir identificar algum campo, use "desconhecido". Se a imagem não 
 
 async function lerComprovante(buffer, mediaType) {
   const base64Data = buffer.toString('base64');
-  const isPdf = mediaType === 'application/pdf';
-  const conteudo = isPdf
-    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
-    : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } };
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -37,7 +33,7 @@ async function lerComprovante(buffer, mediaType) {
       {
         role: 'user',
         content: [
-          conteudo,
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
           { type: 'text', text: EXTRACTION_PROMPT },
         ],
       },
