@@ -11,7 +11,15 @@ app.use(express.static('public', {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
 }));
 
-const EXTRACTION_PROMPT = `Você recebe a imagem de um comprovante de transação bancária brasileira (Pix, transferência, débito ou crédito).
+function getExtractionPrompt() {
+  const hoje = new Date();
+  const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+  const ontem = new Date(hoje);
+  ontem.setDate(ontem.getDate() - 1);
+  const ontemStr = String(ontem.getDate()).padStart(2, '0') + '/' + String(ontem.getMonth() + 1).padStart(2, '0') + '/' + ontem.getFullYear();
+
+  return `Você recebe a imagem de um comprovante de transação bancária brasileira (Pix, transferência, débito ou crédito).
+A data de HOJE é ${hojeStr}. Se o comprovante mostrar uma data relativa como "Hoje", use ${hojeStr}. Se mostrar "Ontem", use ${ontemStr}. Se mostrar dia da semana + dia do mês sem ano (ex: "Segunda-feira, 13 de julho"), calcule o ano correto usando ${hojeStr} como referência de hoje.
 Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:
 {
   "valor": (número, ex: 150.50),
@@ -19,9 +27,10 @@ Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto
   "categoria": (categoria da transação, inferida do nome do estabelecimento/recebedor e contexto; use uma categoria curta e específica, ex: "Transporte", "Padaria", "Comida na rua", "Mercado", "Farmácia/Saúde", "Lazer", "Assinaturas", "Contas/Serviços", "Salário", "Cliente/Serviço prestado", "Transferência entre contas", "Outros"),
   "instituicao": (nome do banco/fintech, ou "desconhecido" se não identificar),
   "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido"),
-  "data": (data da transação no formato DD/MM/AAAA, ou "desconhecido")
+  "data": (data da transação no formato EXATO DD/MM/AAAA — sempre com barras, sempre com o ano de 4 digitos, nunca por extenso, ou "desconhecido" se realmente não der pra determinar)
 }
 Se não conseguir identificar algum campo, use "desconhecido". Se a imagem não for um comprovante bancário, responda com {"erro": "imagem não reconhecida como comprovante"}.`;
+}
 
 async function lerComprovante(buffer, mediaType) {
   const base64Data = buffer.toString('base64');
@@ -38,7 +47,7 @@ async function lerComprovante(buffer, mediaType) {
         role: 'user',
         content: [
           conteudo,
-          { type: 'text', text: EXTRACTION_PROMPT },
+          { type: 'text', text: getExtractionPrompt() },
         ],
       },
     ],
