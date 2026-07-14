@@ -791,6 +791,22 @@ function renderizar() {
 
 renderizar();
 
+// Forca reler os dados sempre que o app volta a ficar visivel (ex: apos trocar
+// de app e voltar). Sem isso, o Android/Chrome as vezes restaura uma versao
+// "congelada" da tela de antes, dando a impressao de que uma exclusao "voltou".
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    renderizar();
+    if (document.getElementById('relatorioCard').style.display !== 'none') renderizarRelatorio();
+  }
+});
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) {
+    renderizar();
+    if (document.getElementById('relatorioCard').style.display !== 'none') renderizarRelatorio();
+  }
+});
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');
 }
