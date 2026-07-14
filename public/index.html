@@ -597,13 +597,10 @@ sendBtn.addEventListener('click', async () => {
       return;
     }
 
-    const duplicata = adicionarTransacao(dados);
+    adicionarTransacao(dados);
     resetForm();
-    status.textContent = duplicata
-      ? '⚠️ Adicionada, mas parece duplicata de um lançamento já existente (mesmo valor/data/local). Confira a lista.'
-      : 'Transação adicionada com sucesso.';
-    status.className = duplicata ? 'status error' : 'status';
-    if (!duplicata) setTimeout(alternarUpload, 1200);
+    status.textContent = 'Transação adicionada com sucesso.';
+    setTimeout(alternarUpload, 1200);
   } catch (err) {
     status.textContent = 'Erro de conexão com o servidor.';
     status.className = 'status error';
@@ -629,21 +626,11 @@ function salvarTransacoes(lista) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
 }
 
-function pareceDuplicata(dados, lista) {
-  return lista.some(t =>
-    t.data === dados.data &&
-    t.local === dados.local &&
-    Number(t.valor) === Number(dados.valor)
-  );
-}
-
 function adicionarTransacao(dados) {
   const lista = carregarTransacoes();
-  const duplicata = pareceDuplicata(dados, lista);
   lista.unshift({ ...dados, id: Date.now() });
   salvarTransacoes(lista);
   renderizar();
-  return duplicata;
 }
 
 function removerTransacao(id) {
@@ -775,11 +762,6 @@ function renderizar() {
 }
 
 renderizar();
-
-if (localStorage.getItem('controle_gastos_aviso_duplicata')) {
-  localStorage.removeItem('controle_gastos_aviso_duplicata');
-  alert('⚠️ O último comprovante compartilhado parece duplicata de um lançamento já existente (mesmo valor/data/local). Confira a lista.');
-}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js');

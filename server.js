@@ -91,10 +91,8 @@ app.post('/share-target', upload.single('receipt'), async (req, res) => {
   if (dados && !dados.erro) {
     const raw = localStorage.getItem(STORAGE_KEY);
     const lista = raw ? JSON.parse(raw) : [];
-    const duplicata = lista.some(t => t.data === dados.data && t.local === dados.local && Number(t.valor) === Number(dados.valor));
     lista.unshift({ ...dados, id: Date.now() });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
-    if (duplicata) localStorage.setItem('controle_gastos_aviso_duplicata', '1');
   }
   window.location.replace('/');
 </script>
