@@ -42,7 +42,7 @@ async function lerComprovante(buffer, mediaType) {
         ],
       },
     ],
-  });
+  }, { timeout: 20000 });
 
   const textResponse = message.content[0].text.trim();
   const jsonMatch = textResponse.match(/\{[\s\S]*\}/);

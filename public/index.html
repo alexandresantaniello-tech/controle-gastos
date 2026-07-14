@@ -577,6 +577,23 @@ function handleFile(file) {
   status.className = 'status';
 }
 
+async function enviarComprovante(formData, tentativa) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  try {
+    const resp = await fetch('/api/parse-receipt', { method: 'POST', body: formData, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return await resp.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (tentativa === 1) {
+      status.textContent = 'Instabilidade detectada, tentando novamente...';
+      return enviarComprovante(formData, 2);
+    }
+    throw err;
+  }
+}
+
 sendBtn.addEventListener('click', async () => {
   if (!imagemSelecionada) return;
   sendBtn.disabled = true;
@@ -587,8 +604,7 @@ sendBtn.addEventListener('click', async () => {
   formData.append('receipt', imagemSelecionada);
 
   try {
-    const resp = await fetch('/api/parse-receipt', { method: 'POST', body: formData });
-    const dados = await resp.json();
+    const dados = await enviarComprovante(formData, 1);
 
     if (dados.erro) {
       status.textContent = 'Erro: ' + dados.erro;
@@ -602,7 +618,9 @@ sendBtn.addEventListener('click', async () => {
     status.textContent = 'Transação adicionada com sucesso.';
     setTimeout(alternarUpload, 1200);
   } catch (err) {
-    status.textContent = 'Erro de conexão com o servidor.';
+    status.textContent = err.name === 'AbortError'
+      ? '⏱️ Sem resposta do servidor mesmo após tentar de novo (provável instabilidade de rede). Tente mais tarde.'
+      : 'Erro de conexão com o servidor.';
     status.className = 'status error';
     sendBtn.disabled = false;
   }
