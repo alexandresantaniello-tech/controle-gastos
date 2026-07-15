@@ -217,6 +217,12 @@
   .dia-header:hover { border-color: #5b8cff; }
   .dia-header .seta { color: #9a9aa2; margin-right: 6px; }
   .dia-header .contagem { color: #9a9aa2; font-size: 0.8rem; }
+  .saldo-card { padding: 16px 20px; }
+  .saldo-linha { display: flex; justify-content: space-between; align-items: center; }
+  .saldo-linha .label { font-size: 0.8rem; color: #9a9aa2; }
+  .olho { cursor: pointer; font-size: 1.1rem; }
+  .mes-botao { cursor: pointer; }
+  .mes-botao:hover { color: #5b8cff; }
 </style>
 </head>
 <body>
@@ -227,6 +233,41 @@
 <div class="dica-habito" id="dicaHabito">
   💡 <strong>Dica:</strong> toda vez que aparecer a notificação do seu banco no topo da tela (Pix, compra aprovada, etc.), tira o print **dessa notificação** e registra aqui na hora — não precisa nem abrir o app do banco. É mais rápido e funciona certinho.
   <span class="dica-fechar" onclick="fecharDica()">✕</span>
+</div>
+
+<div class="summary">
+  <div class="box">
+    <div class="label">Entradas</div>
+    <div class="value entrada" id="totalEntradas">R$ 0,00</div>
+  </div>
+  <div class="box">
+    <div class="label">Saídas</div>
+    <div class="value saida" id="totalSaidas">R$ 0,00</div>
+  </div>
+</div>
+
+<div class="card saldo-card">
+  <div class="saldo-linha">
+    <span class="label">Saldo</span>
+    <span class="olho" id="olhoSaldo" onclick="alternarVisibilidadeSaldo()">👁️</span>
+  </div>
+  <div class="value" id="saldo">R$ 0,00</div>
+</div>
+
+<div class="mes-nav">
+  <button class="nav" onclick="mudarMes(-1)">‹</button>
+  <div class="titulo mes-botao" id="tituloMes" onclick="alternarListaMes()">-</div>
+  <button class="nav" onclick="mudarMes(1)">›</button>
+</div>
+
+<div class="card" id="cardListaMes" style="display:none;">
+  <div id="listaTransacoes"></div>
+  <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
+</div>
+
+<div class="card" id="cardSemData" style="display:none;">
+  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
+  <div id="listaSemData"></div>
 </div>
 
 <div class="toggles-linha">
@@ -309,37 +350,6 @@
   <div class="status" id="statusCaixas"></div>
 </div>
 
-<div class="mes-nav">
-  <button class="nav" onclick="mudarMes(-1)">‹</button>
-  <div class="titulo" id="tituloMes">-</div>
-  <button class="nav" onclick="mudarMes(1)">›</button>
-</div>
-
-<div class="summary">
-  <div class="box">
-    <div class="label">Entradas</div>
-    <div class="value entrada" id="totalEntradas">R$ 0,00</div>
-  </div>
-  <div class="box">
-    <div class="label">Saídas</div>
-    <div class="value saida" id="totalSaidas">R$ 0,00</div>
-  </div>
-  <div class="box">
-    <div class="label">Saldo</div>
-    <div class="value" id="saldo">R$ 0,00</div>
-  </div>
-</div>
-
-<div class="card">
-  <div id="listaTransacoes"></div>
-  <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
-</div>
-
-<div class="card" id="cardSemData" style="display:none;">
-  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
-  <div id="listaSemData"></div>
-</div>
-
 <script>
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
@@ -372,6 +382,7 @@ function parseData(dataStr) {
 }
 
 let diasAbertos = new Set();
+let mesListaAberta = false;
 
 function mudarMes(delta) {
   mesSelecionado += delta;
@@ -385,6 +396,26 @@ function alternarDia(dia) {
   if (diasAbertos.has(dia)) diasAbertos.delete(dia);
   else diasAbertos.add(dia);
   renderizar();
+}
+
+function alternarListaMes() {
+  mesListaAberta = !mesListaAberta;
+  renderizar();
+}
+
+let saldoAtual = 0;
+const SALDO_OCULTO_KEY = 'controle_gastos_saldo_oculto';
+let saldoOculto = localStorage.getItem(SALDO_OCULTO_KEY) === '1';
+
+function alternarVisibilidadeSaldo() {
+  saldoOculto = !saldoOculto;
+  localStorage.setItem(SALDO_OCULTO_KEY, saldoOculto ? '1' : '0');
+  atualizarSaldoExibido();
+}
+
+function atualizarSaldoExibido() {
+  document.getElementById('olhoSaldo').textContent = saldoOculto ? '🙈' : '👁️';
+  document.getElementById('saldo').textContent = saldoOculto ? 'R$ ••••••' : formatarMoeda(saldoAtual);
 }
 
 const TIPOS_PERIODO = [
@@ -863,7 +894,8 @@ function renderizar() {
   const emptyMsg = document.getElementById('emptyMsg');
   container.innerHTML = '';
 
-  document.getElementById('tituloMes').textContent = `${NOMES_MESES[mesSelecionado]} de ${anoSelecionado}`;
+  document.getElementById('tituloMes').textContent = `${NOMES_MESES[mesSelecionado]} de ${anoSelecionado} ${mesListaAberta ? '▾' : '▸'}`;
+  document.getElementById('cardListaMes').style.display = mesListaAberta ? 'block' : 'none';
 
   // So entra no mes quem tem data reconhecida batendo com mes/ano selecionado.
   // Transacoes sem data NAO aparecem aqui (isso causava o mesmo lancamento
@@ -916,7 +948,8 @@ function renderizar() {
 
   document.getElementById('totalEntradas').textContent = formatarMoeda(totalEntradas);
   document.getElementById('totalSaidas').textContent = formatarMoeda(totalSaidas);
-  document.getElementById('saldo').textContent = formatarMoeda(totalEntradas - totalSaidas);
+  saldoAtual = totalEntradas - totalSaidas;
+  atualizarSaldoExibido();
 }
 
 // ---------- Dinheiro em especie (lancamento manual, sem IA, sem servidor) ----------
