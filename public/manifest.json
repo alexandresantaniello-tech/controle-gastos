@@ -1,6 +1,6 @@
 {
-  "name": "Controle de Gastos",
-  "short_name": "Gastos",
+  "name": "Clara — Controle de Gastos",
+  "short_name": "Clara",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
