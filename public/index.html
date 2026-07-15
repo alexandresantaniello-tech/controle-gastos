@@ -201,6 +201,22 @@
   .caixa-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .caixa-acoes button { margin-top: 0; padding: 6px 12px; font-size: 0.8rem; }
   .caixa-detalhe { margin-top: 10px; border-top: 1px solid #2a2e37; padding-top: 10px; }
+  .dia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: #1a1d24;
+    border: 1px solid #2a2e37;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 10px 0;
+    font-size: 0.9rem;
+  }
+  .dia-header:first-child { margin-top: 0; }
+  .dia-header:hover { border-color: #5b8cff; }
+  .dia-header .seta { color: #9a9aa2; margin-right: 6px; }
+  .dia-header .contagem { color: #9a9aa2; font-size: 0.8rem; }
 </style>
 </head>
 <body>
@@ -216,6 +232,8 @@
 <div class="toggles-linha">
   <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()">💵 Dinheiro</div>
+  <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
+  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()">📦 Caixas</div>
 </div>
 
 <div class="card" id="uploadCard" style="display:none;">
@@ -252,6 +270,45 @@
   <div class="status" id="statusDinheiro"></div>
 </div>
 
+<div class="card" id="relatorioCard" style="display:none;">
+  <div class="periodo-tipos" id="periodoTipos"></div>
+  <div class="mes-nav">
+    <button class="nav" onclick="mudarPeriodo(-1)">‹</button>
+    <div class="titulo" id="tituloPeriodo">-</div>
+    <button class="nav" onclick="mudarPeriodo(1)">›</button>
+  </div>
+  <div id="resumoRelatorio"></div>
+  <div class="relatorio-acoes">
+    <button onclick="compartilharResumo()">Compartilhar resumo</button>
+    <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
+  </div>
+  <div class="status" id="statusRelatorio"></div>
+</div>
+
+<div class="card" id="caixasCard" style="display:none;">
+  <div class="dica-habito" id="bannerCaixaAtiva" style="display:none;"></div>
+
+  <div id="listaCaixas"></div>
+
+  <div class="grupo-dia" style="margin-top:20px;">Nova caixa</div>
+  <label class="campo">Nome</label>
+  <input type="text" id="nomeCaixa" placeholder="Ex: Carro, Viagem SP-RJ, Salário CLT">
+
+  <label class="campo">Tipo</label>
+  <div class="tipo-toggle">
+    <button type="button" id="btnTipoFixa" class="ativo" onclick="selecionarTipoCaixa('fixa')">Fixa (por categoria)</button>
+    <button type="button" id="btnTipoEvento" onclick="selecionarTipoCaixa('evento')">Evento (ativar/desativar)</button>
+  </div>
+
+  <div id="campoCriterios">
+    <label class="campo">Categorias ou palavras-chave (separadas por vírgula)</label>
+    <input type="text" id="criteriosCaixa" placeholder="Ex: Combustível, Pneu, Manutenção">
+  </div>
+
+  <button onclick="criarCaixa()">Criar caixa</button>
+  <div class="status" id="statusCaixas"></div>
+</div>
+
 <div class="mes-nav">
   <button class="nav" onclick="mudarMes(-1)">‹</button>
   <div class="titulo" id="tituloMes">-</div>
@@ -281,49 +338,6 @@
 <div class="card" id="cardSemData" style="display:none;">
   <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
   <div id="listaSemData"></div>
-</div>
-
-<div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
-
-<div class="card" id="relatorioCard" style="display:none;">
-  <div class="periodo-tipos" id="periodoTipos"></div>
-  <div class="mes-nav">
-    <button class="nav" onclick="mudarPeriodo(-1)">‹</button>
-    <div class="titulo" id="tituloPeriodo">-</div>
-    <button class="nav" onclick="mudarPeriodo(1)">›</button>
-  </div>
-  <div id="resumoRelatorio"></div>
-  <div class="relatorio-acoes">
-    <button onclick="compartilharResumo()">Compartilhar resumo</button>
-    <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
-  </div>
-  <div class="status" id="statusRelatorio"></div>
-</div>
-
-<div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()">📦 Caixas</div>
-
-<div class="card" id="caixasCard" style="display:none;">
-  <div class="dica-habito" id="bannerCaixaAtiva" style="display:none;"></div>
-
-  <div id="listaCaixas"></div>
-
-  <div class="grupo-dia" style="margin-top:20px;">Nova caixa</div>
-  <label class="campo">Nome</label>
-  <input type="text" id="nomeCaixa" placeholder="Ex: Carro, Viagem SP-RJ, Salário CLT">
-
-  <label class="campo">Tipo</label>
-  <div class="tipo-toggle">
-    <button type="button" id="btnTipoFixa" class="ativo" onclick="selecionarTipoCaixa('fixa')">Fixa (por categoria)</button>
-    <button type="button" id="btnTipoEvento" onclick="selecionarTipoCaixa('evento')">Evento (ativar/desativar)</button>
-  </div>
-
-  <div id="campoCriterios">
-    <label class="campo">Categorias ou palavras-chave (separadas por vírgula)</label>
-    <input type="text" id="criteriosCaixa" placeholder="Ex: Combustível, Pneu, Manutenção">
-  </div>
-
-  <button onclick="criarCaixa()">Criar caixa</button>
-  <div class="status" id="statusCaixas"></div>
 </div>
 
 <script>
@@ -357,10 +371,19 @@ function parseData(dataStr) {
   return { dia, mes, ano };
 }
 
+let diasAbertos = new Set();
+
 function mudarMes(delta) {
   mesSelecionado += delta;
   if (mesSelecionado > 11) { mesSelecionado = 0; anoSelecionado++; }
   if (mesSelecionado < 0) { mesSelecionado = 11; anoSelecionado--; }
+  diasAbertos = new Set();
+  renderizar();
+}
+
+function alternarDia(dia) {
+  if (diasAbertos.has(dia)) diasAbertos.delete(dia);
+  else diasAbertos.add(dia);
   renderizar();
 }
 
@@ -856,17 +879,33 @@ function renderizar() {
     emptyMsg.style.display = 'block';
   } else {
     emptyMsg.style.display = 'none';
-    let diaAtual = null;
+
+    // Agrupa por dia e mostra so o cabecalho por padrao (minimizado) - a lista
+    // ficava enorme com todo mundo aberto ao mesmo tempo. Toca no dia pra abrir.
+    const porDia = {};
     doMes.forEach(t => {
-      const d = parseData(t.data);
-      if (String(d.dia) !== diaAtual) {
-        diaAtual = String(d.dia);
-        const header = document.createElement('div');
-        header.className = 'grupo-dia';
-        header.textContent = `Dia ${d.dia}`;
-        container.appendChild(header);
+      const dia = parseData(t.data).dia;
+      if (!porDia[dia]) porDia[dia] = [];
+      porDia[dia].push(t);
+    });
+
+    Object.keys(porDia).map(Number).sort((a, b) => b - a).forEach(dia => {
+      const transacoesDoDia = porDia[dia];
+      const totalDia = transacoesDoDia.reduce((s, t) => s + (t.tipo === 'entrada' ? Number(t.valor || 0) : -Number(t.valor || 0)), 0);
+      const aberto = diasAbertos.has(dia);
+
+      const header = document.createElement('div');
+      header.className = 'dia-header';
+      header.innerHTML = `
+        <span><span class="seta">${aberto ? '▾' : '▸'}</span>Dia ${dia} <span class="contagem">(${transacoesDoDia.length})</span></span>
+        <span>${formatarMoeda(totalDia)}</span>
+      `;
+      header.onclick = () => alternarDia(dia);
+      container.appendChild(header);
+
+      if (aberto) {
+        transacoesDoDia.forEach(t => container.appendChild(renderizarTransacao(t)));
       }
-      container.appendChild(renderizarTransacao(t));
     });
   }
 
