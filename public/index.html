@@ -404,18 +404,23 @@ function alternarListaMes() {
 }
 
 let saldoAtual = 0;
+let totalEntradasAtual = 0;
+let totalSaidasAtual = 0;
 const SALDO_OCULTO_KEY = 'controle_gastos_saldo_oculto';
 let saldoOculto = localStorage.getItem(SALDO_OCULTO_KEY) === '1';
 
 function alternarVisibilidadeSaldo() {
   saldoOculto = !saldoOculto;
   localStorage.setItem(SALDO_OCULTO_KEY, saldoOculto ? '1' : '0');
-  atualizarSaldoExibido();
+  atualizarValoresExibidos();
 }
 
-function atualizarSaldoExibido() {
+function atualizarValoresExibidos() {
   document.getElementById('olhoSaldo').textContent = saldoOculto ? '🙈' : '👁️';
-  document.getElementById('saldo').textContent = saldoOculto ? 'R$ ••••••' : formatarMoeda(saldoAtual);
+  const oculto = 'R$ ••••••';
+  document.getElementById('saldo').textContent = saldoOculto ? oculto : formatarMoeda(saldoAtual);
+  document.getElementById('totalEntradas').textContent = saldoOculto ? oculto : formatarMoeda(totalEntradasAtual);
+  document.getElementById('totalSaidas').textContent = saldoOculto ? oculto : formatarMoeda(totalSaidasAtual);
 }
 
 const TIPOS_PERIODO = [
@@ -946,10 +951,10 @@ function renderizar() {
   const totalEntradas = doMes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
   const totalSaidas = doMes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
 
-  document.getElementById('totalEntradas').textContent = formatarMoeda(totalEntradas);
-  document.getElementById('totalSaidas').textContent = formatarMoeda(totalSaidas);
+  totalEntradasAtual = totalEntradas;
+  totalSaidasAtual = totalSaidas;
   saldoAtual = totalEntradas - totalSaidas;
-  atualizarSaldoExibido();
+  atualizarValoresExibidos();
 }
 
 // ---------- Dinheiro em especie (lancamento manual, sem IA, sem servidor) ----------
