@@ -101,12 +101,24 @@ app.post('/share-target', upload.single('receipt'), async (req, res) => {
 ${falhou ? '<p><a href="/" style="color:#5b8cff;">Voltar ao app</a></p>' : ''}
 <script>
   const STORAGE_KEY = 'controle_gastos_transacoes';
+  const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
   const dados = ${dadosJson};
   if (dados && !dados.erro) {
     const raw = localStorage.getItem(STORAGE_KEY);
     const lista = raw ? JSON.parse(raw) : [];
     lista.unshift({ ...dados, id: Date.now() });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+
+    // Compartilhamento nativo ja chega processado pelo servidor (o custo da IA
+    // ja aconteceu), entao aqui so contabiliza pro limite mensal - nao da pra
+    // bloquear antes, diferente do upload manual, que checa antes de enviar.
+    const hoje = new Date();
+    const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    const usoRaw = localStorage.getItem(USO_MENSAL_KEY);
+    const uso = (usoRaw && JSON.parse(usoRaw).mes === mesAtual) ? JSON.parse(usoRaw) : { mes: mesAtual, contagem: 0 };
+    uso.contagem += 1;
+    localStorage.setItem(USO_MENSAL_KEY, JSON.stringify(uso));
+
     window.location.replace('/');
   }
   // Em caso de erro, NAO redireciona sozinho - fica na tela mostrando o erro,

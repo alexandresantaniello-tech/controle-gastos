@@ -223,6 +223,22 @@
   .olho { cursor: pointer; font-size: 1.1rem; }
   .mes-botao { cursor: pointer; }
   .mes-botao:hover { color: #5b8cff; }
+  .aviso-backup { font-size: 0.85rem; color: #9a9aa2; margin-top: 0; line-height: 1.5; }
+  .uso-limite { font-size: 0.78rem; color: #9a9aa2; margin-top: 10px; }
+  .uso-limite.perto-limite { color: #f8b971; }
+  .uso-limite.no-limite { color: #f87171; }
+  .rodape-link {
+    color: #6b7280;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 40px;
+    text-align: center;
+  }
+  .rodape-link:hover { color: #9a9aa2; }
+  .politica-texto { font-size: 0.85rem; line-height: 1.6; color: #c8c8d0; }
+  .politica-texto h3 { font-size: 0.95rem; color: #e8e8ea; margin: 16px 0 6px; }
+  .politica-texto h3:first-child { margin-top: 0; }
+  .politica-texto ul { padding-left: 20px; margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -275,6 +291,7 @@
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()">💵 Dinheiro</div>
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
   <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()">📦 Caixas</div>
+  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()">💾 Backup</div>
 </div>
 
 <div class="card" id="uploadCard" style="display:none;">
@@ -285,6 +302,17 @@
   </div>
   <button id="sendBtn" disabled>Analisar comprovante</button>
   <div class="status" id="status"></div>
+  <div class="uso-limite" id="usoLimite"></div>
+</div>
+
+<div class="card" id="backupCard" style="display:none;">
+  <p class="aviso-backup">Seus dados ficam só neste navegador — se você limpar os dados do app, trocar de celular ou desinstalar, não tem como recuperar sem um backup. Faça isso de vez em quando, principalmente antes de trocar de aparelho.</p>
+  <button onclick="fazerBackup()">📤 Fazer backup</button>
+
+  <label class="campo">Restaurar de um arquivo de backup</label>
+  <input type="file" id="arquivoRestaurar" accept="application/json">
+  <button class="secondary" onclick="restaurarBackup()">📥 Restaurar backup</button>
+  <div class="status" id="statusBackup"></div>
 </div>
 
 <div class="card" id="dinheiroCard" style="display:none;">
@@ -348,6 +376,26 @@
 
   <button onclick="criarCaixa()">Criar caixa</button>
   <div class="status" id="statusCaixas"></div>
+</div>
+
+<div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()">🔒 Política de Privacidade</div>
+
+<div class="card" id="privacidadeCard" style="display:none;">
+  <div class="politica-texto">
+    <h3>O que fazemos</h3>
+    <ul>
+      <li>Quando você envia um comprovante (print ou PDF), a imagem é processada de forma transitória por uma IA (API da Anthropic/Claude) só pra extrair valor, tipo, categoria e data. Depois disso, a imagem não fica guardada em nenhum servidor.</li>
+      <li>Todas as suas transações (valor, categoria, data, observações) ficam salvas apenas no armazenamento local do seu próprio navegador — nunca em um banco de dados nosso.</li>
+      <li>Não pedimos login, conta, e-mail ou qualquer dado pessoal pra usar o Clara.</li>
+      <li>Não conectamos nem acessamos sua conta bancária de nenhuma forma.</li>
+      <li>Não usamos rastreadores de terceiros nem vendemos ou compartilhamos dados com ninguém.</li>
+    </ul>
+    <h3>O que isso significa na prática</h3>
+    <ul>
+      <li>Se você limpar os dados do navegador, desinstalar o app ou trocar de celular, seus registros são apagados — não temos como recuperá-los, porque nunca guardamos uma cópia. Use a opção de <strong>Backup</strong> regularmente.</li>
+      <li>Ninguém além de você tem acesso aos seus registros — nem nós.</li>
+    </ul>
+  </div>
 </div>
 
 <script>
@@ -670,6 +718,43 @@ function alternarUpload() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.textContent = abrindo ? '– Fechar' : '+ Adicionar manualmente';
+  if (abrindo) atualizarIndicadorUso();
+}
+
+// ---------- Limite mensal gratis (so conta comprovantes lidos por IA - dinheiro em especie nao entra) ----------
+
+const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
+const LIMITE_MENSAL_GRATIS = 30;
+
+function mesAtualChave() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function lerUsoMensal() {
+  const raw = localStorage.getItem(USO_MENSAL_KEY);
+  const uso = raw ? JSON.parse(raw) : null;
+  if (!uso || uso.mes !== mesAtualChave()) return { mes: mesAtualChave(), contagem: 0 };
+  return uso;
+}
+
+function registrarUsoComprovante() {
+  const uso = lerUsoMensal();
+  uso.contagem += 1;
+  localStorage.setItem(USO_MENSAL_KEY, JSON.stringify(uso));
+  atualizarIndicadorUso();
+}
+
+function limiteAtingido() {
+  return lerUsoMensal().contagem >= LIMITE_MENSAL_GRATIS;
+}
+
+function atualizarIndicadorUso() {
+  const uso = lerUsoMensal();
+  const el = document.getElementById('usoLimite');
+  if (!el) return;
+  el.textContent = `${uso.contagem} de ${LIMITE_MENSAL_GRATIS} comprovantes gratuitos usados esse mês.`;
+  el.className = 'uso-limite' + (uso.contagem >= LIMITE_MENSAL_GRATIS ? ' no-limite' : uso.contagem >= LIMITE_MENSAL_GRATIS - 5 ? ' perto-limite' : '');
 }
 
 let imagemSelecionada = null;
@@ -740,6 +825,13 @@ async function enviarComprovante(formData, tentativa) {
 
 sendBtn.addEventListener('click', async () => {
   if (!imagemSelecionada) return;
+
+  if (limiteAtingido()) {
+    status.textContent = `Você atingiu o limite gratuito de ${LIMITE_MENSAL_GRATIS} comprovantes esse mês. O limite renova no mês que vem.`;
+    status.className = 'status error';
+    return;
+  }
+
   sendBtn.disabled = true;
   status.textContent = 'Analisando comprovante...';
   status.className = 'status';
@@ -758,6 +850,7 @@ sendBtn.addEventListener('click', async () => {
     }
 
     adicionarTransacao(dados);
+    registrarUsoComprovante();
     resetForm();
     status.textContent = 'Transação adicionada com sucesso.';
     setTimeout(alternarUpload, 1200);
@@ -1168,6 +1261,87 @@ function alternarCaixas() {
   card.style.display = abrindo ? 'block' : 'none';
   toggle.textContent = abrindo ? '– Fechar caixas' : '📦 Caixas';
   if (abrindo) renderizarCaixas();
+}
+
+// ---------- Backup / restauracao ----------
+
+function alternarBackup() {
+  const card = document.getElementById('backupCard');
+  const toggle = document.getElementById('backupToggle');
+  const abrindo = card.style.display === 'none';
+  card.style.display = abrindo ? 'block' : 'none';
+  toggle.textContent = abrindo ? '– Fechar' : '💾 Backup';
+}
+
+function fazerBackup() {
+  const dados = {
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    transacoes: carregarTransacoes(),
+    caixas: carregarCaixas(),
+  };
+  const json = JSON.stringify(dados, null, 2);
+  const nomeArquivo = `clara-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const statusEl = document.getElementById('statusBackup');
+  const arquivo = new File([json], nomeArquivo, { type: 'application/json' });
+
+  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+    navigator.share({ files: [arquivo], title: 'Backup do Clara' }).catch(() => {});
+    return;
+  }
+
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  a.click();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = 'Backup baixado.';
+  statusEl.className = 'status';
+}
+
+function restaurarBackup() {
+  const input = document.getElementById('arquivoRestaurar');
+  const statusEl = document.getElementById('statusBackup');
+  if (!input.files.length) {
+    statusEl.textContent = 'Escolha um arquivo de backup primeiro.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const dados = JSON.parse(e.target.result);
+
+      const transacoesAtuais = carregarTransacoes();
+      const idsAtuais = new Set(transacoesAtuais.map(t => t.id));
+      const novasTransacoes = (dados.transacoes || []).filter(t => !idsAtuais.has(t.id));
+      salvarTransacoes([...transacoesAtuais, ...novasTransacoes]);
+
+      const caixasAtuais = carregarCaixas();
+      const idsCaixasAtuais = new Set(caixasAtuais.map(c => c.id));
+      const novasCaixas = (dados.caixas || []).filter(c => !idsCaixasAtuais.has(c.id));
+      salvarCaixas([...caixasAtuais, ...novasCaixas]);
+
+      statusEl.textContent = `Restaurado: ${novasTransacoes.length} transação(ões) e ${novasCaixas.length} caixa(s) nova(s) adicionadas.`;
+      statusEl.className = 'status';
+      input.value = '';
+      renderizar();
+    } catch (err) {
+      statusEl.textContent = 'Arquivo inválido ou corrompido.';
+      statusEl.className = 'status error';
+    }
+  };
+  reader.readAsText(input.files[0]);
+}
+
+// ---------- Politica de privacidade ----------
+
+function alternarPrivacidade() {
+  const card = document.getElementById('privacidadeCard');
+  const abrindo = card.style.display === 'none';
+  card.style.display = abrindo ? 'block' : 'none';
 }
 
 renderizar();
