@@ -1285,19 +1285,41 @@ function fazerBackup() {
   const statusEl = document.getElementById('statusBackup');
   const arquivo = new File([json], nomeArquivo, { type: 'application/json' });
 
+  statusEl.textContent = 'Preparando backup...';
+  statusEl.className = 'status';
+
   if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
-    navigator.share({ files: [arquivo], title: 'Backup do Clara' }).catch(() => {});
+    navigator.share({ files: [arquivo], title: 'Backup do Clara' })
+      .then(() => {
+        statusEl.textContent = 'Backup compartilhado com sucesso.';
+        statusEl.className = 'status';
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') {
+          statusEl.textContent = '';
+          return;
+        }
+        statusEl.textContent = 'Não foi possível compartilhar. Tente novamente.';
+        statusEl.className = 'status error';
+      });
     return;
   }
 
-  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nomeArquivo;
-  a.click();
-  URL.revokeObjectURL(url);
-  statusEl.textContent = 'Backup baixado.';
-  statusEl.className = 'status';
+  try {
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `Backup baixado (${nomeArquivo}). Confira a pasta Downloads ou as notificações do celular.`;
+    statusEl.className = 'status';
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível baixar o backup. Tente novamente.';
+    statusEl.className = 'status error';
+  }
 }
 
 function restaurarBackup() {
