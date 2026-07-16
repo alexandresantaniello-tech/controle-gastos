@@ -347,8 +347,7 @@
   <button onclick="fazerBackup()">📤 Fazer backup</button>
 
   <label class="campo">Restaurar de um arquivo de backup</label>
-  <input type="file" id="arquivoRestaurar" accept="application/json,.json">
-  <button class="secondary" onclick="restaurarBackup()">📥 Restaurar backup</button>
+  <input type="file" id="arquivoRestaurar" accept="application/json,.json" onchange="restaurarBackup()">
   <div class="status" id="statusBackup"></div>
 </div>
 
@@ -1320,27 +1319,9 @@ function fazerBackup() {
   const json = JSON.stringify(dados, null, 2);
   const nomeArquivo = `clara-backup-${new Date().toISOString().slice(0, 10)}.json`;
   const statusEl = document.getElementById('statusBackup');
-  const arquivo = new File([json], nomeArquivo, { type: 'application/json' });
 
   statusEl.textContent = 'Preparando backup...';
   statusEl.className = 'status';
-
-  if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
-    navigator.share({ files: [arquivo], title: 'Backup do Clara' })
-      .then(() => {
-        statusEl.textContent = 'Backup compartilhado com sucesso.';
-        statusEl.className = 'status';
-      })
-      .catch((err) => {
-        if (err.name === 'AbortError') {
-          statusEl.textContent = '';
-          return;
-        }
-        statusEl.textContent = 'Não foi possível compartilhar. Tente novamente.';
-        statusEl.className = 'status error';
-      });
-    return;
-  }
 
   try {
     const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
