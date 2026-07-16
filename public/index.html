@@ -48,8 +48,16 @@
     margin: 0;
     padding: 16px;
     max-width: 720px;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
     margin-inline: auto;
     -webkit-font-smoothing: antialiased;
+  }
+  input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
   @media (min-width: 480px) {
     body { padding: 24px; }
