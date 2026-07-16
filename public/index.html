@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clara — Controle de Gastos</title>
+<title>Clara — Controle da sua Renda</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <meta name="theme-color" content="#000919">
@@ -257,7 +257,16 @@
   .saldo-card { padding: 16px 20px; }
   .saldo-linha { display: flex; justify-content: space-between; align-items: center; }
   .saldo-linha .label { font-size: 0.8rem; color: var(--muted-foreground); }
-  .olho { cursor: pointer; font-size: 1.1rem; }
+  .privacidade-linha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-bottom: 12px;
+  }
+  .cristal-toggle { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; }
+  .privacidade-texto { font-size: 0.8rem; color: var(--muted-foreground); }
+  .privacidade-linha:hover .privacidade-texto { color: var(--primary); }
   .mes-botao { cursor: pointer; }
   .mes-botao:hover { color: var(--primary); }
   .aviso-backup { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 0; line-height: 1.5; }
@@ -282,11 +291,16 @@
 <body>
 
 <h1>Clara</h1>
-<p class="subtitle">Controle de gastos sem conectar sua conta bancária. Compartilhe o comprovante — tudo fica salvo só neste navegador.</p>
+<p class="subtitle">Clareza sobre sua renda, sem conectar sua conta bancária. Compartilhe o comprovante — tudo fica salvo só neste navegador.</p>
 
 <div class="dica-habito" id="dicaHabito">
   💡 <strong>Dica:</strong> toda vez que aparecer a notificação do seu banco no topo da tela (Pix, compra aprovada, etc.), tira o print **dessa notificação** e registra aqui na hora — não precisa nem abrir o app do banco. É mais rápido e funciona certinho.
   <span class="dica-fechar" onclick="fecharDica()">✕</span>
+</div>
+
+<div class="privacidade-linha" onclick="alternarVisibilidadeSaldo()">
+  <span class="cristal-toggle" id="cristalToggle"></span>
+  <span class="privacidade-texto" id="privacidadeTexto">Toque no cristal pra ver seus valores</span>
 </div>
 
 <div class="summary">
@@ -303,7 +317,6 @@
 <div class="card saldo-card">
   <div class="saldo-linha">
     <span class="label">Saldo</span>
-    <span class="olho" id="olhoSaldo" onclick="alternarVisibilidadeSaldo()">👁️</span>
   </div>
   <div class="value" id="saldo">R$ 0,00</div>
 </div>
@@ -497,7 +510,9 @@ let saldoAtual = 0;
 let totalEntradasAtual = 0;
 let totalSaidasAtual = 0;
 const SALDO_OCULTO_KEY = 'controle_gastos_saldo_oculto';
-let saldoOculto = localStorage.getItem(SALDO_OCULTO_KEY) === '1';
+// Padrao e oculto (privacidade primeiro) - so fica visivel se o usuario ja
+// escolheu explicitamente mostrar antes (valor '0' salvo no localStorage).
+let saldoOculto = localStorage.getItem(SALDO_OCULTO_KEY) !== '0';
 
 function alternarVisibilidadeSaldo() {
   saldoOculto = !saldoOculto;
@@ -505,8 +520,27 @@ function alternarVisibilidadeSaldo() {
   atualizarValoresExibidos();
 }
 
+// O cristal "aceso" (cheio de luz) representa os valores visiveis; "apagado"
+// (tons neutros, sem brilho) representa oculto - a mesma ideia da marca de
+// trazer clareza/luz ao que esta obscurecido nas financas do usuario.
+function svgCristal(aceso) {
+  const corTopo = aceso ? 'var(--ice)' : 'var(--muted-foreground)';
+  const corLados = aceso ? 'var(--primary)' : 'var(--muted)';
+  const corBase = aceso ? 'var(--deep)' : 'var(--border)';
+  const brilho = aceso ? 'filter: drop-shadow(0 0 4px var(--glow));' : 'opacity: 0.55;';
+  return `<svg width="20" height="20" viewBox="0 0 24 24" style="${brilho}">
+    <polygon points="12,11 12,2 21,11" fill="${corTopo}" />
+    <polygon points="12,11 21,11 12,20" fill="${corLados}" />
+    <polygon points="12,11 12,20 3,11" fill="${corBase}" />
+    <polygon points="12,11 3,11 12,2" fill="${corLados}" />
+  </svg>`;
+}
+
 function atualizarValoresExibidos() {
-  document.getElementById('olhoSaldo').textContent = saldoOculto ? '🙈' : '👁️';
+  document.getElementById('cristalToggle').innerHTML = svgCristal(!saldoOculto);
+  document.getElementById('privacidadeTexto').textContent = saldoOculto
+    ? 'Toque no cristal pra ver seus valores'
+    : 'Toque no cristal pra ocultar';
   const oculto = 'R$ ••••••';
   document.getElementById('saldo').textContent = saldoOculto ? oculto : formatarMoeda(saldoAtual);
   document.getElementById('totalEntradas').textContent = saldoOculto ? oculto : formatarMoeda(totalEntradasAtual);
