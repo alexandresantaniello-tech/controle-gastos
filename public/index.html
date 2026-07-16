@@ -70,9 +70,12 @@
     font-size: 0.85rem;
     cursor: pointer;
     margin-bottom: 16px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
   }
   .upload-toggle:hover { color: var(--primary); }
+  .icone-toggle { width: 16px; height: 16px; flex-shrink: 0; }
   .dica-habito {
     background: var(--secondary);
     border: 1px solid var(--border);
@@ -267,11 +270,11 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: var(--secondary);
-    border: 1px solid var(--border);
+    background: transparent;
     cursor: pointer;
   }
-  .cristal-toggle:hover { border-color: var(--primary); }
+  .cristal-toggle:hover { background: var(--secondary); }
+  .cristal-toggle svg { display: block; }
   .mes-botao { cursor: pointer; }
   .mes-botao:hover { color: var(--primary); }
   .aviso-backup { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 0; line-height: 1.5; }
@@ -283,7 +286,10 @@
     font-size: 0.8rem;
     cursor: pointer;
     margin-top: 40px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     opacity: 0.75;
   }
   .rodape-link:hover { opacity: 1; color: var(--primary); }
@@ -342,10 +348,10 @@
 
 <div class="toggles-linha">
   <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
-  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()">💵 Dinheiro</div>
-  <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()">📊 Relatórios</div>
-  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()">📦 Caixas</div>
-  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()">💾 Backup</div>
+  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Dinheiro</span></div>
+  <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
+  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg><span class="toggle-texto">Caixas</span></div>
+  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
 </div>
 
 <div class="card" id="uploadCard" style="display:none;">
@@ -436,7 +442,7 @@
   <div class="status" id="statusCaixas"></div>
 </div>
 
-<div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()">🔒 Política de Privacidade</div>
+<div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg><span class="toggle-texto">Política de Privacidade</span></div>
 
 <div class="card" id="privacidadeCard" style="display:none;">
   <div class="politica-texto">
@@ -530,12 +536,12 @@ function svgCristal(aceso) {
   const corTopo = aceso ? 'var(--ice)' : 'var(--muted-foreground)';
   const corLados = aceso ? 'var(--primary)' : 'var(--muted)';
   const corBase = aceso ? 'var(--deep)' : 'var(--border)';
-  const brilho = aceso ? 'filter: drop-shadow(0 0 4px var(--glow));' : 'opacity: 0.55;';
-  return `<svg width="20" height="20" viewBox="0 0 24 24" style="${brilho}">
-    <polygon points="12,11 12,2 21,11" fill="${corTopo}" />
-    <polygon points="12,11 21,11 12,20" fill="${corLados}" />
-    <polygon points="12,11 12,20 3,11" fill="${corBase}" />
-    <polygon points="12,11 3,11 12,2" fill="${corLados}" />
+  const opacidade = aceso ? '1' : '0.5';
+  return `<svg width="20" height="20" viewBox="0 0 24 24" style="opacity:${opacidade}">
+    <polygon points="12,12 12,2 22,12" fill="${corTopo}" />
+    <polygon points="12,12 22,12 12,22" fill="${corLados}" />
+    <polygon points="12,12 12,22 2,12" fill="${corBase}" />
+    <polygon points="12,12 2,12 12,2" fill="${corLados}" />
   </svg>`;
 }
 
@@ -786,7 +792,7 @@ function alternarRelatorio() {
   const toggle = document.getElementById('relatorioToggle');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.textContent = abrindo ? '– Fechar relatórios' : '📊 Relatórios';
+  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar relatórios' : 'Relatórios';
   if (abrindo) renderizarRelatorio();
 }
 
@@ -1148,7 +1154,7 @@ function alternarDinheiro() {
   const toggle = document.getElementById('dinheiroToggle');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.textContent = abrindo ? '– Fechar' : '💵 Dinheiro';
+  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Dinheiro';
   if (abrindo) {
     document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
     atualizarListaCategoriasDatalist();
@@ -1297,7 +1303,7 @@ function renderizarBannerCaixaAtiva() {
   const banner = document.getElementById('bannerCaixaAtiva');
   if (!ativa) { banner.style.display = 'none'; return; }
   banner.style.display = 'block';
-  banner.innerHTML = `📦 Caixa <strong>${ativa.nome}</strong> ativa — os próximos lançamentos também vão entrar nela.`;
+  banner.innerHTML = `Caixa <strong>${ativa.nome}</strong> ativa — os próximos lançamentos também vão entrar nela.`;
 }
 
 function renderizarCaixas() {
@@ -1337,7 +1343,7 @@ function alternarCaixas() {
   const toggle = document.getElementById('caixasToggle');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.textContent = abrindo ? '– Fechar caixas' : '📦 Caixas';
+  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar caixas' : 'Caixas';
   if (abrindo) renderizarCaixas();
 }
 
@@ -1348,7 +1354,7 @@ function alternarBackup() {
   const toggle = document.getElementById('backupToggle');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.textContent = abrindo ? '– Fechar' : '💾 Backup';
+  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Backup';
 }
 
 function fazerBackup() {
