@@ -144,29 +144,39 @@
     margin-top: 2px;
     overflow-wrap: break-word;
   }
+  .linha-nota {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
   .transacao .nota {
     font-size: 0.8rem;
     color: var(--foreground);
-    margin-top: 4px;
     cursor: pointer;
     overflow-wrap: break-word;
+    min-width: 0;
   }
   .transacao .nota-vazia {
     color: var(--primary);
     opacity: 0.7;
   }
   .transacao .nota:hover { opacity: 1; }
+  .excluir-link {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--destructive);
+    opacity: 0.7;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 4px 2px;
+    letter-spacing: 0.02em;
+  }
+  .excluir-link:hover { opacity: 1; }
   .status { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 8px; min-height: 1.2em; }
   .status.error { color: var(--destructive); }
   .empty { color: var(--muted-foreground); text-align: center; padding: 20px; font-size: 0.9rem; }
-  .row-actions {
-    cursor: pointer;
-    color: var(--muted-foreground);
-    flex-shrink: 0;
-    padding: 4px 8px;
-    font-size: 1.1rem;
-  }
-  .row-actions:hover { color: var(--destructive); }
   .mes-nav {
     display: flex;
     align-items: center;
@@ -1063,9 +1073,11 @@ function renderizarTransacao(t) {
         <span class="valor">${formatarMoeda(t.valor)}</span>
       </div>
       <div class="detalhes">${t.data || '-'} · ${t.categoria || '-'} · ${t.local || '-'}</div>
-      ${notaHtml}
+      <div class="linha-nota">
+        ${notaHtml}
+        <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
+      </div>
     </div>
-    <div class="row-actions" onclick="removerTransacao(${t.id})">✕</div>
   `;
   return div;
 }
