@@ -204,7 +204,7 @@
   .relatorio-acoes button { flex: 1; min-width: 140px; }
   .relatorio-resumo-linha { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
   .relatorio-resumo-linha:last-child { border-bottom: none; }
-  input[type="text"], input[type="number"], input[type="date"] {
+  input[type="text"], input[type="number"], input[type="date"], textarea {
     width: 100%;
     background: var(--input);
     border: 1px solid var(--border);
@@ -215,6 +215,7 @@
     font-family: var(--font-sans);
     margin-top: 6px;
   }
+  textarea { resize: vertical; font-family: var(--font-mono); font-size: 0.8rem; }
   label.campo { display: block; font-size: 0.8rem; color: var(--muted-foreground); margin-top: 14px; }
   label.campo:first-child { margin-top: 0; }
   .tipo-toggle { display: flex; gap: 8px; margin-top: 6px; }
@@ -348,6 +349,11 @@
 
   <label class="campo">Restaurar de um arquivo de backup</label>
   <input type="file" id="arquivoRestaurar" accept="application/json,.json" onchange="restaurarBackup()">
+
+  <label class="campo">Ou cole aqui o texto do CSV que você compartilhou (ex: no WhatsApp)</label>
+  <textarea id="textoCsvRestaurar" rows="4" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
+  <button class="secondary" onclick="importarCsvTexto()">📋 Restaurar do texto colado</button>
+
   <div class="status" id="statusBackup"></div>
 </div>
 
@@ -1374,6 +1380,90 @@ function restaurarBackup() {
     }
   };
   reader.readAsText(input.files[0]);
+}
+
+// Faz o mesmo papel de "escolher arquivo", mas colando o texto do CSV direto
+// (ex: recuperado de uma conversa no WhatsApp) em vez de precisar de um
+// arquivo - util quando o backup em JSON nao deu certo.
+function parseLinhaCsv(linha) {
+  const campos = [];
+  let atual = '';
+  let dentroAspas = false;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (dentroAspas) {
+      if (c === '"') {
+        if (linha[i + 1] === '"') { atual += '"'; i++; } else { dentroAspas = false; }
+      } else {
+        atual += c;
+      }
+    } else if (c === '"') {
+      dentroAspas = true;
+    } else if (c === ',') {
+      campos.push(atual);
+      atual = '';
+    } else {
+      atual += c;
+    }
+  }
+  campos.push(atual);
+  return campos;
+}
+
+function importarCsvTexto() {
+  const textoEl = document.getElementById('textoCsvRestaurar');
+  const statusEl = document.getElementById('statusBackup');
+  const texto = textoEl.value.trim();
+
+  if (!texto) {
+    statusEl.textContent = 'Cole o texto do CSV primeiro.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  try {
+    const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+    const cabecalho = parseLinhaCsv(linhas[0]).map(h => h.trim().toLowerCase());
+    const idx = (nome) => cabecalho.indexOf(nome);
+    const iData = idx('data'), iTipo = idx('tipo'), iCategoria = idx('categoria'),
+          iValor = idx('valor'), iInstituicao = idx('instituicao'), iLocal = idx('local'), iObs = idx('observacao');
+
+    if (iData === -1 || iTipo === -1 || iValor === -1) {
+      statusEl.textContent = 'Não reconheci o formato desse texto como o CSV do Clara.';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    const candidatas = [];
+    for (let i = 1; i < linhas.length; i++) {
+      const campos = parseLinhaCsv(linhas[i]);
+      if (campos.length < 3) continue;
+      candidatas.push({
+        id: Date.now() + i,
+        data: campos[iData] || '',
+        tipo: campos[iTipo] || '',
+        categoria: campos[iCategoria] || '',
+        valor: parseFloat(campos[iValor]) || 0,
+        instituicao: iInstituicao > -1 ? campos[iInstituicao] || '' : '',
+        local: iLocal > -1 ? campos[iLocal] || '' : '',
+        observacao: iObs > -1 ? campos[iObs] || '' : '',
+      });
+    }
+
+    const atuais = carregarTransacoes();
+    const chaveDe = (t) => `${t.data}|${t.valor}|${t.categoria}|${t.local}`;
+    const chavesAtuais = new Set(atuais.map(chaveDe));
+    const novas = candidatas.filter(t => !chavesAtuais.has(chaveDe(t)));
+
+    salvarTransacoes([...atuais, ...novas]);
+    statusEl.textContent = `${novas.length} transação(ões) restaurada(s) do texto colado.`;
+    statusEl.className = 'status';
+    textoEl.value = '';
+    renderizar();
+  } catch (err) {
+    statusEl.textContent = 'Não consegui entender esse texto. Confira se colou o CSV certinho.';
+    statusEl.className = 'status error';
+  }
 }
 
 // ---------- Politica de privacidade ----------
