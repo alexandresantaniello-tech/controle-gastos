@@ -438,6 +438,10 @@
 </div>
 
 <div class="card" id="caixasCard" style="display:none;">
+  <p class="aviso-backup">
+    <strong>Fixa</strong>: agrupa automaticamente por categoria (ex: gastos do carro) — não tira nada do seu mês, só organiza.<br>
+    <strong>Evento</strong>: funciona como um cofre à parte. Enquanto está ativada, tudo que você registrar fica só dentro dela, fora do mês normal. Ao encerrar, você escolhe se quer juntar esses lançamentos ao mês ou deixá-los separados pra sempre.
+  </p>
   <div class="dica-habito" id="bannerCaixaAtiva" style="display:none;"></div>
 
   <div id="listaCaixas"></div>
@@ -987,10 +991,14 @@ function adicionarTransacao(dados) {
   const lista = carregarTransacoes();
   const transacao = { ...dados, id: Date.now() };
   // Se existir uma caixa de evento ativa (ex: "Viagem SP-RJ"), o lancamento
-  // tambem entra nela, alem da categoria normal - e assim que o usuario
-  // acompanha o gasto de um evento sem precisar filtrar por data.
+  // vai so pra ela enquanto a caixa estiver ativa - fica de fora do mes
+  // normal, como um cofre separado. So volta a contar no mes se o usuario
+  // escolher "duplicar pro mes" ao encerrar a caixa (ver alternarCaixaAtiva).
   const caixaEvento = carregarCaixas().find(c => c.tipo === 'evento' && c.ativa);
-  if (caixaEvento) transacao.caixaId = caixaEvento.id;
+  if (caixaEvento) {
+    transacao.caixaId = caixaEvento.id;
+    transacao.somenteCaixa = true;
+  }
   lista.unshift(transacao);
   salvarTransacoes(lista);
   renderizar();
@@ -1102,7 +1110,10 @@ function renderizar() {
   // So entra no mes quem tem data reconhecida batendo com mes/ano selecionado.
   // Transacoes sem data NAO aparecem aqui (isso causava o mesmo lancamento
   // "aparecendo" em varios meses ao mesmo tempo, dando impressao de bug aleatorio).
+  // Transacoes marcadas como "so na caixa" (escolhido ao encerrar uma caixa
+  // de evento) tambem ficam de fora do mes normal, de proposito.
   const doMes = todas.filter(t => {
+    if (t.somenteCaixa) return false;
     const d = parseData(t.data);
     return d && d.mes === mesSelecionado && d.ano === anoSelecionado;
   });
@@ -1285,12 +1296,31 @@ function alternarCaixaAtiva(id) {
   const caixas = carregarCaixas();
   const alvo = caixas.find(c => c.id === id);
   if (!alvo) return;
+
+  // Encerrando uma caixa que estava ativa - pergunta se os lancamentos dela
+  // (que ate agora ficaram so dentro da caixa) devem passar a contar no mes
+  // normal tambem, ou continuar isolados so na caixa.
+  if (alvo.ativa) {
+    const duplicarProMes = confirm(
+      `Encerrar a caixa "${alvo.nome}"?\n\n` +
+      `OK = os lançamentos dela passam a aparecer no mês normal também\n` +
+      `Cancelar = eles continuam só dentro da caixa`
+    );
+    if (duplicarProMes) {
+      const transacoes = carregarTransacoes().map(t =>
+        t.caixaId === alvo.id ? { ...t, somenteCaixa: false } : t
+      );
+      salvarTransacoes(transacoes);
+    }
+  }
+
   const novoEstado = !alvo.ativa;
   // So uma caixa de evento pode estar ativa por vez - evita ambiguidade sobre
   // qual caixa deve receber os proximos lancamentos.
   caixas.forEach(c => { if (c.tipo === 'evento') c.ativa = false; });
   alvo.ativa = novoEstado;
   salvarCaixas(caixas);
+  renderizar();
   renderizarCaixas();
   renderizarBannerCaixaAtiva();
 }
