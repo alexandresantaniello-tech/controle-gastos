@@ -247,20 +247,6 @@
   .tipo-toggle button.ativo-saida { background: rgba(248, 113, 113, 0.15); border-color: var(--saida); color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
   .toggles-linha { display: flex; gap: 16px; flex-wrap: wrap; }
-  .caixa-item { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 12px; }
-  .caixa-cabecalho { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .caixa-badge {
-    font-size: 0.7rem;
-    color: var(--muted-foreground);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1px 8px;
-    margin-left: 8px;
-    text-transform: uppercase;
-  }
-  .caixa-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .caixa-acoes button { margin-top: 0; padding: 6px 12px; font-size: 0.8rem; }
-  .caixa-detalhe { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
   .dia-header {
     display: flex;
     justify-content: space-between;
@@ -315,6 +301,28 @@
   .politica-texto h3 { font-size: 0.95rem; color: var(--foreground); margin: 16px 0 6px; font-family: var(--font-sans); }
   .politica-texto h3:first-child { margin-top: 0; }
   .politica-texto ul { padding-left: 20px; margin: 4px 0; }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 9, 25, 0.75);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.aberto { display: flex; }
+  .modal-caixa {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    max-width: 340px;
+    width: 100%;
+  }
+  .modal-mensagem { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--foreground); }
+  .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal-acoes button { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -380,7 +388,6 @@
 <div class="toggles-linha">
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Dinheiro</span></div>
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
-  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg><span class="toggle-texto">Caixas</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
 </div>
 
@@ -437,34 +444,6 @@
   <div class="status" id="statusRelatorio"></div>
 </div>
 
-<div class="card" id="caixasCard" style="display:none;">
-  <p class="aviso-backup">
-    <strong>Fixa</strong>: agrupa automaticamente por categoria (ex: gastos do carro) — não tira nada do seu mês, só organiza.<br>
-    <strong>Evento</strong>: funciona como um cofre à parte. Enquanto está ativada, tudo que você registrar fica só dentro dela, fora do mês normal. Ao encerrar, você escolhe se quer juntar esses lançamentos ao mês ou deixá-los separados pra sempre.
-  </p>
-  <div class="dica-habito" id="bannerCaixaAtiva" style="display:none;"></div>
-
-  <div id="listaCaixas"></div>
-
-  <div class="grupo-dia" style="margin-top:20px;">Nova caixa</div>
-  <label class="campo">Nome</label>
-  <input type="text" id="nomeCaixa" placeholder="Ex: Carro, Viagem SP-RJ, Salário CLT">
-
-  <label class="campo">Tipo</label>
-  <div class="tipo-toggle">
-    <button type="button" id="btnTipoFixa" class="ativo" onclick="selecionarTipoCaixa('fixa')">Fixa (por categoria)</button>
-    <button type="button" id="btnTipoEvento" onclick="selecionarTipoCaixa('evento')">Evento (ativar/desativar)</button>
-  </div>
-
-  <div id="campoCriterios">
-    <label class="campo">Categorias ou palavras-chave (separadas por vírgula)</label>
-    <input type="text" id="criteriosCaixa" placeholder="Ex: Combustível, Pneu, Manutenção">
-  </div>
-
-  <button onclick="criarCaixa()">Criar caixa</button>
-  <div class="status" id="statusCaixas"></div>
-</div>
-
 <div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg><span class="toggle-texto">Política de Privacidade</span></div>
 
 <div class="card" id="privacidadeCard" style="display:none;">
@@ -482,6 +461,14 @@
       <li>Se você limpar os dados do navegador, desinstalar o app ou trocar de celular, seus registros são apagados — não temos como recuperá-los, porque nunca guardamos uma cópia. Use a opção de <strong>Backup</strong> regularmente.</li>
       <li>Ninguém além de você tem acesso aos seus registros — nem nós.</li>
     </ul>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-caixa">
+    <p class="modal-mensagem" id="modalMensagem"></p>
+    <input type="text" id="modalInput" style="display:none;">
+    <div class="modal-acoes" id="modalAcoes"></div>
   </div>
 </div>
 
@@ -990,22 +977,61 @@ function salvarTransacoes(lista) {
 function adicionarTransacao(dados) {
   const lista = carregarTransacoes();
   const transacao = { ...dados, id: Date.now() };
-  // Se existir uma caixa de evento ativa (ex: "Viagem SP-RJ"), o lancamento
-  // vai so pra ela enquanto a caixa estiver ativa - fica de fora do mes
-  // normal, como um cofre separado. So volta a contar no mes se o usuario
-  // escolher "duplicar pro mes" ao encerrar a caixa (ver alternarCaixaAtiva).
-  const caixaEvento = carregarCaixas().find(c => c.tipo === 'evento' && c.ativa);
-  if (caixaEvento) {
-    transacao.caixaId = caixaEvento.id;
-    transacao.somenteCaixa = true;
-  }
   lista.unshift(transacao);
   salvarTransacoes(lista);
   renderizar();
 }
 
-function removerTransacao(id) {
-  if (!confirm('Tem certeza que quer excluir essa transação?')) return;
+// ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
+// nao dava pra estilizar e mostravam a URL do site num popup feio) ----------
+
+function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false }) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modalOverlay');
+    const msgEl = document.getElementById('modalMensagem');
+    const inputEl = document.getElementById('modalInput');
+    const acoesEl = document.getElementById('modalAcoes');
+
+    msgEl.textContent = mensagem;
+    inputEl.style.display = comInput ? 'block' : 'none';
+    inputEl.value = valorInicial;
+
+    function fechar(valor) {
+      overlay.classList.remove('aberto');
+      acoesEl.innerHTML = '';
+      resolve(valor);
+    }
+
+    acoesEl.innerHTML = '';
+    if (!somenteOk) {
+      const btnCancelar = document.createElement('button');
+      btnCancelar.className = 'secondary';
+      btnCancelar.textContent = textoCancelar;
+      btnCancelar.onclick = () => fechar(comInput ? null : false);
+      acoesEl.appendChild(btnCancelar);
+    }
+    const btnOk = document.createElement('button');
+    btnOk.textContent = textoOk;
+    btnOk.onclick = () => fechar(comInput ? inputEl.value : true);
+    acoesEl.appendChild(btnOk);
+
+    overlay.classList.add('aberto');
+    if (comInput) setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+  });
+}
+
+function modalConfirmar(mensagem) {
+  return abrirModal({ mensagem });
+}
+function modalPrompt(mensagem, valorInicial = '') {
+  return abrirModal({ mensagem, comInput: true, valorInicial });
+}
+function modalAlerta(mensagem) {
+  return abrirModal({ mensagem, somenteOk: true });
+}
+
+async function removerTransacao(id) {
+  if (!(await modalConfirmar('Tem certeza que quer excluir essa transação?'))) return;
   const lista = carregarTransacoes().filter(t => t.id !== id);
   salvarTransacoes(lista);
 
@@ -1015,31 +1041,31 @@ function removerTransacao(id) {
   const confirmacao = carregarTransacoes();
   const aindaExiste = confirmacao.some(t => t.id === id);
   if (aindaExiste) {
-    alert('⚠️ A exclusão pode não ter sido salva corretamente. Tente excluir de novo, e evite fechar o app logo em seguida.');
+    await modalAlerta('⚠️ A exclusão pode não ter sido salva corretamente. Tente excluir de novo, e evite fechar o app logo em seguida.');
   }
 
   renderizar();
 }
 
-function editarObservacao(id) {
+async function editarObservacao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = prompt('Observação:', t.observacao || '');
+  const nova = await modalPrompt('Observação:', t.observacao || '');
   if (nova === null) return;
   t.observacao = nova.trim();
   salvarTransacoes(lista);
   renderizar();
 }
 
-function editarData(id) {
+async function editarData(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = prompt('Data (formato DD/MM/AAAA):', t.data && t.data !== 'desconhecido' ? t.data : '');
+  const nova = await modalPrompt('Data (formato DD/MM/AAAA):', t.data && t.data !== 'desconhecido' ? t.data : '');
   if (nova === null) return;
   if (nova.trim() && !parseData(nova.trim())) {
-    alert('Data inválida. Use o formato DD/MM/AAAA, ex: 13/07/2026.');
+    await modalAlerta('Data inválida. Use o formato DD/MM/AAAA, ex: 13/07/2026.');
     return;
   }
   t.data = nova.trim();
@@ -1110,10 +1136,7 @@ function renderizar() {
   // So entra no mes quem tem data reconhecida batendo com mes/ano selecionado.
   // Transacoes sem data NAO aparecem aqui (isso causava o mesmo lancamento
   // "aparecendo" em varios meses ao mesmo tempo, dando impressao de bug aleatorio).
-  // Transacoes marcadas como "so na caixa" (escolhido ao encerrar uma caixa
-  // de evento) tambem ficam de fora do mes normal, de proposito.
   const doMes = todas.filter(t => {
-    if (t.somenteCaixa) return false;
     const d = parseData(t.data);
     return d && d.mes === mesSelecionado && d.ano === anoSelecionado;
   });
@@ -1229,174 +1252,6 @@ function salvarDinheiro() {
   setTimeout(alternarDinheiro, 1200);
 }
 
-// ---------- Caixas personalizadas ----------
-
-const CAIXAS_KEY = 'controle_gastos_caixas';
-let tipoCaixaSelecionado = 'fixa';
-
-function carregarCaixas() {
-  const raw = localStorage.getItem(CAIXAS_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-function salvarCaixas(lista) {
-  localStorage.setItem(CAIXAS_KEY, JSON.stringify(lista));
-}
-
-function transacaoNaCaixa(t, caixa) {
-  if (caixa.tipo === 'evento') return t.caixaId === caixa.id;
-  const campos = [t.categoria, t.local, t.instituicao].map(v => (v || '').toLowerCase());
-  return (caixa.criterios || []).some(crit => {
-    const c = crit.toLowerCase();
-    return campos.some(campo => campo.includes(c));
-  });
-}
-
-function selecionarTipoCaixa(tipo) {
-  tipoCaixaSelecionado = tipo;
-  document.getElementById('btnTipoFixa').classList.toggle('ativo', tipo === 'fixa');
-  document.getElementById('btnTipoEvento').classList.toggle('ativo', tipo === 'evento');
-  document.getElementById('campoCriterios').style.display = tipo === 'fixa' ? 'block' : 'none';
-}
-
-function criarCaixa() {
-  const nome = document.getElementById('nomeCaixa').value.trim();
-  const criteriosRaw = document.getElementById('criteriosCaixa').value.trim();
-  const statusEl = document.getElementById('statusCaixas');
-
-  if (!nome) {
-    statusEl.textContent = 'Dê um nome para a caixa.';
-    statusEl.className = 'status error';
-    return;
-  }
-  if (tipoCaixaSelecionado === 'fixa' && !criteriosRaw) {
-    statusEl.textContent = 'Informe pelo menos uma categoria ou palavra-chave.';
-    statusEl.className = 'status error';
-    return;
-  }
-
-  const caixas = carregarCaixas();
-  caixas.push({
-    id: Date.now(),
-    nome,
-    tipo: tipoCaixaSelecionado,
-    criterios: tipoCaixaSelecionado === 'fixa' ? criteriosRaw.split(',').map(s => s.trim()).filter(Boolean) : [],
-    ativa: false,
-  });
-  salvarCaixas(caixas);
-
-  document.getElementById('nomeCaixa').value = '';
-  document.getElementById('criteriosCaixa').value = '';
-  statusEl.textContent = 'Caixa criada.';
-  statusEl.className = 'status';
-  renderizarCaixas();
-}
-
-function alternarCaixaAtiva(id) {
-  const caixas = carregarCaixas();
-  const alvo = caixas.find(c => c.id === id);
-  if (!alvo) return;
-
-  // Encerrando uma caixa que estava ativa - pergunta se os lancamentos dela
-  // (que ate agora ficaram so dentro da caixa) devem passar a contar no mes
-  // normal tambem, ou continuar isolados so na caixa.
-  if (alvo.ativa) {
-    const duplicarProMes = confirm(
-      `Encerrar a caixa "${alvo.nome}"?\n\n` +
-      `OK = os lançamentos dela passam a aparecer no mês normal também\n` +
-      `Cancelar = eles continuam só dentro da caixa`
-    );
-    if (duplicarProMes) {
-      const transacoes = carregarTransacoes().map(t =>
-        t.caixaId === alvo.id ? { ...t, somenteCaixa: false } : t
-      );
-      salvarTransacoes(transacoes);
-    }
-  }
-
-  const novoEstado = !alvo.ativa;
-  // So uma caixa de evento pode estar ativa por vez - evita ambiguidade sobre
-  // qual caixa deve receber os proximos lancamentos.
-  caixas.forEach(c => { if (c.tipo === 'evento') c.ativa = false; });
-  alvo.ativa = novoEstado;
-  salvarCaixas(caixas);
-  renderizar();
-  renderizarCaixas();
-  renderizarBannerCaixaAtiva();
-}
-
-function removerCaixa(id) {
-  if (!confirm('Excluir essa caixa? As transações não são apagadas, só deixam de aparecer agrupadas aqui.')) return;
-  salvarCaixas(carregarCaixas().filter(c => c.id !== id));
-  renderizarCaixas();
-  renderizarBannerCaixaAtiva();
-}
-
-function alternarDetalheCaixa(id) {
-  const el = document.getElementById('detalheCaixa' + id);
-  const abrindo = el.style.display === 'none';
-  el.style.display = abrindo ? 'block' : 'none';
-  if (abrindo) {
-    const caixa = carregarCaixas().find(c => c.id === id);
-    const transacoes = carregarTransacoes().filter(t => transacaoNaCaixa(t, caixa));
-    el.innerHTML = '';
-    if (transacoes.length === 0) {
-      el.innerHTML = '<div class="empty">Nenhuma transação nesta caixa ainda.</div>';
-    } else {
-      transacoes.forEach(t => el.appendChild(renderizarTransacao(t)));
-    }
-  }
-}
-
-function renderizarBannerCaixaAtiva() {
-  const ativa = carregarCaixas().find(c => c.tipo === 'evento' && c.ativa);
-  const banner = document.getElementById('bannerCaixaAtiva');
-  if (!ativa) { banner.style.display = 'none'; return; }
-  banner.style.display = 'block';
-  banner.innerHTML = `Caixa <strong>${ativa.nome}</strong> ativa — os próximos lançamentos também vão entrar nela.`;
-}
-
-function renderizarCaixas() {
-  const caixas = carregarCaixas();
-  const todas = carregarTransacoes();
-  const container = document.getElementById('listaCaixas');
-
-  if (caixas.length === 0) {
-    container.innerHTML = '<div class="empty">Nenhuma caixa criada ainda.</div>';
-    return;
-  }
-
-  container.innerHTML = '';
-  caixas.forEach(caixa => {
-    const transacoes = todas.filter(t => transacaoNaCaixa(t, caixa));
-    const total = transacoes.reduce((s, t) => s + (t.tipo === 'entrada' ? Number(t.valor || 0) : -Number(t.valor || 0)), 0);
-    const div = document.createElement('div');
-    div.className = 'caixa-item';
-    div.innerHTML = `
-      <div class="caixa-cabecalho">
-        <div><strong>${caixa.nome}</strong><span class="caixa-badge">${caixa.tipo === 'evento' ? 'evento' : 'fixa'}</span></div>
-        <div>${formatarMoeda(total)} <span style="color:#9a9aa2">(${transacoes.length}x)</span></div>
-      </div>
-      <div class="caixa-acoes">
-        ${caixa.tipo === 'evento' ? `<button class="secondary" onclick="alternarCaixaAtiva(${caixa.id})">${caixa.ativa ? 'Desativar' : 'Ativar'}</button>` : ''}
-        <button class="secondary" onclick="alternarDetalheCaixa(${caixa.id})">Ver transações</button>
-        <button class="secondary" onclick="removerCaixa(${caixa.id})">Excluir</button>
-      </div>
-      <div class="caixa-detalhe" id="detalheCaixa${caixa.id}" style="display:none;"></div>
-    `;
-    container.appendChild(div);
-  });
-}
-
-function alternarCaixas() {
-  const card = document.getElementById('caixasCard');
-  const toggle = document.getElementById('caixasToggle');
-  const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar caixas' : 'Caixas';
-  if (abrindo) renderizarCaixas();
-}
-
 // ---------- Backup / restauracao ----------
 
 function alternarBackup() {
@@ -1412,7 +1267,6 @@ function fazerBackup() {
     versao: 1,
     exportadoEm: new Date().toISOString(),
     transacoes: carregarTransacoes(),
-    caixas: carregarCaixas(),
   };
   const json = JSON.stringify(dados, null, 2);
   const nomeArquivo = `clara-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1457,12 +1311,7 @@ function restaurarBackup() {
       const novasTransacoes = (dados.transacoes || []).filter(t => !idsAtuais.has(t.id));
       salvarTransacoes([...transacoesAtuais, ...novasTransacoes]);
 
-      const caixasAtuais = carregarCaixas();
-      const idsCaixasAtuais = new Set(caixasAtuais.map(c => c.id));
-      const novasCaixas = (dados.caixas || []).filter(c => !idsCaixasAtuais.has(c.id));
-      salvarCaixas([...caixasAtuais, ...novasCaixas]);
-
-      statusEl.textContent = `Restaurado: ${novasTransacoes.length} transação(ões) e ${novasCaixas.length} caixa(s) nova(s) adicionadas.`;
+      statusEl.textContent = `Restaurado: ${novasTransacoes.length} transação(ões) adicionada(s).`;
       statusEl.className = 'status';
       input.value = '';
       renderizar();
@@ -1567,7 +1416,6 @@ function alternarPrivacidade() {
 }
 
 renderizar();
-renderizarBannerCaixaAtiva();
 
 // Forca reler os dados sempre que o app volta a ficar visivel (ex: apos trocar
 // de app e voltar). Sem isso, o Android/Chrome as vezes restaura uma versao
@@ -1575,14 +1423,12 @@ renderizarBannerCaixaAtiva();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     renderizar();
-    renderizarBannerCaixaAtiva();
     if (document.getElementById('relatorioCard').style.display !== 'none') renderizarRelatorio();
   }
 });
 window.addEventListener('pageshow', (e) => {
   if (e.persisted) {
     renderizar();
-    renderizarBannerCaixaAtiva();
     if (document.getElementById('relatorioCard').style.display !== 'none') renderizarRelatorio();
   }
 });
