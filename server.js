@@ -96,9 +96,9 @@ app.post('/share-target', upload.single('receipt'), async (req, res) => {
   const mensagemErro = erro || (dados && dados.erro) || '';
 
   res.send(`<!DOCTYPE html>
-<html><body style="background:#0f1115;color:#e8e8ea;font-family:sans-serif;text-align:center;padding-top:35vh;padding-left:24px;padding-right:24px;">
+<html><body style="background:#000919;color:#e6f4fe;font-family:sans-serif;text-align:center;padding-top:35vh;padding-left:24px;padding-right:24px;">
 <p>${falhou ? '❌ Erro: ' + mensagemErro : '✅ Processando comprovante...'}</p>
-${falhou ? '<p><a href="/" style="color:#5b8cff;">Voltar ao app</a></p>' : ''}
+${falhou ? '<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>' : ''}
 <script>
   const STORAGE_KEY = 'controle_gastos_transacoes';
   const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
