@@ -55,6 +55,8 @@
     body { padding: 24px; }
   }
   h1 { font-size: 1.4rem; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .header-logo { margin-bottom: 8px; }
+  .header-logo img { width: 56px; height: 56px; border-radius: 14px; display: block; }
   p.subtitle { color: var(--muted-foreground); margin-top: 0; font-size: 0.9rem; }
   .card {
     background: var(--card);
@@ -257,16 +259,19 @@
   .saldo-card { padding: 16px 20px; }
   .saldo-linha { display: flex; justify-content: space-between; align-items: center; }
   .saldo-linha .label { font-size: 0.8rem; color: var(--muted-foreground); }
-  .privacidade-linha {
+  .cristal-toggle {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--secondary);
+    border: 1px solid var(--border);
     cursor: pointer;
-    margin-bottom: 12px;
   }
-  .cristal-toggle { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 22px; height: 22px; }
-  .privacidade-texto { font-size: 0.8rem; color: var(--muted-foreground); }
-  .privacidade-linha:hover .privacidade-texto { color: var(--primary); }
+  .cristal-toggle:hover { border-color: var(--primary); }
   .mes-botao { cursor: pointer; }
   .mes-botao:hover { color: var(--primary); }
   .aviso-backup { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 0; line-height: 1.5; }
@@ -290,17 +295,14 @@
 </head>
 <body>
 
-<h1>Clara</h1>
+<div class="header-logo">
+  <img src="/icon-512.png" alt="Clara" width="56" height="56">
+</div>
 <p class="subtitle">Clareza sobre sua renda, sem conectar sua conta bancária. Compartilhe o comprovante — tudo fica salvo só neste navegador.</p>
 
 <div class="dica-habito" id="dicaHabito">
   💡 <strong>Dica:</strong> toda vez que aparecer a notificação do seu banco no topo da tela (Pix, compra aprovada, etc.), tira o print **dessa notificação** e registra aqui na hora — não precisa nem abrir o app do banco. É mais rápido e funciona certinho.
   <span class="dica-fechar" onclick="fecharDica()">✕</span>
-</div>
-
-<div class="privacidade-linha" onclick="alternarVisibilidadeSaldo()">
-  <span class="cristal-toggle" id="cristalToggle"></span>
-  <span class="privacidade-texto" id="privacidadeTexto">Toque no cristal pra ver seus valores</span>
 </div>
 
 <div class="summary">
@@ -317,6 +319,7 @@
 <div class="card saldo-card">
   <div class="saldo-linha">
     <span class="label">Saldo</span>
+    <span class="cristal-toggle" id="cristalToggle" onclick="alternarVisibilidadeSaldo()"></span>
   </div>
   <div class="value" id="saldo">R$ 0,00</div>
 </div>
@@ -537,10 +540,9 @@ function svgCristal(aceso) {
 }
 
 function atualizarValoresExibidos() {
-  document.getElementById('cristalToggle').innerHTML = svgCristal(!saldoOculto);
-  document.getElementById('privacidadeTexto').textContent = saldoOculto
-    ? 'Toque no cristal pra ver seus valores'
-    : 'Toque no cristal pra ocultar';
+  const toggle = document.getElementById('cristalToggle');
+  toggle.innerHTML = svgCristal(!saldoOculto);
+  toggle.title = saldoOculto ? 'Toque pra ver os valores' : 'Toque pra ocultar';
   const oculto = 'R$ ••••••';
   document.getElementById('saldo').textContent = saldoOculto ? oculto : formatarMoeda(saldoAtual);
   document.getElementById('totalEntradas').textContent = saldoOculto ? oculto : formatarMoeda(totalEntradasAtual);
