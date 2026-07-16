@@ -341,18 +341,7 @@
   <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
 </div>
 
-<div class="card" id="cardSemData" style="display:none;">
-  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
-  <div id="listaSemData"></div>
-</div>
-
-<div class="toggles-linha">
-  <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
-  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Dinheiro</span></div>
-  <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
-  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg><span class="toggle-texto">Caixas</span></div>
-  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
-</div>
+<div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()">+ Adicionar manualmente</div>
 
 <div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
@@ -363,6 +352,18 @@
   <button id="sendBtn" disabled>Analisar comprovante</button>
   <div class="status" id="status"></div>
   <div class="uso-limite" id="usoLimite"></div>
+</div>
+
+<div class="card" id="cardSemData" style="display:none;">
+  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
+  <div id="listaSemData"></div>
+</div>
+
+<div class="toggles-linha">
+  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Dinheiro</span></div>
+  <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
+  <div class="upload-toggle" id="caixasToggle" onclick="alternarCaixas()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg><span class="toggle-texto">Caixas</span></div>
+  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
