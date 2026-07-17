@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clara — Controle da sua Renda</title>
+<title>Vai — Controle da sua Renda</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <meta name="theme-color" content="#000919">
@@ -330,7 +330,7 @@
 <body>
 
 <div class="header-logo">
-  <img src="/logo-header.png" alt="Clara" width="128" height="128">
+  <img src="/logo-header.png" alt="Vai" width="128" height="128">
 </div>
 <p class="subtitle">Clareza sobre sua renda, sem conectar sua conta bancária. Compartilhe o comprovante — tudo fica salvo só neste navegador.</p>
 
@@ -454,7 +454,7 @@
     <ul>
       <li>Quando você envia um comprovante (print ou PDF), a imagem é processada de forma transitória por uma IA (API da Anthropic/Claude) só pra extrair valor, tipo, categoria e data. Depois disso, a imagem não fica guardada em nenhum servidor.</li>
       <li>Todas as suas transações (valor, categoria, data, observações) ficam salvas apenas no armazenamento local do seu próprio navegador — nunca em um banco de dados nosso.</li>
-      <li>Não pedimos login, conta, e-mail ou qualquer dado pessoal pra usar o Clara.</li>
+      <li>Não pedimos login, conta, e-mail ou qualquer dado pessoal pra usar o Vai.</li>
       <li>Não conectamos nem acessamos sua conta bancária de nenhuma forma.</li>
       <li>Não usamos rastreadores de terceiros nem vendemos ou compartilhamos dados com ninguém.</li>
     </ul>
@@ -1372,7 +1372,7 @@ function importarCsvTexto() {
           iValor = idx('valor'), iInstituicao = idx('instituicao'), iLocal = idx('local'), iObs = idx('observacao');
 
     if (iData === -1 || iTipo === -1 || iValor === -1) {
-      statusEl.textContent = 'Não reconheci o formato desse texto como o CSV do Clara.';
+      statusEl.textContent = 'Não reconheci o formato desse texto como o CSV do Vai.';
       statusEl.className = 'status error';
       return;
     }
