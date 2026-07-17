@@ -935,19 +935,29 @@ sendBtn.addEventListener('click', async () => {
   formData.append('receipt', imagemSelecionada);
 
   try {
-    const dados = await enviarComprovante(formData, 1);
+    const resposta = await enviarComprovante(formData, 1);
 
-    if (dados.erro) {
-      status.textContent = 'Erro: ' + dados.erro;
+    if (resposta.erro) {
+      status.textContent = 'Erro: ' + resposta.erro;
       status.className = 'status error';
       sendBtn.disabled = false;
       return;
     }
 
-    adicionarTransacao(dados);
+    const transacoes = resposta.transacoes || [];
+    if (transacoes.length === 0 || transacoes[0].erro) {
+      status.textContent = 'Erro: ' + (transacoes[0] ? transacoes[0].erro : 'não foi possível interpretar o comprovante');
+      status.className = 'status error';
+      sendBtn.disabled = false;
+      return;
+    }
+
+    transacoes.forEach(dados => adicionarTransacao(dados));
     registrarUsoComprovante();
     resetForm();
-    status.textContent = 'Transação adicionada com sucesso.';
+    status.textContent = transacoes.length > 1
+      ? `${transacoes.length} transações adicionadas com sucesso.`
+      : 'Transação adicionada com sucesso.';
     setTimeout(alternarUpload, 1200);
   } catch (err) {
     status.textContent = err.name === 'AbortError'

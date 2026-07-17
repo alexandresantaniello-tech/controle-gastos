@@ -18,9 +18,9 @@ function getExtractionPrompt() {
   ontem.setDate(ontem.getDate() - 1);
   const ontemStr = String(ontem.getDate()).padStart(2, '0') + '/' + String(ontem.getMonth() + 1).padStart(2, '0') + '/' + ontem.getFullYear();
 
-  return `Você recebe a imagem de um comprovante de transação bancária brasileira (Pix, transferência, débito ou crédito).
+  return `Você recebe a imagem de um comprovante/notificação de transação bancária brasileira (Pix, transferência, débito ou crédito). A imagem pode conter UMA ou VÁRIAS transações (por exemplo, duas ou mais notificações de banco empilhadas na mesma captura de tela).
 A data de HOJE é ${hojeStr}. Se o comprovante mostrar uma data relativa como "Hoje", use ${hojeStr}. Se mostrar "Ontem", use ${ontemStr}. Se mostrar dia da semana + dia do mês sem ano (ex: "Segunda-feira, 13 de julho"), calcule o ano correto usando ${hojeStr} como referência de hoje.
-Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:
+Extraia TODAS as transações visíveis na imagem e responda APENAS com um JSON válido, sem nenhum texto antes ou depois: um ARRAY, mesmo que exista só uma transação. Cada item do array no formato:
 {
   "valor": (número, ex: 150.50),
   "tipo": ("entrada" se o dinheiro foi RECEBIDO/creditado na conta do usuário, "saida" se foi ENVIADO/debitado da conta do usuário. Preste atenção especial: textos como "você recebeu", "Pix recebido", "creditado", ou valores em VERDE geralmente indicam entrada; textos como "você enviou", "Pix enviado", "pagamento", "debitado", ou valores em VERMELHO/CINZA geralmente indicam saída. Não confunda o nome de quem aparece no comprovante com a direção — o importante é se o dinheiro ENTROU ou SAIU da conta de quem é dono do comprovante),
@@ -29,7 +29,7 @@ Extraia as informações e responda APENAS com um JSON válido, sem nenhum texto
   "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido"),
   "data": (data da transação no formato EXATO DD/MM/AAAA — sempre com barras, sempre com o ano de 4 digitos, nunca por extenso, ou "desconhecido" se realmente não der pra determinar)
 }
-Se não conseguir identificar algum campo, use "desconhecido". Se a imagem não for um comprovante bancário, responda com {"erro": "imagem não reconhecida como comprovante"}.`;
+Se não conseguir identificar algum campo de uma transação, use "desconhecido" nesse campo. Se a imagem não tiver nenhuma transação bancária reconhecível, responda com {"erro": "imagem não reconhecida como comprovante"} (sem array, só esse objeto).`;
 }
 
 async function lerComprovante(buffer, mediaType) {
@@ -41,7 +41,7 @@ async function lerComprovante(buffer, mediaType) {
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 300,
+    max_tokens: 800,
     messages: [
       {
         role: 'user',
@@ -54,11 +54,25 @@ async function lerComprovante(buffer, mediaType) {
   }, { timeout: 20000 });
 
   const textResponse = message.content[0].text.trim();
-  const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+
+  // A IA responde ou com um array de transacoes, ou (em caso de erro) um objeto
+  // solto {"erro": "..."}. Pega o que vier primeiro no texto e normaliza pra
+  // sempre devolver uma lista - mesmo um erro vira uma lista de 1 item, pra
+  // quem chama nao precisar tratar dois formatos diferentes.
+  const inicioArray = textResponse.indexOf('[');
+  const inicioObjeto = textResponse.indexOf('{');
+  let bruto = null;
+  if (inicioArray !== -1 && (inicioObjeto === -1 || inicioArray < inicioObjeto)) {
+    bruto = textResponse.slice(inicioArray, textResponse.lastIndexOf(']') + 1);
+  } else if (inicioObjeto !== -1) {
+    bruto = textResponse.slice(inicioObjeto, textResponse.lastIndexOf('}') + 1);
+  }
+  if (!bruto) {
     throw new Error('Não foi possível interpretar o comprovante');
   }
-  return JSON.parse(jsonMatch[0]);
+
+  const resultado = JSON.parse(bruto);
+  return Array.isArray(resultado) ? resultado : [resultado];
 }
 
 app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
@@ -66,8 +80,8 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
   try {
-    const dados = await lerComprovante(req.file.buffer, req.file.mimetype);
-    res.json(dados);
+    const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype);
+    res.json({ transacoes });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: 'Falha ao processar a imagem', detalhe: err.message });
@@ -83,17 +97,17 @@ app.post('/share-target', upload.single('receipt'), async (req, res) => {
     erro = 'Nenhuma imagem recebida no compartilhamento';
   } else {
     try {
-      const dados = await lerComprovante(req.file.buffer, req.file.mimetype);
-      dadosJson = JSON.stringify(dados);
+      const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype);
+      dadosJson = JSON.stringify(transacoes);
     } catch (err) {
       console.error(err);
       erro = 'Falha ao processar o comprovante compartilhado';
     }
   }
 
-  const dados = JSON.parse(dadosJson);
-  const falhou = erro || (dados && dados.erro);
-  const mensagemErro = erro || (dados && dados.erro) || '';
+  const transacoes = JSON.parse(dadosJson);
+  const falhou = erro || (transacoes && transacoes[0] && transacoes[0].erro);
+  const mensagemErro = erro || (transacoes && transacoes[0] && transacoes[0].erro) || '';
 
   res.send(`<!DOCTYPE html>
 <html><body style="background:#000919;color:#e6f4fe;font-family:sans-serif;text-align:center;padding-top:35vh;padding-left:24px;padding-right:24px;">
@@ -102,16 +116,20 @@ ${falhou ? '<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>' : ''}
 <script>
   const STORAGE_KEY = 'controle_gastos_transacoes';
   const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
-  const dados = ${dadosJson};
-  if (dados && !dados.erro) {
+  const transacoes = ${dadosJson};
+  if (transacoes && transacoes.length && !transacoes[0].erro) {
     const raw = localStorage.getItem(STORAGE_KEY);
     const lista = raw ? JSON.parse(raw) : [];
-    lista.unshift({ ...dados, id: Date.now() });
+    transacoes.forEach((dados, i) => {
+      lista.unshift({ ...dados, id: Date.now() + i });
+    });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
 
     // Compartilhamento nativo ja chega processado pelo servidor (o custo da IA
     // ja aconteceu), entao aqui so contabiliza pro limite mensal - nao da pra
     // bloquear antes, diferente do upload manual, que checa antes de enviar.
+    // Conta 1 por IMAGEM processada, nao por transacao encontrada dentro dela -
+    // e o que reflete o custo real (uma chamada de API, nao uma por transacao).
     const hoje = new Date();
     const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
     const usoRaw = localStorage.getItem(USO_MENSAL_KEY);
