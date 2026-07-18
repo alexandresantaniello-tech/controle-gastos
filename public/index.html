@@ -184,6 +184,17 @@
     letter-spacing: 0.02em;
   }
   .excluir-link:hover { opacity: 1; }
+  .acoes-transacao { display: flex; gap: 12px; flex-shrink: 0; }
+  .dividir-link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--primary);
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 4px 2px;
+    letter-spacing: 0.02em;
+  }
+  .dividir-link:hover { opacity: 1; }
   .status { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 8px; min-height: 1.2em; }
   .status.error { color: var(--destructive); }
   .empty { color: var(--muted-foreground); text-align: center; padding: 20px; font-size: 0.9rem; }
@@ -325,6 +336,31 @@
   .modal-mensagem { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--foreground); }
   .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .modal-acoes button { margin-top: 0; }
+  .modal-caixa-larga { max-width: 420px; max-height: 85vh; overflow-y: auto; }
+  .parte-dividir {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .parte-dividir:first-of-type { border-top: none; padding-top: 0; }
+  .parte-dividir .campo-valor { width: 100px; flex-shrink: 0; }
+  .parte-dividir .campo-categoria { flex: 1; min-width: 0; }
+  .parte-dividir input { margin-top: 0; }
+  .parte-dividir .remover-parte {
+    flex-shrink: 0;
+    color: var(--destructive);
+    opacity: 0.7;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 8px 4px 0;
+  }
+  .parte-dividir .remover-parte:hover { opacity: 1; }
+  .dividir-restante { font-size: 0.85rem; margin: 14px 0 0; color: var(--muted-foreground); }
+  .dividir-restante.zerado { color: var(--entrada); }
+  .dividir-restante.negativo { color: var(--destructive); }
 </style>
 </head>
 <body>
@@ -471,6 +507,20 @@
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
     <div class="modal-acoes" id="modalAcoes"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dividirOverlay">
+  <div class="modal-caixa modal-caixa-larga">
+    <p class="modal-mensagem">Dividir transação de <strong id="dividirValorTotal">R$ 0,00</strong></p>
+    <div id="dividirPartes"></div>
+    <p class="dividir-restante" id="dividirRestante"></p>
+    <button class="secondary" onclick="adicionarParteDividir()">+ Adicionar parte</button>
+    <div class="modal-acoes">
+      <button class="secondary" onclick="fecharDividirTransacao()">Cancelar</button>
+      <button onclick="confirmarDivisao()">Confirmar divisão</button>
+    </div>
+    <div class="status" id="statusDividir"></div>
   </div>
 </div>
 
@@ -1058,6 +1108,113 @@ async function removerTransacao(id) {
   renderizar();
 }
 
+let dividirTransacaoId = null;
+
+function linhaParteDividir(valor, categoria) {
+  const linha = document.createElement('div');
+  linha.className = 'parte-dividir';
+  linha.innerHTML = `
+    <input type="number" step="0.01" min="0" class="campo-valor" placeholder="Valor" value="${valor}" oninput="atualizarRestanteDividir()">
+    <input type="text" class="campo-categoria" list="listaCategorias" placeholder="Categoria" value="${categoria || ''}">
+    <span class="remover-parte" onclick="removerParteDividir(this)">×</span>
+  `;
+  return linha;
+}
+
+function abrirDividirTransacao(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+
+  dividirTransacaoId = id;
+  document.getElementById('dividirValorTotal').textContent = formatarMoeda(t.valor);
+
+  const container = document.getElementById('dividirPartes');
+  container.innerHTML = '';
+  container.appendChild(linhaParteDividir(Number(t.valor || 0).toFixed(2), t.categoria));
+  container.appendChild(linhaParteDividir('0.00', ''));
+
+  document.getElementById('statusDividir').textContent = '';
+  atualizarRestanteDividir();
+  document.getElementById('dividirOverlay').classList.add('aberto');
+}
+
+function adicionarParteDividir() {
+  document.getElementById('dividirPartes').appendChild(linhaParteDividir('0.00', ''));
+  atualizarRestanteDividir();
+}
+
+function removerParteDividir(botao) {
+  const container = document.getElementById('dividirPartes');
+  if (container.children.length <= 2) return;
+  botao.closest('.parte-dividir').remove();
+  atualizarRestanteDividir();
+}
+
+function atualizarRestanteDividir() {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === dividirTransacaoId);
+  if (!t) return;
+
+  const valores = [...document.querySelectorAll('#dividirPartes .campo-valor')].map(i => Number(i.value) || 0);
+  const soma = valores.reduce((a, b) => a + b, 0);
+  const restante = Number(t.valor || 0) - soma;
+
+  const restanteEl = document.getElementById('dividirRestante');
+  restanteEl.classList.remove('zerado', 'negativo');
+  if (Math.abs(restante) < 0.01) {
+    restanteEl.textContent = 'Valores batem com o total. ✓';
+    restanteEl.classList.add('zerado');
+  } else if (restante < 0) {
+    restanteEl.textContent = `Passou ${formatarMoeda(Math.abs(restante))} do total.`;
+    restanteEl.classList.add('negativo');
+  } else {
+    restanteEl.textContent = `Falta ${formatarMoeda(restante)} pra completar o total.`;
+  }
+}
+
+async function confirmarDivisao() {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === dividirTransacaoId);
+  if (!t) return;
+
+  const linhas = [...document.querySelectorAll('#dividirPartes .parte-dividir')];
+  const partes = linhas.map(linha => ({
+    valor: Number(linha.querySelector('.campo-valor').value) || 0,
+    categoria: linha.querySelector('.campo-categoria').value.trim() || 'Outros'
+  })).filter(p => p.valor > 0);
+
+  if (partes.length < 2) {
+    await modalAlerta('Preencha pelo menos duas partes com valor maior que zero.');
+    return;
+  }
+
+  const soma = partes.reduce((a, p) => a + p.valor, 0);
+  if (Math.abs(soma - Number(t.valor || 0)) >= 0.01) {
+    await modalAlerta('A soma das partes precisa ser igual ao valor total da transação.');
+    return;
+  }
+
+  const novas = partes.map((p, i) => ({
+    ...t,
+    id: Date.now() + i,
+    valor: p.valor,
+    categoria: p.categoria
+  }));
+
+  const listaAtualizada = carregarTransacoes().filter(x => x.id !== dividirTransacaoId);
+  listaAtualizada.unshift(...novas);
+  salvarTransacoes(listaAtualizada);
+
+  fecharDividirTransacao();
+  renderizar();
+}
+
+function fecharDividirTransacao() {
+  document.getElementById('dividirOverlay').classList.remove('aberto');
+  dividirTransacaoId = null;
+}
+
 async function editarObservacao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
@@ -1128,7 +1285,10 @@ function renderizarTransacao(t) {
       <div class="detalhes">${t.data || '-'} · ${t.categoria || '-'} · ${t.local || '-'}</div>
       <div class="linha-nota">
         ${notaHtml}
-        <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
+        <span class="acoes-transacao">
+          <span class="dividir-link" onclick="abrirDividirTransacao(${t.id})">DIVIDIR</span>
+          <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
+        </span>
       </div>
     </div>
   `;
