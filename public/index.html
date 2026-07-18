@@ -530,10 +530,9 @@ function alternarListaMes() {
 let saldoAtual = 0;
 let totalEntradasAtual = 0;
 let totalSaidasAtual = 0;
-// Sempre comeca oculto ao abrir/recarregar o app - privacidade garantida
-// em qualquer situacao (ex: em publico), sem depender de uma preferencia
-// antiga guardada no navegador. Mostrar os valores dura so a sessao atual.
-let saldoOculto = true;
+// Sempre comeca visivel ao abrir/recarregar o app - quem quiser privacidade
+// num momento especifico toca no cristal pra ocultar rapidamente.
+let saldoOculto = false;
 
 function alternarVisibilidadeSaldo() {
   saldoOculto = !saldoOculto;
