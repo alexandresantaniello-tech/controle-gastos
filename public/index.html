@@ -184,13 +184,13 @@
     letter-spacing: 0.02em;
   }
   .excluir-link:hover { opacity: 1; }
-  .acoes-transacao { display: flex; gap: 12px; flex-shrink: 0; }
   .dividir-link {
     font-size: 0.78rem;
     font-weight: 500;
     color: var(--primary);
     opacity: 0.7;
     cursor: pointer;
+    flex-shrink: 0;
     padding: 4px 2px;
     letter-spacing: 0.02em;
   }
@@ -486,18 +486,85 @@
 
 <div class="card" id="privacidadeCard" style="display:none;">
   <div class="politica-texto">
-    <h3>O que fazemos</h3>
+    <p><em>Última atualização: julho de 2026.</em></p>
+
+    <h3>O que é o Sifia</h3>
     <ul>
-      <li>Quando você envia um comprovante (print ou PDF), a imagem é processada de forma transitória por uma IA (API da Anthropic/Claude) só pra extrair valor, tipo, categoria e data. Depois disso, a imagem não fica guardada em nenhum servidor.</li>
-      <li>Todas as suas transações (valor, categoria, data, observações) ficam salvas apenas no armazenamento local do seu próprio navegador — nunca em um banco de dados nosso.</li>
-      <li>Não pedimos login, conta, e-mail ou qualquer dado pessoal pra usar o Sifia.</li>
-      <li>Não conectamos nem acessamos sua conta bancária de nenhuma forma.</li>
-      <li>Não usamos rastreadores de terceiros nem vendemos ou compartilhamos dados com ninguém.</li>
+      <li>O Sifia é um app de controle financeiro pessoal que registra suas transações a partir de um comprovante, notificação ou foto que você mesmo envia. O compromisso central do produto é não depender de acesso à sua conta bancária e não manter uma cópia dos seus dados financeiros em nenhum servidor.</li>
     </ul>
+
+    <h3>Quem trata seus dados</h3>
+    <ul>
+      <li>O Sifia ainda está em processo de formalização como empresa. Até a conclusão desse processo, qualquer solicitação sobre seus dados, exercício de direitos ou dúvida sobre esta política pode ser feita diretamente em <strong>contato@sifiaapp.com</strong> — esse é o canal responsável pelo tratamento de dados hoje.</li>
+    </ul>
+
+    <h3>Quais dados tratamos, e como</h3>
+    <ul>
+      <li><strong>Imagem do comprovante/print/foto que você envia:</strong> é transmitida de forma transitória a um serviço de inteligência artificial em nuvem, com servidores localizados nos Estados Unidos, exclusivamente para extrair valor, tipo, categoria, instituição, local e data da transação. Assim que a resposta é recebida, a imagem é descartada — não fica salva em nenhum banco de dados, disco ou backup nosso, nem por um período temporário. Diferente de apps de mensagem que guardam mídia por um tempo até a entrega, aqui não existe esse intervalo: a imagem nunca é persistida.</li>
+      <li><strong>Dados extraídos da transação (valor, categoria, data, observações):</strong> ficam salvos exclusivamente no armazenamento local do seu próprio navegador (localStorage) — um espaço de armazenamento que existe apenas no seu aparelho, não em nossos servidores. Nunca trafegam de volta pra nós depois de extraídos.</li>
+      <li><strong>Cadastro, login ou e-mail do usuário:</strong> não pedimos nenhum desses dados para usar o Sifia. Não existe conta de usuário.</li>
+      <li><strong>Conexão bancária:</strong> não acessamos, não conectamos e não temos qualquer integração com sua conta ou instituição financeira (diferente de apps baseados em Open Finance).</li>
+      <li><strong>Rastreamento e publicidade:</strong> não usamos cookies de rastreamento, pixels de terceiros, nem vendemos, alugamos ou compartilhamos qualquer dado com anunciantes ou outras empresas.</li>
+    </ul>
+
+    <h3>Base legal do tratamento (LGPD, Art. 7º)</h3>
+    <ul>
+      <li>O envio da imagem é um ato voluntário seu — o tratamento se baseia no seu <strong>consentimento</strong> a cada envio, combinado com a <strong>execução do serviço que você mesmo solicita</strong> ao usar essa função do app. Você pode simplesmente parar de enviar comprovantes a qualquer momento; isso não afeta os dados já salvos localmente no seu aparelho.</li>
+    </ul>
+
+    <h3>Transferência internacional de dados</h3>
+    <ul>
+      <li>Como o processamento por inteligência artificial descrito acima ocorre em servidores fora do Brasil, isso configura uma transferência internacional de dados nos termos da LGPD. Ela é limitada estritamente ao conteúdo da imagem enviada, dura apenas o tempo do processamento, e não resulta em nenhuma cópia retida pelo prestador do serviço além do necessário para responder à solicitação.</li>
+    </ul>
+
+    <h3>O que o Sifia nunca faz com as imagens</h3>
+    <ul>
+      <li>Não usamos as imagens enviadas para treinar sistemas de inteligência artificial, nossos ou de terceiros.</li>
+      <li>Não usamos as imagens para nenhuma finalidade além de extrair os dados da transação que você pediu para registrar.</li>
+      <li>Não fazemos revisão humana das imagens em nenhuma circunstância normal de uso.</li>
+    </ul>
+
+    <h3>Dados financeiros e cuidado redobrado</h3>
+    <ul>
+      <li>Dado financeiro não está na lista legal de "dado sensível" da LGPD (que cobre saúde, biometria, religião e afins), mas tratamos essa informação com o mesmo rigor de um dado sensível, por entender que movimentação financeira é informação delicada — daí a arquitetura de nunca reter nada em servidor.</li>
+    </ul>
+
+    <h3>Se você usa o Sifia para um comércio ou negócio</h3>
+    <ul>
+      <li>Se a foto ou print que você envia for de uma venda ou transação com terceiros (por exemplo, a tela de uma maquininha), ela pode conter, de forma incidental, dados de outra pessoa (como parte do número de um cartão). Você é responsável por avaliar o que compartilha nessas imagens; o processamento e o descarte seguem exatamente as mesmas regras descritas acima, sem distinção entre uso pessoal e comercial.</li>
+    </ul>
+
+    <h3>Seus direitos (LGPD, Art. 18)</h3>
+    <ul>
+      <li>Você tem direito a confirmação, acesso, correção, exclusão, portabilidade e revogação de consentimento sobre qualquer dado seu. Na prática, como não guardamos seus dados financeiros em nenhum servidor, você já exerce a maior parte desses direitos diretamente no seu aparelho — apagar uma transação, exportar um backup ou limpar os dados do app já cumpre isso. Para qualquer solicitação sobre a imagem transitória enviada à IA (que não fica retida, mas você tem direito de perguntar), escreva para <strong>contato@sifiaapp.com</strong>.</li>
+      <li>Você também tem direito de peticionar diretamente à Autoridade Nacional de Proteção de Dados (ANPD) caso entenda que algo aqui não foi respeitado.</li>
+    </ul>
+
     <h3>O que isso significa na prática</h3>
     <ul>
       <li>Se você limpar os dados do navegador, desinstalar o app ou trocar de celular, seus registros são apagados — não temos como recuperá-los, porque nunca guardamos uma cópia. Use a opção de <strong>Backup</strong> regularmente.</li>
       <li>Ninguém além de você tem acesso aos seus registros — nem nós.</li>
+      <li>A segurança dos dados salvos localmente depende também da segurança do seu próprio aparelho (senha de tela, atualização do sistema, etc.) — como não existe cópia nossa, essa é a única camada de proteção sobre os dados já extraídos.</li>
+    </ul>
+
+    <h3>Precisão da extração automática</h3>
+    <ul>
+      <li>A extração de dados por IA busca ser precisa, mas pode falhar ou interpretar algo errado (valor, data ou categoria incorretos), especialmente em imagens de baixa qualidade. Revise os dados adicionados antes de tomar decisões financeiras com base neles — o Sifia é uma ferramenta de organização, não uma fonte oficial de registro financeiro ou contábil.</li>
+    </ul>
+
+    <h3>Uso por menores de idade</h3>
+    <ul>
+      <li>O Sifia não é direcionado a crianças e não realiza verificação de idade. Caso um responsável legal identifique uso por um menor sem supervisão adequada, pode solicitar orientação em <strong>contato@sifiaapp.com</strong>.</li>
+    </ul>
+
+    <h3>Alterações nesta política</h3>
+    <ul>
+      <li>Esta política pode ser atualizada conforme o Sifia evolui (por exemplo, quando o processo de formalização como empresa for concluído, ou se novas funcionalidades mudarem como os dados são tratados). A data no topo desta página sempre indica a versão mais recente — recomendamos revisar periodicamente.</li>
+    </ul>
+
+    <h3>Contato</h3>
+    <ul>
+      <li><strong>contato@sifiaapp.com</strong> — canal para dúvidas, solicitações sobre dados ou qualquer questão relacionada a esta política.</li>
     </ul>
   </div>
 </div>
@@ -1275,7 +1342,7 @@ function renderizarTransacao(t) {
   div.className = 'transacao';
   const notaHtml = t.observacao
     ? `<div class="nota" onclick="editarObservacao(${t.id})">📝 ${t.observacao}</div>`
-    : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">+ observação</div>`;
+    : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">OBSERVAÇÃO</div>`;
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
@@ -1285,10 +1352,8 @@ function renderizarTransacao(t) {
       <div class="detalhes">${t.data || '-'} · ${t.categoria || '-'} · ${t.local || '-'}</div>
       <div class="linha-nota">
         ${notaHtml}
-        <span class="acoes-transacao">
-          <span class="dividir-link" onclick="abrirDividirTransacao(${t.id})">DIVIDIR</span>
-          <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
-        </span>
+        <span class="dividir-link" onclick="abrirDividirTransacao(${t.id})">DIVIDIR</span>
+        <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
       </div>
     </div>
   `;
