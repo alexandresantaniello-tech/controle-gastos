@@ -484,6 +484,74 @@
 
 <div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg><span class="toggle-texto">Política de Privacidade</span></div>
 
+<div class="rodape-link" id="termosToggle" onclick="alternarTermos()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M9 8h1M4 4h16v16H4z"/></svg><span class="toggle-texto">Termos de Uso</span></div>
+
+<div class="card" id="termosCard" style="display:none;">
+  <div class="politica-texto">
+    <p><em>Última atualização: julho de 2026.</em></p>
+
+    <h3>Aceite</h3>
+    <ul>
+      <li>Ao usar o Sifia, você concorda com estes Termos de Uso e com a nossa Política de Privacidade. Se não concordar, não utilize o app.</li>
+    </ul>
+
+    <h3>O que é o Sifia</h3>
+    <ul>
+      <li>O Sifia é uma ferramenta de organização financeira pessoal que extrai automaticamente, por inteligência artificial, os dados de comprovantes/notificações/fotos que você mesmo envia, e os organiza localmente no seu aparelho.</li>
+    </ul>
+
+    <h3>Quem pode usar</h3>
+    <ul>
+      <li>O Sifia é destinado a maiores de 18 anos. Ao usar o app, você declara ter essa idade.</li>
+    </ul>
+
+    <h3>Uso gratuito e limites</h3>
+    <ul>
+      <li>Hoje o Sifia é oferecido com um limite mensal de comprovantes processados por IA, exibido dentro do próprio app. Esse limite pode mudar, inclusive com a introdução de planos pagos — quando isso acontecer, comunicaremos as condições claramente antes de qualquer cobrança, e estes Termos serão atualizados.</li>
+      <li>Registros de dinheiro em espécie, feitos manualmente, não usam IA e não contam nesse limite.</li>
+    </ul>
+
+    <h3>Uso aceitável</h3>
+    <ul>
+      <li>Você concorda em não: usar o Sifia para fins ilícitos; tentar burlar, sobrecarregar ou explorar falhas do sistema; enviar imagens que não sejam comprovantes/notificações de transações reais; enviar imagens contendo dados de terceiros sem ter base legal para isso (ver a seção correspondente na Política de Privacidade).</li>
+      <li>Podemos suspender ou bloquear o acesso de quem violar este uso aceitável, sem aviso prévio em casos de abuso evidente.</li>
+    </ul>
+
+    <h3>Precisão da extração automática e limitação de responsabilidade</h3>
+    <ul>
+      <li>A extração de dados por IA busca ser precisa, mas pode errar (valor, data, categoria), especialmente em imagens de baixa qualidade. O Sifia é uma ferramenta de organização, não uma fonte oficial de registro financeiro, contábil ou fiscal — revise sempre os dados antes de tomar decisões com base neles.</li>
+      <li>O uso do Sifia é por sua conta e risco, na máxima extensão permitida pela lei. Na extensão máxima permitida por lei, o Sifia não se responsabiliza por perdas financeiras, decisões tomadas com base em dados incorretos, ou indisponibilidade temporária do serviço (incluindo falhas do serviço de inteligência artificial usado no processamento).</li>
+      <li>Como seus dados de transação ficam salvos apenas no seu próprio aparelho, você é responsável por manter backups (usando a função própria do app) — não temos como recuperar dados perdidos por troca de aparelho, desinstalação ou limpeza de dados do navegador.</li>
+    </ul>
+
+    <h3>Propriedade intelectual</h3>
+    <ul>
+      <li>O nome "Sifia", a logomarca e a identidade visual do app são de titularidade do responsável pelo Sifia. O uso do app não transfere nenhum direito sobre eles.</li>
+      <li>Seus dados de transação continuam sendo seus — não reivindicamos nenhuma propriedade sobre o conteúdo que você registra.</li>
+    </ul>
+
+    <h3>Alterações no serviço e nestes termos</h3>
+    <ul>
+      <li>O Sifia pode evoluir — novas funcionalidades, mudanças de limite, introdução de planos pagos — e estes Termos podem ser atualizados de acordo. A data no topo desta página sempre indica a versão mais recente.</li>
+    </ul>
+
+    <h3>Encerramento</h3>
+    <ul>
+      <li>Você pode parar de usar o Sifia a qualquer momento, simplesmente desinstalando o app ou limpando seus dados locais — não existe processo de "cancelamento de conta" porque não existe conta.</li>
+    </ul>
+
+    <h3>Lei aplicável</h3>
+    <ul>
+      <li>Estes Termos são regidos pela legislação brasileira.</li>
+    </ul>
+
+    <h3>Contato</h3>
+    <ul>
+      <li><strong>contato@sifiaapp.com</strong> — canal para dúvidas sobre estes Termos.</li>
+    </ul>
+  </div>
+</div>
+
 <div class="card" id="privacidadeCard" style="display:none;">
   <div class="politica-texto">
     <p><em>Última atualização: julho de 2026.</em></p>
@@ -1654,6 +1722,12 @@ function importarCsvTexto() {
 
 function alternarPrivacidade() {
   const card = document.getElementById('privacidadeCard');
+  const abrindo = card.style.display === 'none';
+  card.style.display = abrindo ? 'block' : 'none';
+}
+
+function alternarTermos() {
+  const card = document.getElementById('termosCard');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
 }
