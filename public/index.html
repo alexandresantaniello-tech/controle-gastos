@@ -1061,7 +1061,7 @@ sendBtn.addEventListener('click', async () => {
     const resposta = await enviarComprovante(formData, 1);
 
     if (resposta.erro) {
-      status.textContent = 'Erro: ' + resposta.erro;
+      status.textContent = resposta.erro;
       status.className = 'status error';
       sendBtn.disabled = false;
       return;
@@ -1069,7 +1069,7 @@ sendBtn.addEventListener('click', async () => {
 
     const transacoes = resposta.transacoes || [];
     if (transacoes.length === 0 || transacoes[0].erro) {
-      status.textContent = 'Erro: ' + (transacoes[0] ? transacoes[0].erro : 'não foi possível interpretar o comprovante');
+      status.textContent = transacoes[0] ? transacoes[0].erro : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
       status.className = 'status error';
       sendBtn.disabled = false;
       return;

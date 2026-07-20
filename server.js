@@ -75,6 +75,15 @@ async function lerComprovante(buffer, mediaType) {
   return Array.isArray(resultado) ? resultado : [resultado];
 }
 
+// Erros com "status" vem da propria API da Anthropic (indisponibilidade, limite,
+// credito) - nao tem nada a ver com a foto que o usuario mandou. So os erros sem
+// "status" (ex: resposta que nao deu pra interpretar) sao realmente sobre a imagem.
+function mensagemErroAmigavel(err) {
+  return err.status
+    ? 'Nosso serviço está temporariamente indisponível. Tente novamente em alguns minutos.'
+    : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
+}
+
 app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
@@ -84,7 +93,7 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
     res.json({ transacoes });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: 'Falha ao processar a imagem', detalhe: err.message });
+    res.status(500).json({ erro: mensagemErroAmigavel(err) });
   }
 });
 
@@ -101,7 +110,7 @@ app.post('/share-target', upload.single('receipt'), async (req, res) => {
       dadosJson = JSON.stringify(transacoes);
     } catch (err) {
       console.error(err);
-      erro = 'Falha ao processar o comprovante compartilhado';
+      erro = mensagemErroAmigavel(err);
     }
   }
 
