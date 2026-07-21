@@ -41,7 +41,7 @@ A data de HOJE e ${hojeStr}.
 Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, uma por item do array, no formato:
 {
   "valor": (numero, ex: 150.50),
-  "tipo": ("entrada" se o dinheiro foi RECEBIDO/creditado na conta, "saida" se foi ENVIADO/debitado/pago. Ex: "Pix recebido" e "Entrada PIX" = entrada; "Pix enviado", "Debito de Cartao", "Pagamento" = saida),
+  "tipo": (a propria tabela do extrato tem uma coluna "Tipo" por linha - USE ESSA COLUNA como fonte principal, nao adivinhe pela descricao. Se a coluna "Tipo" da linha disser "Entrada PIX" ou "Pix recebido" = entrada. Se disser "Saida PIX", "Debito de Cartao" ou "Pagamento" = saida. So se a coluna Tipo nao estiver visivel nessa linha, ai sim use a descricao como pista: "recebido"/"recebido de" = entrada; "enviado para"/"enviado" = saida - preste atencao que "enviado para X" significa que o dinheiro SAIU da conta, independente do nome que aparece),
   "categoria": (categoria curta inferida do estabelecimento/descricao, ex: "Transporte", "Mercado", "Combustivel", "Salario", "Transferencia entre contas", "Outros"),
   "instituicao": (nome do banco, ou "desconhecido"),
   "local": (nome do estabelecimento/recebedor/pagador exatamente como aparece na linha, ou "desconhecido"),
