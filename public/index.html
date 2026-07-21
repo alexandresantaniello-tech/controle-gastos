@@ -415,7 +415,7 @@
     <label class="campo">🎁 Presente de boas-vindas: importe seu histórico bancário completo (uma vez só)</label>
     <p class="aviso-backup">Baixe o extrato em PDF do seu banco (a maioria permite exportar até 12 meses) e envie aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
-    <input type="password" id="senhaHistorico" placeholder="Senha do PDF (se tiver)">
+    <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
   </div>
@@ -565,6 +565,7 @@
       <li><strong>Rastreamento e publicidade:</strong> não usamos cookies de rastreamento, pixels de terceiros, nem vendemos, alugamos ou compartilhamos qualquer dado com anunciantes ou outras empresas.</li>
       <li><strong>Metadados técnicos de acesso:</strong> como qualquer aplicação web, a infraestrutura de hospedagem em nuvem que executa o Sifia pode registrar automaticamente informações técnicas de cada requisição (como endereço IP e horário de acesso) por um período limitado, para fins de segurança e operação do serviço — isso é padrão de qualquer provedor de hospedagem e não é usado por nós para identificar, perfilar ou rastrear o comportamento de usuários.</li>
       <li><strong>Arquivo de backup:</strong> o botão de Backup gera um arquivo que é salvo no local que você escolher no seu próprio aparelho (download, ou compartilhado por você) — esse arquivo nunca passa pelos nossos servidores nem fica com a gente; a responsabilidade de guardá-lo com segurança é sua.</li>
+      <li><strong>Senha de arquivo de extrato bancário (importação de histórico):</strong> se o PDF que você envia nessa função tiver senha, ela é usada exclusivamente pelo seu próprio navegador para abrir o arquivo localmente — nunca é enviada, transmitida ou armazenada pelo Sifia em nenhum momento. Só as imagens das páginas já abertas (sem senha nenhuma) são processadas pela IA, do mesmo jeito que qualquer outro comprovante.</li>
     </ul>
 
     <h3>Base legal do tratamento (LGPD, Art. 7º)</h3>
