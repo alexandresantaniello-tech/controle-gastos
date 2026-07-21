@@ -1206,8 +1206,9 @@ async function importarHistorico() {
       const blob = await paginaParaBlob(pdf, i);
       const formData = new FormData();
       formData.append('receipt', blob, `pagina-${i}.jpg`);
+      formData.append('tipo', 'extrato');
       const resposta = await enviarComprovante(formData, 1);
-      const transacoes = (resposta.transacoes || []).filter(t => !t.erro);
+      const transacoes = (resposta.transacoes || []).filter(t => !t.erro && Number(t.valor) > 0);
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
     } catch (err) {

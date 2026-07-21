@@ -32,22 +32,42 @@ Extraia TODAS as transações visíveis na imagem e responda APENAS com um JSON 
 Se não conseguir identificar algum campo de uma transação, use "desconhecido" nesse campo. Se a imagem não tiver nenhuma transação bancária reconhecível, responda com {"erro": "imagem não reconhecida como comprovante"} (sem array, só esse objeto).`;
 }
 
-async function lerComprovante(buffer, mediaType) {
+function getExtractionPromptExtrato() {
+  const hoje = new Date();
+  const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+
+  return `Voce recebe a imagem de UMA PAGINA de um extrato bancario brasileiro completo (varias paginas no total). Essa pagina especifica pode conter uma TABELA com varias linhas de transacoes (colunas como data, tipo, descricao, valor), ou pode nao conter nenhuma transacao (ex: capa, pagina de contato/atendimento ao cliente, SAC, Ouvidoria, aviso legal, propaganda do banco).
+A data de HOJE e ${hojeStr}.
+Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, uma por item do array, no formato:
+{
+  "valor": (numero, ex: 150.50),
+  "tipo": ("entrada" se o dinheiro foi RECEBIDO/creditado na conta, "saida" se foi ENVIADO/debitado/pago. Ex: "Pix recebido" e "Entrada PIX" = entrada; "Pix enviado", "Debito de Cartao", "Pagamento" = saida),
+  "categoria": (categoria curta inferida do estabelecimento/descricao, ex: "Transporte", "Mercado", "Combustivel", "Salario", "Transferencia entre contas", "Outros"),
+  "instituicao": (nome do banco, ou "desconhecido"),
+  "local": (nome do estabelecimento/recebedor/pagador exatamente como aparece na linha, ou "desconhecido"),
+  "data": (data da transacao no formato EXATO DD/MM/AAAA, ou "desconhecido" se nao der pra determinar)
+}
+IMPORTANTE: se essa pagina NAO tiver nenhuma tabela de transacoes reais (por exemplo, e uma pagina de contato, telefone de atendimento, SAC, Ouvidoria, capa, ou texto institucional/propaganda), responda com um array VAZIO: []. NUNCA invente uma transacao a partir de texto que nao seja uma linha real de extrato - nao crie valores como R$0,00 ou transacoes ficticias.
+Responda APENAS com um JSON valido (um array), sem nenhum texto antes ou depois.`;
+}
+
+async function lerComprovante(buffer, mediaType, tipo) {
   const base64Data = buffer.toString('base64');
   const isPdf = mediaType === 'application/pdf';
   const conteudo = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
     : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } };
+  const prompt = tipo === 'extrato' ? getExtractionPromptExtrato() : getExtractionPrompt();
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 800,
+    max_tokens: tipo === 'extrato' ? 4000 : 800,
     messages: [
       {
         role: 'user',
         content: [
           conteudo,
-          { type: 'text', text: getExtractionPrompt() },
+          { type: 'text', text: prompt },
         ],
       },
     ],
@@ -89,7 +109,7 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
   try {
-    const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype);
+    const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype, req.body.tipo);
     res.json({ transacoes });
   } catch (err) {
     console.error(err);
