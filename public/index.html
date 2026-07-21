@@ -1148,6 +1148,10 @@ async function paginaParaBlob(pdf, numeroPagina) {
   return blob;
 }
 
+let historicoUltimoArquivo = null;
+let historicoUltimaSenha = null;
+let historicoPaginasFalhas = [];
+
 async function importarHistorico() {
   const statusEl = document.getElementById('statusHistorico');
   const arquivoInput = document.getElementById('arquivoHistorico');
@@ -1174,7 +1178,23 @@ async function importarHistorico() {
   statusEl.className = 'status';
   statusEl.textContent = 'Abrindo o PDF...';
 
-  const buffer = await arquivoInput.files[0].arrayBuffer();
+  historicoUltimoArquivo = arquivoInput.files[0];
+  historicoUltimaSenha = senha;
+
+  const resultado = await processarPaginasHistorico(historicoUltimoArquivo, senha, null, statusEl);
+  btn.disabled = false;
+  if (!resultado) return;
+
+  localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
+  mostrarResultadoHistorico(resultado, statusEl);
+}
+
+// Processa um extrato (ou um subconjunto de paginas dele, na tentativa de
+// reprocessar falhas). Recebe o arquivo (nao o ArrayBuffer ja lido) porque
+// o pdf.js pode transferir/esvaziar o buffer ao abrir o documento - lendo o
+// arquivo de novo a cada chamada evita reusar um buffer ja consumido.
+async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, statusEl) {
+  const buffer = await arquivo.arrayBuffer();
   let pdf;
   try {
     pdf = await pdfjsLib.getDocument({ data: buffer, password: senha || undefined }).promise;
@@ -1183,18 +1203,19 @@ async function importarHistorico() {
       ? 'Senha incorreta ou não informada.'
       : 'Não foi possível abrir esse PDF.';
     statusEl.className = 'status error';
-    btn.disabled = false;
-    return;
+    return null;
   }
 
+  const paginas = paginasParaProcessar || Array.from({ length: pdf.numPages }, (_, i) => i + 1);
   let totalTransacoes = 0;
-  let paginasComErro = 0;
   let paginasForaDoPrazo = 0;
+  const paginasFalhas = [];
   const umAnoAtras = new Date();
   umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
 
-  for (let i = 1; i <= pdf.numPages; i++) {
-    statusEl.textContent = `Processando página ${i} de ${pdf.numPages}...`;
+  for (let idx = 0; idx < paginas.length; idx++) {
+    const i = paginas[idx];
+    statusEl.textContent = `Processando página ${i} (${idx + 1} de ${paginas.length})...`;
     try {
       // Antes de gastar chamada de IA na pagina, olha as datas do proprio
       // texto do PDF (extracao local, sem custo) - se a data mais recente
@@ -1220,18 +1241,38 @@ async function importarHistorico() {
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
     } catch (err) {
-      paginasComErro += 1;
+      // Paginas mais adiante na fila tem mais chance de falhar por pressao
+      // de memoria acumulada (celular processando dezenas de paginas em
+      // sequencia) - por isso guardamos o numero da pagina, nao so a
+      // contagem, pra dar pro usuario a chance de reprocessar so essas.
+      paginasFalhas.push(i);
     }
   }
 
   pdf.destroy();
-  localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
-  statusEl.className = 'status';
-  let mensagemFinal = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
-  if (paginasForaDoPrazo > 0) mensagemFinal += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
-  if (paginasComErro > 0) mensagemFinal += ` ${paginasComErro} página(s) não puderam ser lidas.`;
-  statusEl.textContent = mensagemFinal;
   renderizar();
+  return { totalTransacoes, paginasForaDoPrazo, paginasFalhas };
+}
+
+function mostrarResultadoHistorico(resultado, statusEl) {
+  const { totalTransacoes, paginasForaDoPrazo, paginasFalhas } = resultado;
+  historicoPaginasFalhas = paginasFalhas;
+  statusEl.className = 'status';
+  let html = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
+  if (paginasForaDoPrazo > 0) html += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
+  if (paginasFalhas.length > 0) {
+    html += `<br>⚠️ ${paginasFalhas.length} página(s) não puderam ser lidas (provavelmente falta de memória do aparelho no meio do processo, não um erro no arquivo). <span style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="reprocessarPaginasFalhas()">Tentar essas páginas de novo</span>`;
+  }
+  statusEl.innerHTML = html;
+}
+
+async function reprocessarPaginasFalhas() {
+  if (!historicoUltimoArquivo || !historicoPaginasFalhas.length) return;
+  const statusEl = document.getElementById('statusHistorico');
+  const paginas = historicoPaginasFalhas;
+  const resultado = await processarPaginasHistorico(historicoUltimoArquivo, historicoUltimaSenha, paginas, statusEl);
+  if (!resultado) return;
+  mostrarResultadoHistorico(resultado, statusEl);
 }
 
 sendBtn.addEventListener('click', async () => {
