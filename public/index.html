@@ -328,6 +328,20 @@
   .modal-mensagem { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--foreground); }
   .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .modal-acoes button { margin-top: 0; }
+  .modal-caixa-larga { max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; }
+  .prompt-texto {
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    color: var(--foreground);
+    margin: 0;
+  }
 </style>
 </head>
 <body>
@@ -619,6 +633,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="promptOverlay">
+  <div class="modal-caixa modal-caixa-larga">
+    <p class="modal-mensagem">Prompt pra colar numa IA:</p>
+    <pre class="prompt-texto" id="promptTexto"></pre>
+    <div class="modal-acoes">
+      <button class="secondary" onclick="fecharPromptIA()">Fechar</button>
+      <button onclick="copiarESairPromptIA()">Copiar</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 const STORAGE_KEY = 'controle_gastos_transacoes';
@@ -806,11 +831,12 @@ function linhasCronologicasHtml(transacoes) {
   });
   return ordenadas.map(t => {
     const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
+    const sinal = t.tipo === 'entrada' ? '+' : '-';
     const descricao = t.observacao || t.local || '-';
     return `
     <div class="relatorio-resumo-linha">
       <span>${t.data || '-'} — ${descricao}</span>
-      <strong class="${classeCor}">${formatarMoeda(t.valor)}</strong>
+      <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
     </div>`;
   }).join('');
 }
@@ -866,8 +892,9 @@ function textoResumoRelatorio() {
       return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
     });
     ordenadas.forEach(t => {
+      const sinal = t.tipo === 'entrada' ? '+' : '-';
       const descricao = t.observacao || t.local || '-';
-      texto += `- ${t.data || 'sem data'} — ${descricao}: ${formatarMoeda(t.valor)}\n`;
+      texto += `- ${t.data || 'sem data'} — ${descricao}: ${sinal}${formatarMoeda(t.valor)}\n`;
     });
   }
 
@@ -901,12 +928,25 @@ async function compartilharResumo() {
   statusEl.textContent = 'Resumo copiado (compartilhamento direto não disponível neste navegador).';
 }
 
-async function copiarPromptIA() {
+function montarPromptIA() {
   const texto = textoResumoRelatorio();
+  return `Aqui está o resumo das minhas movimentações financeiras. Analise meus hábitos de entrada e saída de dinheiro e me dê observações e sugestões práticas:\n\n${texto}`;
+}
+
+function copiarPromptIA() {
+  document.getElementById('promptTexto').textContent = montarPromptIA();
+  document.getElementById('promptOverlay').classList.add('aberto');
+}
+
+function fecharPromptIA() {
+  document.getElementById('promptOverlay').classList.remove('aberto');
+}
+
+async function copiarESairPromptIA() {
+  await navigator.clipboard.writeText(montarPromptIA());
   const statusEl = document.getElementById('statusRelatorio');
-  const prompt = `Aqui está o resumo das minhas movimentações financeiras. Analise meus hábitos de entrada e saída de dinheiro e me dê observações e sugestões práticas:\n\n${texto}`;
-  await navigator.clipboard.writeText(prompt);
   statusEl.textContent = 'Prompt copiado! Cole numa IA de sua preferência pra analisar seus dados.';
+  fecharPromptIA();
 }
 
 async function compartilharCsv() {
@@ -933,7 +973,7 @@ function alternarRelatorio() {
   const toggle = document.getElementById('relatorioToggle');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar relatórios' : 'Relatórios';
+  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Relatórios';
   if (abrindo) renderizarRelatorio();
 }
 
