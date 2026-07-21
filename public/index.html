@@ -418,6 +418,7 @@
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
+    <p class="aviso-backup" style="margin-top:8px;"><span style="color:var(--primary); cursor:pointer;" onclick="resetarHistoricoTeste()">[modo teste] resetar o "já usado"</span></p>
   </div>
 </div>
 
@@ -1106,6 +1107,13 @@ async function enviarComprovante(formData, tentativa) {
 // ---------- Importar histórico (presente de boas-vindas, uma vez por conta) ----------
 
 const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
+
+// Link temporario so pra fase de teste - remover antes do lancamento publico.
+function resetarHistoricoTeste() {
+  localStorage.removeItem(HISTORICO_IMPORTADO_KEY);
+  document.getElementById('btnImportarHistorico').disabled = false;
+  document.getElementById('statusHistorico').textContent = '[modo teste] Liberado pra importar de novo.';
+}
 
 function dataMaisRecenteNoTexto(texto) {
   const regex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g;
