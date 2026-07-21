@@ -284,6 +284,7 @@
   .mes-botao { cursor: pointer; }
   .mes-botao:hover { color: var(--primary); }
   .aviso-backup { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 0; line-height: 1.5; }
+  .dica-observacao { font-size: 0.82rem; color: var(--muted-foreground); line-height: 1.4; margin: 4px 0 8px; }
   .uso-limite { font-size: 0.78rem; color: var(--muted-foreground); margin-top: 10px; }
   .uso-limite.perto-limite { color: var(--aviso); }
   .uso-limite.no-limite { color: var(--destructive); }
@@ -441,6 +442,7 @@
   <div class="relatorio-acoes">
     <button onclick="compartilharResumo()">Compartilhar resumo</button>
     <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
+    <button class="secondary" onclick="copiarPromptIA()">📋 Copiar prompt para IA</button>
   </div>
   <div class="status" id="statusRelatorio"></div>
 </div>
@@ -793,10 +795,10 @@ function transacoesDoPeriodo() {
   });
 }
 
-function agruparPorChave(transacoes, chave) {
+function agruparPorChave(transacoes, chave, semValorLabel) {
   const grupos = {};
   transacoes.forEach(t => {
-    const k = t[chave] || 'Não identificado';
+    const k = t[chave] || semValorLabel || 'Não identificado';
     if (!grupos[k]) grupos[k] = { chave: k, total: 0, quantidade: 0, itens: [] };
     grupos[k].total += Number(t.valor || 0);
     grupos[k].quantidade += 1;
@@ -842,16 +844,18 @@ function renderizarRelatorio() {
   const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
   const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
 
-  const saidasPorCategoria = agruparPorChave(saidas, 'categoria');
+  const saidasPorObservacao = agruparPorChave(saidas, 'observacao', 'Sem observação');
   const entradasPorCliente = agruparPorChave(entradas, 'local');
+  const temSemObservacao = saidasPorObservacao.some(g => g.chave === 'Sem observação');
 
   document.getElementById('resumoRelatorio').innerHTML = `
     <div class="relatorio-resumo-linha"><span>Transações</span><strong>${transacoes.length}</strong></div>
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
-    <div class="grupo-dia">Saídas por categoria</div>
-    ${linhasAgrupadasHtml(saidasPorCategoria, 'saida')}
+    <div class="grupo-dia">Saídas por observação</div>
+    ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra esse relatório organizar suas saídas do seu jeito.</p>' : ''}
+    ${linhasAgrupadasHtml(saidasPorObservacao, 'saida')}
     <div class="grupo-dia">Entradas por cliente/origem</div>
     ${linhasAgrupadasHtml(entradasPorCliente, 'entrada')}
   `;
@@ -872,10 +876,10 @@ function textoResumoRelatorio() {
   texto += `Saídas: ${formatarMoeda(totalSaidas)}\n`;
   texto += `Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
 
-  const saidasPorCategoria = agruparPorChave(saidas, 'categoria');
-  if (saidasPorCategoria.length > 0) {
-    texto += `\nSaídas por categoria:\n`;
-    saidasPorCategoria.forEach(g => {
+  const saidasPorObservacao = agruparPorChave(saidas, 'observacao', 'Sem observação');
+  if (saidasPorObservacao.length > 0) {
+    texto += `\nSaídas por observação:\n`;
+    saidasPorObservacao.forEach(g => {
       texto += `- ${g.chave}: ${formatarMoeda(g.total)} (${g.quantidade}x)\n`;
       g.itens.forEach(item => { texto += `   • ${item.data || 'sem data'}: ${formatarMoeda(item.valor)}\n`; });
     });
@@ -918,6 +922,14 @@ async function compartilharResumo() {
   }
   await navigator.clipboard.writeText(texto);
   statusEl.textContent = 'Resumo copiado (compartilhamento direto não disponível neste navegador).';
+}
+
+async function copiarPromptIA() {
+  const texto = textoResumoRelatorio();
+  const statusEl = document.getElementById('statusRelatorio');
+  const prompt = `Aqui está o resumo das minhas movimentações financeiras. Analise meus hábitos de entrada e saída de dinheiro e me dê observações e sugestões práticas:\n\n${texto}`;
+  await navigator.clipboard.writeText(prompt);
+  statusEl.textContent = 'Prompt copiado! Cole numa IA de sua preferência pra analisar seus dados.';
 }
 
 async function compartilharCsv() {
