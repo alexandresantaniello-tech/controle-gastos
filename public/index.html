@@ -1106,6 +1106,22 @@ async function enviarComprovante(formData, tentativa) {
 
 const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
 
+function dataMaisRecenteNoTexto(texto) {
+  const regex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g;
+  let match;
+  let maisRecente = null;
+  while ((match = regex.exec(texto)) !== null) {
+    const dia = parseInt(match[1], 10);
+    const mes = parseInt(match[2], 10) - 1;
+    let ano = parseInt(match[3], 10);
+    if (ano < 100) ano += 2000;
+    if (dia < 1 || dia > 31 || mes < 0 || mes > 11) continue;
+    const d = new Date(ano, mes, dia);
+    if (!maisRecente || d > maisRecente) maisRecente = d;
+  }
+  return maisRecente;
+}
+
 async function paginaParaBlob(pdf, numeroPagina) {
   const pagina = await pdf.getPage(numeroPagina);
   const viewport = pagina.getViewport({ scale: 1.3 });
@@ -1164,10 +1180,28 @@ async function importarHistorico() {
 
   let totalTransacoes = 0;
   let paginasComErro = 0;
+  let paginasForaDoPrazo = 0;
+  const umAnoAtras = new Date();
+  umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
 
   for (let i = 1; i <= pdf.numPages; i++) {
     statusEl.textContent = `Processando página ${i} de ${pdf.numPages}...`;
     try {
+      // Antes de gastar chamada de IA na pagina, olha as datas do proprio
+      // texto do PDF (extracao local, sem custo) - se a data mais recente
+      // encontrada na pagina ja passou de 1 ano, pula a pagina inteira.
+      // Limita o "presente de boas-vindas" a 1 ano mesmo que o banco deixe
+      // exportar um periodo maior.
+      const pagina = await pdf.getPage(i);
+      const conteudoTexto = await pagina.getTextContent();
+      const texto = conteudoTexto.items.map(item => item.str).join(' ');
+      pagina.cleanup();
+      const dataRecentePagina = dataMaisRecenteNoTexto(texto);
+      if (dataRecentePagina && dataRecentePagina < umAnoAtras) {
+        paginasForaDoPrazo += 1;
+        continue;
+      }
+
       const blob = await paginaParaBlob(pdf, i);
       const formData = new FormData();
       formData.append('receipt', blob, `pagina-${i}.jpg`);
@@ -1183,9 +1217,10 @@ async function importarHistorico() {
   pdf.destroy();
   localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
   statusEl.className = 'status';
-  statusEl.textContent = paginasComErro > 0
-    ? `Importação concluída: ${totalTransacoes} transações adicionadas (${paginasComErro} página(s) não puderam ser lidas).`
-    : `Importação concluída: ${totalTransacoes} transações adicionadas.`;
+  let mensagemFinal = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
+  if (paginasForaDoPrazo > 0) mensagemFinal += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
+  if (paginasComErro > 0) mensagemFinal += ` ${paginasComErro} página(s) não puderam ser lidas.`;
+  statusEl.textContent = mensagemFinal;
   renderizar();
 }
 
