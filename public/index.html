@@ -410,6 +410,15 @@
   <button class="secondary" onclick="importarCsvTexto()">📋 Restaurar do texto colado</button>
 
   <div class="status" id="statusBackup"></div>
+
+  <div id="blocoHistorico">
+    <label class="campo">🎁 Presente de boas-vindas: importe seu histórico bancário completo (uma vez só)</label>
+    <p class="aviso-backup">Baixe o extrato em PDF do seu banco (a maioria permite exportar até 12 meses) e envie aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
+    <input type="file" id="arquivoHistorico" accept="application/pdf">
+    <input type="password" id="senhaHistorico" placeholder="Senha do PDF (se tiver)">
+    <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
+    <div class="status" id="statusHistorico"></div>
+  </div>
 </div>
 
 <div class="card" id="uploadCard" style="display:none;">
@@ -645,7 +654,12 @@
 </div>
 
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
 
@@ -1088,6 +1102,85 @@ async function enviarComprovante(formData, tentativa) {
   }
 }
 
+// ---------- Importar histórico (presente de boas-vindas, uma vez por conta) ----------
+
+const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
+
+async function paginaParaBlob(pdf, numeroPagina) {
+  const pagina = await pdf.getPage(numeroPagina);
+  const viewport = pagina.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await pagina.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+async function importarHistorico() {
+  const statusEl = document.getElementById('statusHistorico');
+  const arquivoInput = document.getElementById('arquivoHistorico');
+  const senha = document.getElementById('senhaHistorico').value;
+  const btn = document.getElementById('btnImportarHistorico');
+
+  if (localStorage.getItem(HISTORICO_IMPORTADO_KEY)) {
+    statusEl.textContent = 'Esse presente de boas-vindas já foi usado nesse aparelho — só funciona uma vez.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  if (!arquivoInput.files.length) {
+    statusEl.textContent = 'Selecione o arquivo PDF do extrato primeiro.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  if (!(await modalConfirmar('Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Continuar?'))) {
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Abrindo o PDF...';
+
+  const buffer = await arquivoInput.files[0].arrayBuffer();
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({ data: buffer, password: senha || undefined }).promise;
+  } catch (err) {
+    statusEl.textContent = (err && err.name === 'PasswordException')
+      ? 'Senha incorreta ou não informada.'
+      : 'Não foi possível abrir esse PDF.';
+    statusEl.className = 'status error';
+    btn.disabled = false;
+    return;
+  }
+
+  let totalTransacoes = 0;
+  let paginasComErro = 0;
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    statusEl.textContent = `Processando página ${i} de ${pdf.numPages}...`;
+    try {
+      const blob = await paginaParaBlob(pdf, i);
+      const formData = new FormData();
+      formData.append('receipt', blob, `pagina-${i}.png`);
+      const resposta = await enviarComprovante(formData, 1);
+      const transacoes = (resposta.transacoes || []).filter(t => !t.erro);
+      transacoes.forEach(dados => adicionarTransacao(dados));
+      totalTransacoes += transacoes.length;
+    } catch (err) {
+      paginasComErro += 1;
+    }
+  }
+
+  localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
+  statusEl.className = 'status';
+  statusEl.textContent = paginasComErro > 0
+    ? `Importação concluída: ${totalTransacoes} transações adicionadas (${paginasComErro} página(s) não puderam ser lidas).`
+    : `Importação concluída: ${totalTransacoes} transações adicionadas.`;
+  renderizar();
+}
+
 sendBtn.addEventListener('click', async () => {
   if (!imagemSelecionada) return;
 
@@ -1442,6 +1535,10 @@ function alternarBackup() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Backup';
+  if (abrindo && localStorage.getItem(HISTORICO_IMPORTADO_KEY)) {
+    document.getElementById('btnImportarHistorico').disabled = true;
+    document.getElementById('statusHistorico').textContent = 'Presente de boas-vindas já usado nesse aparelho.';
+  }
 }
 
 function fazerBackup() {
