@@ -813,6 +813,24 @@ function agruparPorChave(transacoes, chave, semValorLabel) {
   return lista.sort((a, b) => b.total - a.total);
 }
 
+function linhasCronologicasHtml(transacoes) {
+  if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
+  const ordenadas = [...transacoes].sort((a, b) => {
+    const da = parseData(a.data), db = parseData(b.data);
+    if (!da || !db) return 0;
+    return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
+  });
+  return ordenadas.map(t => {
+    const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
+    const descricao = t.tipo === 'entrada' ? (t.local || '-') : (t.observacao || t.local || '-');
+    return `
+    <div class="relatorio-resumo-linha">
+      <span>${t.data || '-'} — ${descricao}</span>
+      <strong class="${classeCor}">${formatarMoeda(t.valor)}</strong>
+    </div>`;
+  }).join('');
+}
+
 function linhasAgrupadasHtml(grupos, classeCor) {
   if (grupos.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
   return grupos.map(g => `
@@ -853,11 +871,13 @@ function renderizarRelatorio() {
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
+    <div class="grupo-dia">Entradas por cliente/origem</div>
+    ${linhasAgrupadasHtml(entradasPorCliente, 'entrada')}
     <div class="grupo-dia">Saídas por observação</div>
     ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra esse relatório organizar suas saídas do seu jeito.</p>' : ''}
     ${linhasAgrupadasHtml(saidasPorObservacao, 'saida')}
-    <div class="grupo-dia">Entradas por cliente/origem</div>
-    ${linhasAgrupadasHtml(entradasPorCliente, 'entrada')}
+    <div class="grupo-dia">🧪 Teste: ordem cronológica (entradas e saídas juntas)</div>
+    ${linhasCronologicasHtml(transacoes)}
   `;
 }
 
