@@ -248,7 +248,9 @@
   .tipo-toggle button.ativo-entrada { background: rgba(74, 222, 128, 0.15); border-color: var(--entrada); color: var(--entrada); }
   .tipo-toggle button.ativo-saida { background: rgba(248, 113, 113, 0.15); border-color: var(--saida); color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
-  .toggles-linha { display: flex; gap: 16px; flex-wrap: wrap; }
+  .toggles-linha { display: flex; gap: 6px; justify-content: space-between; }
+  .toggles-linha .upload-toggle { font-size: 0.78rem; gap: 4px; margin-bottom: 0; }
+  .toggles-linha .icone-toggle { width: 15px; height: 15px; }
   .dia-header {
     display: flex;
     justify-content: space-between;
@@ -795,24 +797,6 @@ function transacoesDoPeriodo() {
   });
 }
 
-function agruparPorChave(transacoes, chave, semValorLabel) {
-  const grupos = {};
-  transacoes.forEach(t => {
-    const k = t[chave] || semValorLabel || 'Não identificado';
-    if (!grupos[k]) grupos[k] = { chave: k, total: 0, quantidade: 0, itens: [] };
-    grupos[k].total += Number(t.valor || 0);
-    grupos[k].quantidade += 1;
-    grupos[k].itens.push(t);
-  });
-  const lista = Object.values(grupos);
-  lista.forEach(g => g.itens.sort((a, b) => {
-    const da = parseData(a.data), db = parseData(b.data);
-    if (!da || !db) return 0;
-    return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
-  }));
-  return lista.sort((a, b) => b.total - a.total);
-}
-
 function linhasCronologicasHtml(transacoes) {
   if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
   const ordenadas = [...transacoes].sort((a, b) => {
@@ -822,29 +806,13 @@ function linhasCronologicasHtml(transacoes) {
   });
   return ordenadas.map(t => {
     const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
-    const descricao = t.tipo === 'entrada' ? (t.local || '-') : (t.observacao || t.local || '-');
+    const descricao = t.observacao || t.local || '-';
     return `
     <div class="relatorio-resumo-linha">
       <span>${t.data || '-'} — ${descricao}</span>
       <strong class="${classeCor}">${formatarMoeda(t.valor)}</strong>
     </div>`;
   }).join('');
-}
-
-function linhasAgrupadasHtml(grupos, classeCor) {
-  if (grupos.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
-  return grupos.map(g => `
-    <div class="relatorio-resumo-linha">
-      <span>${g.chave} <span style="color:#9a9aa2">(${g.quantidade}x)</span></span>
-      <strong class="${classeCor}">${formatarMoeda(g.total)}</strong>
-    </div>
-    ${g.itens.map(item => `
-      <div class="relatorio-resumo-linha" style="padding-left:12px; font-size:0.85rem;">
-        <span style="color:#9a9aa2">${item.data || '-'}</span>
-        <span class="${classeCor}">${formatarMoeda(item.valor)}</span>
-      </div>
-    `).join('')}
-  `).join('');
 }
 
 function renderizarRelatorio() {
@@ -862,21 +830,15 @@ function renderizarRelatorio() {
   const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
   const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
 
-  const saidasPorObservacao = agruparPorChave(saidas, 'observacao', 'Sem observação');
-  const entradasPorCliente = agruparPorChave(entradas, 'local');
-  const temSemObservacao = saidasPorObservacao.some(g => g.chave === 'Sem observação');
+  const temSemObservacao = saidas.some(t => !t.observacao);
 
   document.getElementById('resumoRelatorio').innerHTML = `
     <div class="relatorio-resumo-linha"><span>Transações</span><strong>${transacoes.length}</strong></div>
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
-    <div class="grupo-dia">Entradas por cliente/origem</div>
-    ${linhasAgrupadasHtml(entradasPorCliente, 'entrada')}
-    <div class="grupo-dia">Saídas por observação</div>
-    ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra esse relatório organizar suas saídas do seu jeito.</p>' : ''}
-    ${linhasAgrupadasHtml(saidasPorObservacao, 'saida')}
-    <div class="grupo-dia">🧪 Teste: ordem cronológica (entradas e saídas juntas)</div>
+    ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
+    <div class="grupo-dia">Transações do período</div>
     ${linhasCronologicasHtml(transacoes)}
   `;
 }
@@ -896,21 +858,16 @@ function textoResumoRelatorio() {
   texto += `Saídas: ${formatarMoeda(totalSaidas)}\n`;
   texto += `Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
 
-  const saidasPorObservacao = agruparPorChave(saidas, 'observacao', 'Sem observação');
-  if (saidasPorObservacao.length > 0) {
-    texto += `\nSaídas por observação:\n`;
-    saidasPorObservacao.forEach(g => {
-      texto += `- ${g.chave}: ${formatarMoeda(g.total)} (${g.quantidade}x)\n`;
-      g.itens.forEach(item => { texto += `   • ${item.data || 'sem data'}: ${formatarMoeda(item.valor)}\n`; });
+  if (transacoes.length > 0) {
+    texto += `\nTransações do período:\n`;
+    const ordenadas = [...transacoes].sort((a, b) => {
+      const da = parseData(a.data), db = parseData(b.data);
+      if (!da || !db) return 0;
+      return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
     });
-  }
-
-  const entradasPorCliente = agruparPorChave(entradas, 'local');
-  if (entradasPorCliente.length > 0) {
-    texto += `\nEntradas por cliente/origem:\n`;
-    entradasPorCliente.forEach(g => {
-      texto += `- ${g.chave}: ${formatarMoeda(g.total)} (${g.quantidade}x)\n`;
-      g.itens.forEach(item => { texto += `   • ${item.data || 'sem data'}: ${formatarMoeda(item.valor)}\n`; });
+    ordenadas.forEach(t => {
+      const descricao = t.observacao || t.local || '-';
+      texto += `- ${t.data || 'sem data'} — ${descricao}: ${formatarMoeda(t.valor)}\n`;
     });
   }
 
