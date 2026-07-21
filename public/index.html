@@ -1108,12 +1108,19 @@ const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
 
 async function paginaParaBlob(pdf, numeroPagina) {
   const pagina = await pdf.getPage(numeroPagina);
-  const viewport = pagina.getViewport({ scale: 2 });
+  const viewport = pagina.getViewport({ scale: 1.3 });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   await pagina.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  // Libera a memoria do canvas e do cache interno da pagina antes de seguir
+  // pra proxima - sem isso, um PDF com varias paginas estoura a memoria
+  // do navegador (principalmente no celular).
+  canvas.width = 0;
+  canvas.height = 0;
+  pagina.cleanup();
+  return blob;
 }
 
 async function importarHistorico() {
@@ -1163,7 +1170,7 @@ async function importarHistorico() {
     try {
       const blob = await paginaParaBlob(pdf, i);
       const formData = new FormData();
-      formData.append('receipt', blob, `pagina-${i}.png`);
+      formData.append('receipt', blob, `pagina-${i}.jpg`);
       const resposta = await enviarComprovante(formData, 1);
       const transacoes = (resposta.transacoes || []).filter(t => !t.erro);
       transacoes.forEach(dados => adicionarTransacao(dados));
@@ -1173,6 +1180,7 @@ async function importarHistorico() {
     }
   }
 
+  pdf.destroy();
   localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
   statusEl.className = 'status';
   statusEl.textContent = paginasComErro > 0
