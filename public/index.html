@@ -438,7 +438,7 @@
 
 <div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
-    <div id="dropText">Toque aqui pra escolher o print/PDF do comprovante (ou Ctrl+V)</div>
+    <div id="dropText">Escolha o arquivo</div>
     <img id="preview">
     <input type="file" id="fileInput" accept="image/*,application/pdf">
   </div>
@@ -1082,7 +1082,7 @@ const preview = document.getElementById('preview');
 const dropText = document.getElementById('dropText');
 const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
-const TEXTO_PADRAO_DROPZONE = 'Toque aqui pra escolher o print/PDF do comprovante (ou Ctrl+V)';
+const TEXTO_PADRAO_DROPZONE = 'Escolha o arquivo';
 
 // Temporariamente visivel em qualquer aparelho so pra visualizacao/teste -
 // depois volta a ser so-iOS (ver iPhone|iPad|iPod no user agent).
