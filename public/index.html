@@ -143,6 +143,7 @@
     margin: 4px 0 16px;
     box-shadow: 0 8px 20px -8px rgba(74,184,253,0.55);
   }
+  .btn-adicionar-principal .icone-toggle { width: 20px; height: 20px; }
   .summary { display: flex; gap: 12px; flex-wrap: wrap; }
   .summary .box { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
   .summary .box .label { font-size: 0.8rem; color: var(--muted-foreground); }
@@ -367,8 +368,9 @@
 <p class="subtitle">Sistema de Informação Financeira por IA, semi-automático — com apenas um print você registra suas movimentações de forma simples e segura.</p>
 
 <div class="dica-habito" id="dicaHabito">
-  💡 <strong>Dica:</strong> toda vez que aparecer a notificação do seu banco no topo da tela (Pix, compra aprovada, etc.), tira o print **dessa notificação** e registra aqui na hora — não precisa nem abrir o app do banco. É mais rápido e funciona certinho.
-  <span class="dica-fechar" onclick="fecharDica()">✕</span>
+  <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+  <strong>Dica:</strong> toda vez que aparecer a notificação do seu banco no topo da tela (Pix, compra aprovada, etc.), tira o print **dessa notificação** e registra aqui na hora — não precisa nem abrir o app do banco. É mais rápido e funciona certinho.
+  <span class="dica-fechar" onclick="fecharDica()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
 </div>
 
 <div class="summary">
@@ -402,11 +404,11 @@
 </div>
 
 <div class="card" id="cardSemData" style="display:none;">
-  <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
+  <div class="grupo-dia" style="margin-top:0;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
   <div id="listaSemData"></div>
 </div>
 
-<button class="btn-adicionar-principal" id="btnAdicionarPrincipal" onclick="alternarUpload()">📷 Adicionar comprovante</button>
+<button class="btn-adicionar-principal" id="btnAdicionarPrincipal" onclick="alternarUpload()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
 
 <div class="toggles-linha">
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Espécie</span></div>
@@ -416,21 +418,19 @@
 
 <div class="card" id="backupCard" style="display:none;">
   <p class="aviso-backup">Seus dados ficam só neste navegador — se você limpar os dados do app, trocar de celular ou desinstalar, não tem como recuperar sem um backup. Faça isso de vez em quando, principalmente antes de trocar de aparelho.</p>
-  <button onclick="fazerBackup()">📤 Fazer backup</button>
+  <button onclick="fazerBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Fazer backup</button>
 
   <label class="campo">Restaurar de um arquivo de backup</label>
   <input type="file" id="arquivoRestaurar" accept="application/json,.json" onchange="restaurarBackup()">
 
   <label class="campo">Ou cole aqui o texto do CSV que você compartilhou (ex: no WhatsApp)</label>
   <textarea id="textoCsvRestaurar" rows="4" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
-  <button class="secondary" onclick="importarCsvTexto()">📋 Restaurar do texto colado</button>
-
-  <button class="secondary perigo" onclick="apagarTodasTransacoes()">🗑️ Apagar todas as transações</button>
+  <button class="secondary" onclick="importarCsvTexto()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Restaurar do texto colado</button>
 
   <div class="status" id="statusBackup"></div>
 
   <div id="blocoHistorico">
-    <label class="campo">🎁 Presente de boas-vindas: importe seu histórico bancário completo (uma vez só)</label>
+    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe seu histórico bancário completo (uma vez só)</label>
     <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Escolha o período <strong>do dia 1º de um mês há 12 meses atrás até hoje</strong> (ex: se hoje é julho, peça de 1º de julho do ano passado até hoje) — é o jeito mais fácil de pedir certo, mesmo que venha um pouco a mais do que 1 ano, porque nós descartamos automaticamente o que passar do prazo. Envie o PDF aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
@@ -438,16 +438,19 @@
     <div class="status" id="statusHistorico"></div>
     <p class="aviso-backup" style="margin-top:8px;"><span style="color:var(--primary); cursor:pointer;" onclick="resetarHistoricoTeste()">[modo teste] resetar o "já usado"</span></p>
   </div>
+
+  <button class="secondary perigo" style="margin-top:24px;" onclick="apagarTodasTransacoes()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Apagar todas as transações</button>
+  <div class="status" id="statusApagarTudo"></div>
 </div>
 
 <div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
     <div id="dropText">Escolha o arquivo</div>
     <img id="preview" onclick="event.stopPropagation(); abrirZoomImagem()">
-    <p class="aviso-backup" id="dicaZoom" style="display:none;">🔍 Toque na imagem pra ampliar e conferir antes de analisar</p>
+    <p class="aviso-backup" id="dicaZoom" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Toque na imagem pra ampliar e conferir antes de analisar</p>
     <input type="file" id="fileInput" accept="image/*,application/pdf">
   </div>
-  <p class="aviso-backup" id="dicaIphone" style="display:none;">📱 No iPhone, o compartilhamento direto de outros apps pro Sifia ainda não é possível (limitação do próprio iOS). Salve a imagem do comprovante e escolha ela aqui em cima.</p>
+  <p class="aviso-backup" id="dicaIphone" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> No iPhone, o compartilhamento direto de outros apps pro Sifia ainda não é possível (limitação do próprio iOS). Salve a imagem do comprovante e escolha ela aqui em cima.</p>
   <button id="sendBtn" disabled>Analisar comprovante</button>
   <div class="status" id="status"></div>
   <div class="uso-limite" id="usoLimite"></div>
@@ -488,7 +491,7 @@
   <div class="relatorio-acoes">
     <button onclick="compartilharResumo()">Compartilhar resumo</button>
     <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
-    <button class="secondary" onclick="copiarPromptIA()">📋 Copiar prompt para IA</button>
+    <button class="secondary" onclick="copiarPromptIA()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copiar prompt para IA</button>
   </div>
   <div class="status" id="statusRelatorio"></div>
 </div>
@@ -892,10 +895,10 @@ function linhasCronologicasHtml(transacoes) {
   return ordenadas.map(t => {
     const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = t.tipo === 'entrada' ? '+' : '-';
-    const descricao = t.observacao || t.local || '-';
+    const descricao = escapeHtml(t.observacao || t.local) || '-';
     return `
     <div class="relatorio-resumo-linha">
-      <span>${t.data || '-'} — ${descricao}</span>
+      <span>${escapeHtml(t.data) || '-'} — ${descricao}</span>
       <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
     </div>`;
   }).join('');
@@ -923,10 +926,10 @@ function renderizarRelatorio() {
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
-    ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
+    ${temSemObservacao ? '<p class="dica-observacao"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
     <div class="grupo-dia">Transações do período</div>
     ${linhasCronologicasHtml(transacoes)}
-    ${transacoes.length > 0 ? `<button class="secondary perigo" style="margin-top:16px;" onclick="apagarTransacoesDoPeriodo()">🗑️ Apagar transações de ${label}</button>` : ''}
+    ${transacoes.length > 0 ? `<button class="secondary perigo" style="margin-top:16px;" onclick="apagarTransacoesDoPeriodo()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Apagar transações de ${label}</button>` : ''}
   `;
 }
 
@@ -1053,9 +1056,12 @@ function alternarRelatorio() {
 function alternarUpload() {
   const card = document.getElementById('uploadCard');
   const btnPrincipal = document.getElementById('btnAdicionarPrincipal');
+  const textoPrincipal = document.getElementById('btnAdicionarPrincipalTexto');
+  const iconePrincipal = btnPrincipal.querySelector('svg');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  btnPrincipal.textContent = abrindo ? '– Fechar' : '📷 Adicionar comprovante';
+  textoPrincipal.textContent = abrindo ? '– Fechar' : 'Adicionar comprovante';
+  iconePrincipal.style.display = abrindo ? 'none' : '';
   if (abrindo) atualizarIndicadorUso();
 }
 
@@ -1156,7 +1162,10 @@ function handleFile(file) {
   if (file.type === 'application/pdf') {
     preview.style.display = 'none';
     dicaZoom.style.display = 'none';
-    dropText.textContent = '📄 ' + file.name;
+    // Monta com DOM em vez de innerHTML+concat pra nao correr risco de
+    // injetar HTML se o nome do arquivo tiver caracteres especiais.
+    dropText.innerHTML = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ';
+    dropText.appendChild(document.createTextNode(file.name));
   } else {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1356,7 +1365,7 @@ function mostrarResultadoHistorico(resultado, statusEl) {
   let html = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
   if (paginasForaDoPrazo > 0) html += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
   if (paginasFalhas.length > 0) {
-    html += `<br>⚠️ ${paginasFalhas.length} página(s) não puderam ser lidas (provavelmente falta de memória do aparelho no meio do processo, não um erro no arquivo). <span style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="reprocessarPaginasFalhas()">Tentar essas páginas de novo</span>`;
+    html += `<br><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${paginasFalhas.length} página(s) não puderam ser lidas (provavelmente falta de memória do aparelho no meio do processo, não um erro no arquivo). <span style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="reprocessarPaginasFalhas()">Tentar essas páginas de novo</span>`;
   }
   statusEl.innerHTML = html;
 }
@@ -1545,7 +1554,7 @@ async function removerTransacao(id) {
   const confirmacao = carregarTransacoes();
   const aindaExiste = confirmacao.some(t => t.id === id);
   if (aindaExiste) {
-    await modalAlerta('⚠️ A exclusão pode não ter sido salva corretamente. Tente excluir de novo, e evite fechar o app logo em seguida.');
+    await modalAlerta('A exclusão pode não ter sido salva corretamente. Tente excluir de novo, e evite fechar o app logo em seguida.');
   }
 
   renderizar();
@@ -1606,11 +1615,23 @@ function formatarMoeda(valor) {
   return 'R$ ' + Number(valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
+const ICONE_NOTA = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
+
+// Escapa antes de jogar em innerHTML - data/local/observacao vem da IA
+// (que le uma imagem enviada pelo usuario) ou de texto digitado, entao nao
+// e um valor confiavel; sem isso, uma imagem malformada de proposito
+// poderia injetar HTML/script na propria sessao de quem enviou.
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
 function renderizarTransacao(t) {
   const div = document.createElement('div');
   div.className = 'transacao';
   const notaHtml = t.observacao
-    ? `<div class="nota" onclick="editarObservacao(${t.id})">📝 ${t.observacao}</div>`
+    ? `<div class="nota" onclick="editarObservacao(${t.id})">${ICONE_NOTA} ${escapeHtml(t.observacao)}</div>`
     : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">OBSERVAÇÃO</div>`;
   div.innerHTML = `
     <div class="info">
@@ -1618,7 +1639,7 @@ function renderizarTransacao(t) {
         <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
         <span class="valor">${formatarMoeda(t.valor)}</span>
       </div>
-      <div class="detalhes">${t.data || '-'} · ${t.local || '-'}</div>
+      <div class="detalhes">${escapeHtml(t.data) || '-'} · ${escapeHtml(t.local) || '-'}</div>
       <div class="linha-nota">
         ${notaHtml}
         <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
@@ -1771,7 +1792,7 @@ function alternarBackup() {
 }
 
 async function apagarTodasTransacoes() {
-  const statusEl = document.getElementById('statusBackup');
+  const statusEl = document.getElementById('statusApagarTudo');
   const total = carregarTransacoes().length;
   if (total === 0) {
     statusEl.textContent = 'Não há transações pra apagar.';
