@@ -1391,12 +1391,12 @@ sendBtn.addEventListener('click', async () => {
       return;
     }
 
-    const adicionadas = await registrarTransacoesRecebidas(transacoes);
+    // Fecha a area de upload ANTES de abrir o dia do registro - se o fechamento
+    // acontecesse depois (ou com atraso), competia com a rolagem suave ate o
+    // dia e dava a impressao de travar e "voltar" pro botao fechado.
     resetForm();
-    status.textContent = adicionadas > 1
-      ? `${adicionadas} transações adicionadas com sucesso.`
-      : 'Transação adicionada com sucesso.';
-    setTimeout(alternarUpload, 1200);
+    alternarUpload();
+    await registrarTransacoesRecebidas(transacoes);
   } catch (err) {
     status.textContent = err.name === 'AbortError'
       ? '⏱️ Sem resposta do servidor mesmo após tentar de novo (provável instabilidade de rede). Tente mais tarde.'
