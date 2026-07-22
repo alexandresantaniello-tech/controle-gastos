@@ -428,6 +428,7 @@
     <img id="preview">
     <input type="file" id="fileInput" accept="image/*,application/pdf">
   </div>
+  <p class="aviso-backup" id="dicaIphone" style="display:none;">📱 No iPhone, o compartilhamento direto de outros apps pro Sifia ainda não é possível (limitação do próprio iOS). Salve a imagem do comprovante e escolha ela aqui em cima.</p>
   <button id="sendBtn" disabled>Analisar comprovante</button>
   <div class="status" id="status"></div>
   <div class="uso-limite" id="usoLimite"></div>
@@ -1066,6 +1067,11 @@ const dropText = document.getElementById('dropText');
 const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
 const TEXTO_PADRAO_DROPZONE = 'Clique ou arraste o print/PDF do comprovante aqui (ou Ctrl+V)';
+
+if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+  const dicaIphone = document.getElementById('dicaIphone');
+  if (dicaIphone) dicaIphone.style.display = 'block';
+}
 
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
