@@ -35,9 +35,12 @@ Se não conseguir identificar algum campo de uma transação, use "desconhecido"
 function getExtractionPromptExtrato() {
   const hoje = new Date();
   const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+  const umAnoAtras = new Date(hoje);
+  umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+  const umAnoAtrasStr = String(umAnoAtras.getDate()).padStart(2, '0') + '/' + String(umAnoAtras.getMonth() + 1).padStart(2, '0') + '/' + umAnoAtras.getFullYear();
 
   return `Voce recebe a imagem de UMA PAGINA de um extrato bancario brasileiro completo (varias paginas no total). Essa pagina especifica pode conter uma TABELA com varias linhas de transacoes (colunas como data, tipo, descricao, valor), ou pode nao conter nenhuma transacao (ex: capa, pagina de contato/atendimento ao cliente, SAC, Ouvidoria, aviso legal, propaganda do banco).
-A data de HOJE e ${hojeStr}.
+A data de HOJE e ${hojeStr}. TODAS as transacoes deste extrato tem data entre ${umAnoAtrasStr} e ${hojeStr} - nao existe transacao fora desse intervalo neste documento. As linhas da tabela quase sempre mostram so DD/MM, sem ano - o ano so aparece explicitamente no cabecalho da secao do mes (ex: "Julho 2026 (...)") ou nas linhas "Saldo do dia DD/MM/AA". Se a pagina for uma CONTINUACAO de um mes (sem esse cabecalho visivel), infira o ano a partir do "Saldo do dia" mais proximo, ou do fato de que so existe UM ano possivel pra cada mes dentro do intervalo ${umAnoAtrasStr} a ${hojeStr} - NUNCA invente um ano fora desse intervalo (ex: nao existe transacao de 2020, 2019, etc. nesse documento). Se genuinamente nao conseguir determinar o ano com confianca, responda "data":"desconhecido" em vez de arriscar um ano errado - inventar e muito pior que admitir que nao sabe.
 Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, uma por item do array, no formato:
 {
   "valor": (numero, ex: 150.50),

@@ -1349,7 +1349,19 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
       // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
       if (resposta.erro) throw new Error(resposta.erro);
-      const transacoes = (resposta.transacoes || []).filter(t => !t.erro && Number(t.valor) > 0);
+      // Descarta transacao com data fora da janela de 1 ano (ex: a IA
+      // alucinando um ano tipo 2020 numa pagina de continuacao sem
+      // cabecalho de mes visivel) - defesa extra alem da instrucao no
+      // prompt, ja que Pix nem existia antes de 16/11/2020.
+      const transacoes = (resposta.transacoes || []).filter(t => {
+        if (t.erro || !(Number(t.valor) > 0)) return false;
+        const d = parseData(t.data);
+        if (d) {
+          const dataTransacao = new Date(d.ano, d.mes, d.dia);
+          if (dataTransacao < umAnoAtras || dataTransacao > new Date()) return false;
+        }
+        return true;
+      });
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
     } catch (err) {
