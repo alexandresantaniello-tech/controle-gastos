@@ -44,7 +44,8 @@ A data de HOJE e ${hojeStr}. TODAS as transacoes deste extrato tem data entre ${
 Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, uma por item do array, no formato:
 {
   "valor": (numero, ex: 150.50),
-  "tipo": (REGRA SEM EXCECAO, verifique isso por ultimo antes de responder cada linha: se a propria descricao da linha contiver "enviado" ou "enviado para" (ex: "Pix enviado para Maria"), o tipo TEM que ser "saida" - dinheiro SAIU da conta, nao importa o que qualquer outra coluna pareca indicar. Se a descricao contiver "recebido" ou "recebido de" (ex: "Pix recebido de Joao"), o tipo TEM que ser "entrada". Essas duas palavras na descricao mandam mais que qualquer outra coisa - nunca marque "Pix enviado para X" como entrada. So quando a descricao NAO tiver nem "enviado" nem "recebido" (ex: "Debito de Cartao", "Pagamento"), use a coluna "Tipo" da linha: "Entrada PIX" = entrada; "Saida PIX", "Debito de Cartao", "Pagamento" = saida),
+  "tipo_bruto_da_coluna": (copie EXATAMENTE o texto que aparece na coluna "Tipo" dessa linha especifica, sem interpretar ainda - ex: "Entrada PIX", "Saida PIX", "Debito de Cartao". Essa e uma transcricao literal - faca isso ANTES de decidir o campo "tipo" abaixo, linha por linha, sem deixar o padrao das linhas anteriores influenciar essa transcricao),
+  "tipo": (derive isso do "tipo_bruto_da_coluna" que voce ACABOU de transcrever nesta mesma linha - nao decida olhando so a descricao ou o padrao geral da pagina: se "tipo_bruto_da_coluna" contiver "Entrada" = entrada. Se contiver "Saida", "Debito" ou "Pagamento" = saida. Como checagem extra: se a descricao contiver "enviado"/"enviado para" o resultado tem que ser saida; se contiver "recebido"/"recebido de" o resultado tem que ser entrada - se isso conflitar com o que voce transcreveu, revise a transcricao, um dos dois esta errado),
   "categoria": (categoria curta inferida do estabelecimento/descricao, ex: "Transporte", "Mercado", "Combustivel", "Salario", "Transferencia entre contas", "Outros"),
   "instituicao": (nome do banco, ou "desconhecido"),
   "local": (nome do estabelecimento/recebedor/pagador exatamente como aparece na linha, ou "desconhecido". Se a coluna "Tipo" da linha disser "Debito de Cartao", prefixe o local com "Debito " (ex: "Debito AUTO POSTO ARACARE"). Se disser algo relacionado a credito (ex: "Credito de Cartao", "Compra no credito"), prefixe com "Credito " (ex: "Credito ANTHROPIC"). Pix ja tem seu proprio prefixo natural ("Pix enviado para X" / "Pix recebido de X") - nao mexa nesses, so adicione o prefixo Debito/Credito pra transacoes de cartao),
@@ -103,7 +104,12 @@ async function lerComprovante(buffer, mediaType, tipo) {
   }
 
   const resultado = JSON.parse(bruto);
-  return Array.isArray(resultado) ? resultado : [resultado];
+  const lista = Array.isArray(resultado) ? resultado : [resultado];
+  // tipo_bruto_da_coluna e um campo de raciocinio intermediario (transcricao
+  // literal antes de decidir entrada/saida) - nao interessa pro cliente, so
+  // ajuda a IA a acertar o campo "tipo" de verdade.
+  lista.forEach(item => delete item.tipo_bruto_da_coluna);
+  return lista;
 }
 
 // Erros com "status" vem da propria API da Anthropic (indisponibilidade, limite,
