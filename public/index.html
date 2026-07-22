@@ -1438,6 +1438,7 @@ function adicionarTransacao(dados) {
 // na lista "Sem data reconhecida" pra corrigir depois.
 async function registrarTransacoesRecebidas(transacoes) {
   let adicionadas = 0;
+  let ultimaComData = null;
   for (const dados of transacoes) {
     if (dados.erro) continue;
     if (!parseData(dados.data)) {
@@ -1449,9 +1450,27 @@ async function registrarTransacoesRecebidas(transacoes) {
     }
     adicionarTransacao(dados);
     adicionadas++;
+    if (parseData(dados.data)) ultimaComData = dados;
   }
   if (adicionadas > 0) registrarUsoComprovante();
+  // Abre direto no dia do registro que acabou de entrar, pra dar certeza
+  // visual (sem precisar caçar manualmente) de que foi salvo certo e no
+  // lugar certo - se vierem varias transacoes de uma vez, usa a ultima
+  // com data valida.
+  if (ultimaComData) abrirRegistroNoDia(ultimaComData);
   return adicionadas;
+}
+
+function abrirRegistroNoDia(t) {
+  const d = parseData(t.data);
+  if (!d) return;
+  mesSelecionado = d.mes;
+  anoSelecionado = d.ano;
+  mesListaAberta = true;
+  diasAbertos.add(d.dia);
+  renderizar();
+  const card = document.getElementById('cardListaMes');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
