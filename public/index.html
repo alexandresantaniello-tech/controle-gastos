@@ -1321,11 +1321,14 @@ async function importarHistorico() {
   // So passa "null" (processar tudo) na primeira vez - se ja tem paginas
   // feitas de uma tentativa anterior, manda so as que faltam, pra nunca
   // reprocessar (e duplicar) o que ja deu certo antes, mesmo que o app
-  // tenha sido fechado no meio do caminho.
-  const todasAsPaginas = await obterTotalPaginas(historicoUltimoArquivo, senha);
-  const paginasParaProcessar = retomando
-    ? todasAsPaginas.filter(p => !paginasFeitas.has(p))
-    : null;
+  // tenha sido fechado no meio do caminho. So abre o PDF uma vez extra
+  // (via obterTotalPaginas) quando realmente precisa - abrir o mesmo PDF
+  // duas vezes seguidas sem necessidade pesa na memoria do aparelho.
+  let paginasParaProcessar = null;
+  if (retomando) {
+    const todasAsPaginas = await obterTotalPaginas(historicoUltimoArquivo, senha);
+    paginasParaProcessar = todasAsPaginas.filter(p => !paginasFeitas.has(p));
+  }
 
   const resultado = await processarPaginasHistorico(historicoUltimoArquivo, senha, paginasParaProcessar, statusEl);
   btn.disabled = false;
@@ -1896,6 +1899,10 @@ async function apagarTodasTransacoes() {
   }
   if (!(await modalConfirmar(`Isso vai apagar TODAS as ${total} transações salvas nesse aparelho, sem volta. Recomendamos fazer um backup antes. Tem certeza que quer continuar?`))) return;
   localStorage.removeItem(STORAGE_KEY);
+  // Se as transacoes sumiram, o registro de "paginas ja feitas" do import
+  // de historico fica sem sentido - sem isso, o app acharia que esta
+  // retomando um import com dados que nao existem mais.
+  limparPaginasFeitas();
   renderizar();
   statusEl.textContent = `${total} transações apagadas.`;
   statusEl.className = 'status';
