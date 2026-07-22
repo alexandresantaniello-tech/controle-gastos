@@ -1268,7 +1268,7 @@ async function importarHistorico() {
     return;
   }
 
-  if (!(await modalConfirmar('Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Continuar?'))) {
+  if (!(await modalConfirmar('Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?'))) {
     return;
   }
 
@@ -1360,10 +1360,12 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       paginasFalhas.push(i);
     }
 
-    // Pausa curta entre paginas pra dar tempo do navegador liberar memoria
-    // (canvas, blob, resposta da IA) antes de seguir - processar 30+ paginas
-    // sem nenhuma folga acumula pressao de memoria e aumenta falhas silenciosas.
-    await new Promise(resolve => setTimeout(resolve, 400));
+    // Pausa generosa entre paginas pra dar tempo do navegador liberar memoria
+    // (canvas, blob, resposta da IA) antes de seguir - decisao deliberada de
+    // priorizar certeza de sucesso em vez de velocidade (o "presente de
+    // boas-vindas" so acontece uma vez, vale a pena levar alguns minutos a
+    // mais e funcionar direito).
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   pdf.destroy();
