@@ -128,6 +128,18 @@
   }
   button:disabled { background: var(--muted); color: var(--muted-foreground); cursor: not-allowed; }
   button.secondary { background: transparent; border: 1px solid var(--border); color: var(--foreground); }
+  .btn-adicionar-principal {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 16px 18px;
+    margin: 4px 0 16px;
+    box-shadow: 0 8px 20px -8px rgba(74,184,253,0.55);
+  }
   .summary { display: flex; gap: 12px; flex-wrap: wrap; }
   .summary .box { flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
   .summary .box .label { font-size: 0.8rem; color: var(--muted-foreground); }
@@ -390,6 +402,8 @@
   <div class="grupo-dia" style="margin-top:0;">⚠️ Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
   <div id="listaSemData"></div>
 </div>
+
+<button class="btn-adicionar-principal" id="btnAdicionarPrincipal" onclick="alternarUpload()">📷 Adicionar comprovante</button>
 
 <div class="toggles-linha">
   <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span class="toggle-texto">Manual</span></div>
@@ -1017,9 +1031,11 @@ function alternarRelatorio() {
 function alternarUpload() {
   const card = document.getElementById('uploadCard');
   const toggle = document.getElementById('uploadToggle');
+  const btnPrincipal = document.getElementById('btnAdicionarPrincipal');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Manual';
+  btnPrincipal.textContent = abrindo ? '– Fechar' : '📷 Adicionar comprovante';
   if (abrindo) atualizarIndicadorUso();
 }
 
