@@ -85,7 +85,11 @@ async function lerComprovante(buffer, mediaType, tipo) {
         ],
       },
     ],
-  }, { timeout: 20000 });
+  // Extrato pode gerar ate ~5-6 mil tokens de resposta numa pagina densa -
+  // 20s era curto demais e cortava a chamada antes de terminar, virando
+  // erro 500 mesmo com tudo certo. Comprovante unico (poucos tokens) nao
+  // precisa de tanto, mas usar o mesmo teto maior nao tem custo real.
+  }, { timeout: tipo === 'extrato' ? 60000 : 20000 });
 
   const textResponse = message.content[0].text.trim();
 

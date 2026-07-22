@@ -1187,7 +1187,10 @@ function handleFile(file) {
 
 async function enviarComprovante(formData, tentativa) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 25000);
+  // Paginas densas do extrato podem levar bem mais que 25s pra gerar a
+  // resposta completa (varios milhares de tokens) - 65s da folga real pro
+  // servidor terminar, alinhado com o timeout do lado do servidor.
+  const timeoutId = setTimeout(() => controller.abort(), 65000);
   try {
     const resp = await fetch('/api/parse-receipt', { method: 'POST', body: formData, signal: controller.signal });
     clearTimeout(timeoutId);
