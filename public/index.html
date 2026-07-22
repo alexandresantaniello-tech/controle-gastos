@@ -113,7 +113,9 @@
   }
   .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); }
   .drop-zone input { display: none; }
-  #preview { max-width: 100%; max-height: 160px; border-radius: var(--radius-sm); margin-top: 12px; display: none; }
+  #preview { max-width: 100%; max-height: 420px; border-radius: var(--radius-sm); margin-top: 12px; display: none; cursor: zoom-in; }
+  #zoomOverlay { cursor: zoom-out; }
+  #zoomOverlay img { max-width: 95vw; max-height: 90vh; border-radius: var(--radius-sm); cursor: default; }
   button {
     background: var(--gradient-crystal);
     color: var(--primary-foreground);
@@ -439,7 +441,8 @@
 <div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
     <div id="dropText">Escolha o arquivo</div>
-    <img id="preview">
+    <img id="preview" onclick="event.stopPropagation(); abrirZoomImagem()">
+    <p class="aviso-backup" id="dicaZoom" style="display:none;">🔍 Toque na imagem pra ampliar e conferir antes de analisar</p>
     <input type="file" id="fileInput" accept="image/*,application/pdf">
   </div>
   <p class="aviso-backup" id="dicaIphone" style="display:none;">📱 No iPhone, o compartilhamento direto de outros apps pro Sifia ainda não é possível (limitação do próprio iOS). Salve a imagem do comprovante e escolha ela aqui em cima.</p>
@@ -657,6 +660,10 @@
     <input type="text" id="modalInput" style="display:none;">
     <div class="modal-acoes" id="modalAcoes"></div>
   </div>
+</div>
+
+<div class="modal-overlay" id="zoomOverlay" onclick="fecharZoomImagem()">
+  <img id="zoomImagem" alt="Comprovante ampliado">
 </div>
 
 <div class="modal-overlay" id="promptOverlay">
@@ -1121,16 +1128,28 @@ document.addEventListener('paste', (e) => {
   }
 });
 
+function abrirZoomImagem() {
+  if (!preview.src) return;
+  document.getElementById('zoomImagem').src = preview.src;
+  document.getElementById('zoomOverlay').classList.add('aberto');
+}
+function fecharZoomImagem() {
+  document.getElementById('zoomOverlay').classList.remove('aberto');
+}
+
 function handleFile(file) {
   imagemSelecionada = file;
+  const dicaZoom = document.getElementById('dicaZoom');
   if (file.type === 'application/pdf') {
     preview.style.display = 'none';
+    dicaZoom.style.display = 'none';
     dropText.textContent = '📄 ' + file.name;
   } else {
     const reader = new FileReader();
     reader.onload = (e) => {
       preview.src = e.target.result;
       preview.style.display = 'block';
+      dicaZoom.style.display = 'block';
       dropText.textContent = file.name;
     };
     reader.readAsDataURL(file);
