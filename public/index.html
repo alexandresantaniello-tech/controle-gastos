@@ -1345,6 +1345,10 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       formData.append('receipt', blob, `pagina-${i}.jpg`);
       formData.append('tipo', 'extrato');
       const resposta = await enviarComprovante(formData, 1);
+      // Um erro do servidor (instabilidade, timeout) vem como {erro: "..."},
+      // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
+      // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
+      if (resposta.erro) throw new Error(resposta.erro);
       const transacoes = (resposta.transacoes || []).filter(t => !t.erro && Number(t.valor) > 0);
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
@@ -1355,6 +1359,11 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       // contagem, pra dar pro usuario a chance de reprocessar so essas.
       paginasFalhas.push(i);
     }
+
+    // Pausa curta entre paginas pra dar tempo do navegador liberar memoria
+    // (canvas, blob, resposta da IA) antes de seguir - processar 30+ paginas
+    // sem nenhuma folga acumula pressao de memoria e aumenta falhas silenciosas.
+    await new Promise(resolve => setTimeout(resolve, 400));
   }
 
   pdf.destroy();
