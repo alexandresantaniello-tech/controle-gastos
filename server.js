@@ -117,61 +117,37 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
   }
 });
 
-// Recebe o compartilhamento nativo do celular (menu "Compartilhar" do Android/iOS via PWA)
+// Recebe o compartilhamento nativo do celular (menu "Compartilhar" do Android via PWA).
+// So redireciona pra "/?compartilhado=..." - quem realmente adiciona as
+// transacoes (e pergunta a data quando a IA nao reconhece) e o mesmo codigo
+// cliente usado pelo Atalho do iOS e, indiretamente, pelo upload manual.
 app.post('/share-target', upload.single('receipt'), async (req, res) => {
-  let dadosJson = 'null';
+  let transacoes = null;
   let erro = null;
 
   if (!req.file) {
     erro = 'Nenhuma imagem recebida no compartilhamento';
   } else {
     try {
-      const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype);
-      dadosJson = JSON.stringify(transacoes);
+      transacoes = await lerComprovante(req.file.buffer, req.file.mimetype);
     } catch (err) {
       console.error(err);
       erro = mensagemErroAmigavel(err);
     }
   }
 
-  const transacoes = JSON.parse(dadosJson);
   const falhou = erro || (transacoes && transacoes[0] && transacoes[0].erro);
   const mensagemErro = erro || (transacoes && transacoes[0] && transacoes[0].erro) || '';
 
+  if (!falhou) {
+    const encoded = encodeURIComponent(JSON.stringify(transacoes));
+    return res.redirect(`/?compartilhado=${encoded}`);
+  }
+
   res.send(`<!DOCTYPE html>
 <html><body style="background:#000919;color:#e6f4fe;font-family:sans-serif;text-align:center;padding-top:35vh;padding-left:24px;padding-right:24px;">
-<p>${falhou ? '❌ Erro: ' + mensagemErro : '✅ Processando comprovante...'}</p>
-${falhou ? '<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>' : ''}
-<script>
-  const STORAGE_KEY = 'controle_gastos_transacoes';
-  const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
-  const transacoes = ${dadosJson};
-  if (transacoes && transacoes.length && !transacoes[0].erro) {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const lista = raw ? JSON.parse(raw) : [];
-    transacoes.forEach((dados, i) => {
-      lista.unshift({ ...dados, id: Date.now() + i });
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
-
-    // Compartilhamento nativo ja chega processado pelo servidor (o custo da IA
-    // ja aconteceu), entao aqui so contabiliza pro limite mensal - nao da pra
-    // bloquear antes, diferente do upload manual, que checa antes de enviar.
-    // Conta 1 por IMAGEM processada, nao por transacao encontrada dentro dela -
-    // e o que reflete o custo real (uma chamada de API, nao uma por transacao).
-    const hoje = new Date();
-    const mesAtual = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
-    const usoRaw = localStorage.getItem(USO_MENSAL_KEY);
-    const uso = (usoRaw && JSON.parse(usoRaw).mes === mesAtual) ? JSON.parse(usoRaw) : { mes: mesAtual, contagem: 0 };
-    uso.contagem += 1;
-    localStorage.setItem(USO_MENSAL_KEY, JSON.stringify(uso));
-
-    window.location.replace('/');
-  }
-  // Em caso de erro, NAO redireciona sozinho - fica na tela mostrando o erro,
-  // pra usuario conseguir ler (antes disso, o redirect imediato escondia
-  // qualquer mensagem de erro, dando a impressao de falha silenciosa).
-</script>
+<p>❌ Erro: ${mensagemErro}</p>
+<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>
 </body></html>`);
 });
 

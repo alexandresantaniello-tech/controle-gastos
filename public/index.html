@@ -1391,11 +1391,10 @@ sendBtn.addEventListener('click', async () => {
       return;
     }
 
-    transacoes.forEach(dados => adicionarTransacao(dados));
-    registrarUsoComprovante();
+    const adicionadas = await registrarTransacoesRecebidas(transacoes);
     resetForm();
-    status.textContent = transacoes.length > 1
-      ? `${transacoes.length} transações adicionadas com sucesso.`
+    status.textContent = adicionadas > 1
+      ? `${adicionadas} transações adicionadas com sucesso.`
       : 'Transação adicionada com sucesso.';
     setTimeout(alternarUpload, 1200);
   } catch (err) {
@@ -1431,6 +1430,28 @@ function adicionarTransacao(dados) {
   lista.unshift(transacao);
   salvarTransacoes(lista);
   renderizar();
+}
+
+// Usada por todo caminho que traz transacoes ja analisadas pela IA (upload
+// manual, compartilhamento Android e Atalho do iOS) - se a IA nao conseguiu
+// reconhecer a data, pergunta na hora em vez de deixar cair silenciosamente
+// na lista "Sem data reconhecida" pra corrigir depois.
+async function registrarTransacoesRecebidas(transacoes) {
+  let adicionadas = 0;
+  for (const dados of transacoes) {
+    if (dados.erro) continue;
+    if (!parseData(dados.data)) {
+      const referencia = dados.local && dados.local !== 'desconhecido' ? dados.local : formatarMoeda(dados.valor);
+      const novaData = await modalPrompt(`Não conseguimos identificar a data desse comprovante (${referencia}). Qual a data? (DD/MM/AAAA)`, '');
+      if (novaData && novaData.trim() && parseData(novaData.trim())) {
+        dados.data = novaData.trim();
+      }
+    }
+    adicionarTransacao(dados);
+    adicionadas++;
+  }
+  if (adicionadas > 0) registrarUsoComprovante();
+  return adicionadas;
 }
 
 // ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
@@ -1876,13 +1897,12 @@ function alternarTermos() {
   card.style.display = abrindo ? 'block' : 'none';
 }
 
-// O iOS/Safari nao tem o Web Share Target que o Android tem - um PWA nunca
-// aparece no menu nativo de compartilhar do iPhone. Pra equivaler o
-// funcionamento, um Atalho da Apple (app Atalhos) manda a imagem
-// compartilhada direto pro /api/parse-receipt e abre essa mesma pagina
-// com o resultado nesse parametro - o app termina o trabalho por aqui,
-// do mesmo jeito que o /share-target termina pro Android.
-function processarComprovanteCompartilhado() {
+// Ponto de entrada unico pra qualquer comprovante que chega ja analisado
+// pela IA via um parametro de URL: tanto o /share-target do Android quanto
+// o Atalho da Apple do iOS (que nao tem Web Share Target - PWA nunca aparece
+// no menu nativo de compartilhar do iPhone) mandam pra ca. Passa pela mesma
+// verificacao de data que o upload manual, entao nenhum caminho escapa dela.
+async function processarComprovanteCompartilhado() {
   const params = new URLSearchParams(window.location.search);
   const dadosCodificados = params.get('compartilhado');
   if (!dadosCodificados) return;
@@ -1893,22 +1913,23 @@ function processarComprovanteCompartilhado() {
 
   try {
     const parsed = JSON.parse(decodeURIComponent(dadosCodificados));
-    // O Atalho da Apple manda a resposta bruta do /api/parse-receipt pra
-    // frente sem processar - aceita tanto {transacoes:[...]} quanto um
-    // array solto, pra nao depender do Atalho saber extrair a chave certa.
+    // Aceita tanto {transacoes:[...]} quanto um array solto, pra nao
+    // depender de quem chama (Atalho, redirect do servidor) saber montar
+    // exatamente o mesmo formato.
     const transacoes = Array.isArray(parsed) ? parsed : (parsed.transacoes || []);
     const validas = transacoes.filter(t => !t.erro);
-    validas.forEach(dados => adicionarTransacao(dados));
-    if (validas.length) {
-      registrarUsoComprovante();
-      status.textContent = `${validas.length} transação(ões) do Atalho adicionada(s).`;
-      status.className = 'status';
-    } else {
-      status.textContent = 'O Atalho não encontrou nenhuma transação nessa imagem.';
+    if (validas.length === 0) {
+      status.textContent = 'Não encontramos nenhuma transação nesse comprovante compartilhado.';
       status.className = 'status error';
+      return;
     }
+    const adicionadas = await registrarTransacoesRecebidas(validas);
+    status.textContent = adicionadas > 1
+      ? `${adicionadas} transações compartilhadas adicionadas.`
+      : 'Transação compartilhada adicionada.';
+    status.className = 'status';
   } catch (err) {
-    status.textContent = 'Não foi possível processar o comprovante compartilhado pelo Atalho.';
+    status.textContent = 'Não foi possível processar o comprovante compartilhado.';
     status.className = 'status error';
   }
 }
