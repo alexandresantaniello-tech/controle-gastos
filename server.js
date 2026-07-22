@@ -49,7 +49,8 @@ Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, u
   "categoria": (categoria curta inferida do estabelecimento/descricao, ex: "Transporte", "Mercado", "Combustivel", "Salario", "Transferencia entre contas", "Outros"),
   "instituicao": (nome do banco, ou "desconhecido"),
   "local": (nome do estabelecimento/recebedor/pagador exatamente como aparece na linha, ou "desconhecido". Se a coluna "Tipo" da linha disser "Debito de Cartao", prefixe o local com "Debito " (ex: "Debito AUTO POSTO ARACARE"). Se disser algo relacionado a credito (ex: "Credito de Cartao", "Compra no credito"), prefixe com "Credito " (ex: "Credito ANTHROPIC"). Pix ja tem seu proprio prefixo natural ("Pix enviado para X" / "Pix recebido de X") - nao mexa nesses, so adicione o prefixo Debito/Credito pra transacoes de cartao),
-  "data": (data da transacao no formato EXATO DD/MM/AAAA, ou "desconhecido" se nao der pra determinar)
+  "ano_bruto_do_saldo": (procure a linha "Saldo do dia DD/MM/AA" mais proxima dessa transacao nesta mesma pagina (antes ou depois) e transcreva EXATAMENTE os 2 digitos do ano que aparecem nela - ex: se a linha disser "Saldo do dia 05/05/26", escreva "26". Isso e uma transcricao literal do que esta escrito na imagem, nao um calculo ou suposicao. Se a pagina tiver um cabecalho de mes com ano completo em vez disso (ex: "Julho 2026 (...)"), transcreva os 4 digitos desse ano aqui em vez disso (ex: "2026")),
+  "data": (construa usando o dia/mes que aparece na linha da transacao + o ano transcrito em "ano_bruto_do_saldo" (some 2000 se ele tiver so 2 digitos) - formato EXATO DD/MM/AAAA. NUNCA calcule ou adivinhe o ano de nenhuma outra forma, mesmo que pareca fazer sentido - use SEMPRE o que voce transcreveu em "ano_bruto_do_saldo". Responda "desconhecido" so se nao conseguir achar nenhuma referencia de ano na pagina)
 }
 IMPORTANTE: se essa pagina NAO tiver nenhuma tabela de transacoes reais (por exemplo, e uma pagina de contato, telefone de atendimento, SAC, Ouvidoria, capa, ou texto institucional/propaganda), responda com um array VAZIO: []. NUNCA invente uma transacao a partir de texto que nao seja uma linha real de extrato - nao crie valores como R$0,00 ou transacoes ficticias.
 Responda APENAS com um JSON valido (um array), sem nenhum texto antes ou depois.`;
@@ -65,10 +66,11 @@ async function lerComprovante(buffer, mediaType, tipo) {
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    // 4000 nao era suficiente pras paginas mais densas do extrato (~50
-    // transacoes) - a resposta cortava no meio do JSON e virava erro de
-    // "nao conseguimos ler essa imagem", mesmo com a imagem perfeita.
-    max_tokens: tipo === 'extrato' ? 8000 : 800,
+    // As paginas mais densas do extrato (~50 transacoes) com os campos de
+    // transcricao (tipo_bruto_da_coluna, ano_bruto_do_saldo) chegam perto de
+    // 5000 tokens de resposta - 16000 da folga confortavel sem cortar o JSON
+    // no meio (o que virava erro de "nao conseguimos ler essa imagem").
+    max_tokens: tipo === 'extrato' ? 16000 : 800,
     // Determinismo: extracao de dados estruturados (valor, tipo, data) nao
     // se beneficia de variacao criativa entre chamadas - reduz o risco de
     // a mesma imagem dar resultados diferentes (ex: entrada/saida trocado)
@@ -108,7 +110,10 @@ async function lerComprovante(buffer, mediaType, tipo) {
   // tipo_bruto_da_coluna e um campo de raciocinio intermediario (transcricao
   // literal antes de decidir entrada/saida) - nao interessa pro cliente, so
   // ajuda a IA a acertar o campo "tipo" de verdade.
-  lista.forEach(item => delete item.tipo_bruto_da_coluna);
+  lista.forEach(item => {
+    delete item.tipo_bruto_da_coluna;
+    delete item.ano_bruto_do_saldo;
+  });
   return lista;
 }
 
