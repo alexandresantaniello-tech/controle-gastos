@@ -62,6 +62,11 @@ async function lerComprovante(buffer, mediaType, tipo) {
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: tipo === 'extrato' ? 4000 : 800,
+    // Determinismo: extracao de dados estruturados (valor, tipo, data) nao
+    // se beneficia de variacao criativa entre chamadas - reduz o risco de
+    // a mesma imagem dar resultados diferentes (ex: entrada/saida trocado)
+    // em tentativas diferentes.
+    temperature: 0,
     messages: [
       {
         role: 'user',
