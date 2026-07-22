@@ -656,10 +656,30 @@
 </div>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// O pdf.js so serve pra funcao de importar extrato bancario (presente de
+// boas-vindas), usada raramente - carregar ele em toda abertura do app
+// pesaria na memoria do aparelho a toa na imensa maioria das sessoes, que
+// so envolvem foto de comprovante comum. Por isso carrega sob demanda, so
+// quando a pessoa realmente for usar essa funcao.
+let pdfJsCarregamento = null;
+function garantirPdfJsCarregado() {
+  if (window.pdfjsLib) return Promise.resolve();
+  if (pdfJsCarregamento) return pdfJsCarregamento;
+  pdfJsCarregamento = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload = () => {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      resolve();
+    };
+    script.onerror = () => {
+      pdfJsCarregamento = null;
+      reject(new Error('pdf.js'));
+    };
+    document.head.appendChild(script);
+  });
+  return pdfJsCarregamento;
 }
 
 const STORAGE_KEY = 'controle_gastos_transacoes';
@@ -1176,8 +1196,18 @@ async function importarHistorico() {
 
   btn.disabled = true;
   statusEl.className = 'status';
-  statusEl.textContent = 'Abrindo o PDF...';
+  statusEl.textContent = 'Preparando o leitor de PDF...';
 
+  try {
+    await garantirPdfJsCarregado();
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível carregar o leitor de PDF. Verifique sua internet e tente de novo.';
+    statusEl.className = 'status error';
+    btn.disabled = false;
+    return;
+  }
+
+  statusEl.textContent = 'Abrindo o PDF...';
   historicoUltimoArquivo = arquivoInput.files[0];
   historicoUltimaSenha = senha;
 
