@@ -1575,6 +1575,19 @@ async function editarObservacao(id) {
   renderizar();
 }
 
+async function editarTipo(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const novoTipo = t.tipo === 'entrada' ? 'saida' : 'entrada';
+  const rotuloAtual = t.tipo === 'entrada' ? 'Entrada' : 'Saída';
+  const rotuloNovo = novoTipo === 'entrada' ? 'Entrada' : 'Saída';
+  if (!(await modalConfirmar(`Trocar essa transação de ${rotuloAtual} pra ${rotuloNovo}?`))) return;
+  t.tipo = novoTipo;
+  salvarTransacoes(lista);
+  renderizar();
+}
+
 async function editarData(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
@@ -1640,7 +1653,7 @@ function renderizarTransacao(t) {
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
-        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarTipo(${t.id})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
         <span class="valor">${formatarMoeda(t.valor)}</span>
       </div>
       <div class="detalhes">${escapeHtml(t.data) || '-'} · ${escapeHtml(t.local) || '-'}</div>
