@@ -1208,10 +1208,31 @@ async function enviarComprovante(formData, tentativa) {
 // ---------- Importar histórico (presente de boas-vindas, uma vez por conta) ----------
 
 const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
+// Guarda quais paginas ja foram processadas com sucesso, mesmo entre
+// fechamentos do app - se o cliente fechar o app no meio (ou o app travar),
+// reabrir e importar o mesmo PDF de novo retoma dali em vez de travar
+// (achando que "ja foi usado") ou duplicar tudo que ja tinha dado certo.
+const HISTORICO_PAGINAS_FEITAS_KEY = 'controle_gastos_historico_paginas_feitas';
+
+function lerPaginasFeitas() {
+  const raw = localStorage.getItem(HISTORICO_PAGINAS_FEITAS_KEY);
+  return raw ? new Set(JSON.parse(raw)) : new Set();
+}
+
+function salvarPaginaFeita(pagina) {
+  const feitas = lerPaginasFeitas();
+  feitas.add(pagina);
+  localStorage.setItem(HISTORICO_PAGINAS_FEITAS_KEY, JSON.stringify([...feitas]));
+}
+
+function limparPaginasFeitas() {
+  localStorage.removeItem(HISTORICO_PAGINAS_FEITAS_KEY);
+}
 
 // Link temporario so pra fase de teste - remover antes do lancamento publico.
 function resetarHistoricoTeste() {
   localStorage.removeItem(HISTORICO_IMPORTADO_KEY);
+  limparPaginasFeitas();
   document.getElementById('btnImportarHistorico').disabled = false;
   document.getElementById('statusHistorico').textContent = '[modo teste] Liberado pra importar de novo.';
 }
@@ -1271,7 +1292,12 @@ async function importarHistorico() {
     return;
   }
 
-  if (!(await modalConfirmar('Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?'))) {
+  const paginasFeitas = lerPaginasFeitas();
+  const retomando = paginasFeitas.size > 0;
+  const mensagemConfirmacao = retomando
+    ? `Detectamos uma importação anterior incompleta (${paginasFeitas.size} página(s) já processada(s) com sucesso). Vamos continuar de onde parou, sem duplicar nada - envie o mesmo arquivo PDF de antes. Continuar?`
+    : 'Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?';
+  if (!(await modalConfirmar(mensagemConfirmacao))) {
     return;
   }
 
@@ -1292,12 +1318,32 @@ async function importarHistorico() {
   historicoUltimoArquivo = arquivoInput.files[0];
   historicoUltimaSenha = senha;
 
-  const resultado = await processarPaginasHistorico(historicoUltimoArquivo, senha, null, statusEl);
+  // So passa "null" (processar tudo) na primeira vez - se ja tem paginas
+  // feitas de uma tentativa anterior, manda so as que faltam, pra nunca
+  // reprocessar (e duplicar) o que ja deu certo antes, mesmo que o app
+  // tenha sido fechado no meio do caminho.
+  const todasAsPaginas = await obterTotalPaginas(historicoUltimoArquivo, senha);
+  const paginasParaProcessar = retomando
+    ? todasAsPaginas.filter(p => !paginasFeitas.has(p))
+    : null;
+
+  const resultado = await processarPaginasHistorico(historicoUltimoArquivo, senha, paginasParaProcessar, statusEl);
   btn.disabled = false;
   if (!resultado) return;
 
-  localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
+  if (resultado.paginasFalhas.length === 0) {
+    localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
+    limparPaginasFeitas();
+  }
   mostrarResultadoHistorico(resultado, statusEl);
+}
+
+async function obterTotalPaginas(arquivo, senha) {
+  const buffer = await arquivo.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer, password: senha || undefined }).promise;
+  const total = pdf.numPages;
+  pdf.destroy();
+  return Array.from({ length: total }, (_, i) => i + 1);
 }
 
 // Processa um extrato (ou um subconjunto de paginas dele, na tentativa de
@@ -1340,6 +1386,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       const dataRecentePagina = dataMaisRecenteNoTexto(texto);
       if (dataRecentePagina && dataRecentePagina < umAnoAtras) {
         paginasForaDoPrazo += 1;
+        salvarPaginaFeita(i);
         continue;
       }
 
@@ -1367,6 +1414,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       });
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
+      salvarPaginaFeita(i);
     } catch (err) {
       // Paginas mais adiante na fila tem mais chance de falhar por pressao
       // de memoria acumulada (celular processando dezenas de paginas em
@@ -1406,6 +1454,10 @@ async function reprocessarPaginasFalhas() {
   const paginas = historicoPaginasFalhas;
   const resultado = await processarPaginasHistorico(historicoUltimoArquivo, historicoUltimaSenha, paginas, statusEl);
   if (!resultado) return;
+  if (resultado.paginasFalhas.length === 0) {
+    localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
+    limparPaginasFeitas();
+  }
   mostrarResultadoHistorico(resultado, statusEl);
 }
 
