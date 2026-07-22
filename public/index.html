@@ -1824,6 +1824,44 @@ function alternarTermos() {
   card.style.display = abrindo ? 'block' : 'none';
 }
 
+// O iOS/Safari nao tem o Web Share Target que o Android tem - um PWA nunca
+// aparece no menu nativo de compartilhar do iPhone. Pra equivaler o
+// funcionamento, um Atalho da Apple (app Atalhos) manda a imagem
+// compartilhada direto pro /api/parse-receipt e abre essa mesma pagina
+// com o resultado nesse parametro - o app termina o trabalho por aqui,
+// do mesmo jeito que o /share-target termina pro Android.
+function processarComprovanteCompartilhado() {
+  const params = new URLSearchParams(window.location.search);
+  const dadosCodificados = params.get('compartilhado');
+  if (!dadosCodificados) return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete('compartilhado');
+  window.history.replaceState({}, '', url);
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(dadosCodificados));
+    // O Atalho da Apple manda a resposta bruta do /api/parse-receipt pra
+    // frente sem processar - aceita tanto {transacoes:[...]} quanto um
+    // array solto, pra nao depender do Atalho saber extrair a chave certa.
+    const transacoes = Array.isArray(parsed) ? parsed : (parsed.transacoes || []);
+    const validas = transacoes.filter(t => !t.erro);
+    validas.forEach(dados => adicionarTransacao(dados));
+    if (validas.length) {
+      registrarUsoComprovante();
+      status.textContent = `${validas.length} transação(ões) do Atalho adicionada(s).`;
+      status.className = 'status';
+    } else {
+      status.textContent = 'O Atalho não encontrou nenhuma transação nessa imagem.';
+      status.className = 'status error';
+    }
+  } catch (err) {
+    status.textContent = 'Não foi possível processar o comprovante compartilhado pelo Atalho.';
+    status.className = 'status error';
+  }
+}
+
+processarComprovanteCompartilhado();
 renderizar();
 
 // Forca reler os dados sempre que o app volta a ficar visivel (ex: apos trocar
