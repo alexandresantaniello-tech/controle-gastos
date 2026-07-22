@@ -61,7 +61,10 @@ async function lerComprovante(buffer, mediaType, tipo) {
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: tipo === 'extrato' ? 4000 : 800,
+    // 4000 nao era suficiente pras paginas mais densas do extrato (~50
+    // transacoes) - a resposta cortava no meio do JSON e virava erro de
+    // "nao conseguimos ler essa imagem", mesmo com a imagem perfeita.
+    max_tokens: tipo === 'extrato' ? 8000 : 800,
     // Determinismo: extracao de dados estruturados (valor, tipo, data) nao
     // se beneficia de variacao criativa entre chamadas - reduz o risco de
     // a mesma imagem dar resultados diferentes (ex: entrada/saida trocado)
