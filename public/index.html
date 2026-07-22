@@ -927,7 +927,20 @@ function renderizarRelatorio() {
     ${temSemObservacao ? '<p class="dica-observacao">💡 Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
     <div class="grupo-dia">Transações do período</div>
     ${linhasCronologicasHtml(transacoes)}
+    ${transacoes.length > 0 ? `<button class="secondary perigo" style="margin-top:16px;" onclick="apagarTransacoesDoPeriodo()">🗑️ Apagar transações de ${label}</button>` : ''}
   `;
+}
+
+async function apagarTransacoesDoPeriodo() {
+  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const doPeriodo = transacoesDoPeriodo();
+  if (doPeriodo.length === 0) return;
+  if (!(await modalConfirmar(`Isso vai apagar as ${doPeriodo.length} transações de "${label}", sem volta. Tem certeza?`))) return;
+  const idsParaApagar = new Set(doPeriodo.map(t => t.id));
+  const restante = carregarTransacoes().filter(t => !idsParaApagar.has(t.id));
+  salvarTransacoes(restante);
+  renderizar();
+  renderizarRelatorio();
 }
 
 function textoResumoRelatorio() {
