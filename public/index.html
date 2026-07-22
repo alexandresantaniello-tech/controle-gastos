@@ -130,6 +130,7 @@
   }
   button:disabled { background: var(--muted); color: var(--muted-foreground); cursor: not-allowed; }
   button.secondary { background: transparent; border: 1px solid var(--border); color: var(--foreground); }
+  button.perigo { border-color: var(--saida); color: var(--saida); }
   .btn-adicionar-principal {
     width: 100%;
     display: flex;
@@ -424,6 +425,8 @@
   <label class="campo">Ou cole aqui o texto do CSV que você compartilhou (ex: no WhatsApp)</label>
   <textarea id="textoCsvRestaurar" rows="4" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
   <button class="secondary" onclick="importarCsvTexto()">📋 Restaurar do texto colado</button>
+
+  <button class="secondary perigo" onclick="apagarTodasTransacoes()">🗑️ Apagar todas as transações</button>
 
   <div class="status" id="statusBackup"></div>
 
@@ -1755,6 +1758,21 @@ function alternarBackup() {
     document.getElementById('btnImportarHistorico').disabled = true;
     document.getElementById('statusHistorico').textContent = 'Presente de boas-vindas já usado nesse aparelho.';
   }
+}
+
+async function apagarTodasTransacoes() {
+  const statusEl = document.getElementById('statusBackup');
+  const total = carregarTransacoes().length;
+  if (total === 0) {
+    statusEl.textContent = 'Não há transações pra apagar.';
+    statusEl.className = 'status';
+    return;
+  }
+  if (!(await modalConfirmar(`Isso vai apagar TODAS as ${total} transações salvas nesse aparelho, sem volta. Recomendamos fazer um backup antes. Tem certeza que quer continuar?`))) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderizar();
+  statusEl.textContent = `${total} transações apagadas.`;
+  statusEl.className = 'status';
 }
 
 function fazerBackup() {
