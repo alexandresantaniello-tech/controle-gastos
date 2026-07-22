@@ -1068,7 +1068,9 @@ const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
 const TEXTO_PADRAO_DROPZONE = 'Clique ou arraste o print/PDF do comprovante aqui (ou Ctrl+V)';
 
-if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+// Temporariamente visivel em qualquer aparelho so pra visualizacao/teste -
+// depois volta a ser so-iOS (ver iPhone|iPad|iPod no user agent).
+{
   const dicaIphone = document.getElementById('dicaIphone');
   if (dicaIphone) dicaIphone.style.display = 'block';
 }
