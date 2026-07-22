@@ -409,7 +409,6 @@
 <button class="btn-adicionar-principal" id="btnAdicionarPrincipal" onclick="alternarUpload()">📷 Adicionar comprovante</button>
 
 <div class="toggles-linha">
-  <div class="upload-toggle" id="uploadToggle" onclick="alternarUpload()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span class="toggle-texto">Manual</span></div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Espécie</span></div>
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
@@ -1053,11 +1052,9 @@ function alternarRelatorio() {
 
 function alternarUpload() {
   const card = document.getElementById('uploadCard');
-  const toggle = document.getElementById('uploadToggle');
   const btnPrincipal = document.getElementById('btnAdicionarPrincipal');
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Manual';
   btnPrincipal.textContent = abrindo ? '– Fechar' : '📷 Adicionar comprovante';
   if (abrindo) atualizarIndicadorUso();
 }
