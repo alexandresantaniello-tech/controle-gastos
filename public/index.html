@@ -1043,6 +1043,9 @@ function alternarUpload() {
 
 const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
 const LIMITE_MENSAL_GRATIS = 30;
+// Fase de teste com poucos usuarios (beta fechado) - limite fica so contando,
+// sem bloquear ninguem. Reverter pra false antes do lancamento pago (17/08).
+const SEM_LIMITE_FASE_TESTE = true;
 
 function mesAtualChave() {
   const d = new Date();
@@ -1064,6 +1067,7 @@ function registrarUsoComprovante() {
 }
 
 function limiteAtingido() {
+  if (SEM_LIMITE_FASE_TESTE) return false;
   return lerUsoMensal().contagem >= LIMITE_MENSAL_GRATIS;
 }
 
@@ -1071,6 +1075,11 @@ function atualizarIndicadorUso() {
   const uso = lerUsoMensal();
   const el = document.getElementById('usoLimite');
   if (!el) return;
+  if (SEM_LIMITE_FASE_TESTE) {
+    el.textContent = `${uso.contagem} comprovantes usados esse mês (sem limite na fase de teste).`;
+    el.className = 'uso-limite';
+    return;
+  }
   el.textContent = `${uso.contagem} de ${LIMITE_MENSAL_GRATIS} comprovantes gratuitos usados esse mês.`;
   el.className = 'uso-limite' + (uso.contagem >= LIMITE_MENSAL_GRATIS ? ' no-limite' : uso.contagem >= LIMITE_MENSAL_GRATIS - 5 ? ' perto-limite' : '');
 }
