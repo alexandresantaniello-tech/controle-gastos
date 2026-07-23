@@ -1218,9 +1218,23 @@ const HISTORICO_PAGINAS_FEITAS_KEY = 'controle_gastos_historico_paginas_feitas';
 // isso, trocar de arquivo entre tentativas faz o app pular paginas do
 // arquivo novo achando que ja foram feitas (eram de outro arquivo).
 const HISTORICO_ARQUIVO_KEY = 'controle_gastos_historico_arquivo_fingerprint';
+// Data mais recente ja vista no texto do extrato, entre todas as paginas
+// processadas - o extrato do banco sempre para um dia ou dois antes de hoje
+// (ele fecha com "sujeito a alteracao ate o final do dia"), entao isso nao e
+// um erro de leitura. Guarda pra avisar o cliente exatamente ate quando foi
+// importado, em vez de deixar ele descobrir sozinho que "falta hoje".
+const HISTORICO_DATA_RECENTE_KEY = 'controle_gastos_historico_data_mais_recente';
 
 function fingerprintArquivo(arquivo) {
   return `${arquivo.name}-${arquivo.size}`;
+}
+
+function atualizarDataMaisRecenteHistorico(data) {
+  if (!data) return;
+  const atual = localStorage.getItem(HISTORICO_DATA_RECENTE_KEY);
+  if (!atual || data > new Date(atual)) {
+    localStorage.setItem(HISTORICO_DATA_RECENTE_KEY, data.toISOString());
+  }
 }
 
 function lerPaginasFeitas() {
@@ -1247,6 +1261,7 @@ function garantirProgressoDoArquivoCerto(arquivo) {
   const fingerprintSalvo = localStorage.getItem(HISTORICO_ARQUIVO_KEY);
   if (fingerprintSalvo !== fingerprintAtual) {
     localStorage.removeItem(HISTORICO_PAGINAS_FEITAS_KEY);
+    localStorage.removeItem(HISTORICO_DATA_RECENTE_KEY);
     localStorage.setItem(HISTORICO_ARQUIVO_KEY, fingerprintAtual);
   }
 }
@@ -1410,6 +1425,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       const texto = conteudoTexto.items.map(item => item.str).join(' ');
       pagina.cleanup();
       const dataRecentePagina = dataMaisRecenteNoTexto(texto);
+      atualizarDataMaisRecenteHistorico(dataRecentePagina);
       if (dataRecentePagina && dataRecentePagina < umAnoAtras) {
         paginasForaDoPrazo += 1;
         salvarPaginaFeita(i);
@@ -1435,18 +1451,25 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
         // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
         if (resposta.erro) throw new Error(resposta.erro);
+        const brutas = (resposta.transacoes || []).filter(t => !t.erro && Number(t.valor) > 0);
+        // Decisao de produto: ou a pagina vem completa, ou conta como falha
+        // de verdade (entra pra reprocessar) - nao aceita parcialmente e
+        // deixa transacao com data desconhecida visivel pro cliente final
+        // como um "conserte isso aqui". Uma transacao sem data reconhecida
+        // e sinal de que a extracao dessa pagina nao foi confiavel como um
+        // todo, entao trata a pagina inteira como pra tentar de novo.
+        const temSemData = brutas.some(t => !parseData(t.data));
+        if (temSemData) {
+          throw new Error('Página retornou transação sem data reconhecida - tratando como falha pra reprocessar.');
+        }
         // Descarta transacao com data fora da janela de 1 ano (ex: a IA
         // alucinando um ano tipo 2020 numa pagina de continuacao sem
         // cabecalho de mes visivel) - defesa extra alem da instrucao no
         // prompt, ja que Pix nem existia antes de 16/11/2020.
-        return (resposta.transacoes || []).filter(t => {
-          if (t.erro || !(Number(t.valor) > 0)) return false;
+        return brutas.filter(t => {
           const d = parseData(t.data);
-          if (d) {
-            const dataTransacao = new Date(d.ano, d.mes, d.dia);
-            if (dataTransacao < umAnoAtras || dataTransacao > new Date()) return false;
-          }
-          return true;
+          const dataTransacao = new Date(d.ano, d.mes, d.dia);
+          return dataTransacao >= umAnoAtras && dataTransacao <= new Date();
         });
       };
 
@@ -1494,6 +1517,12 @@ function mostrarResultadoHistorico(resultado, statusEl) {
   statusEl.className = 'status';
   let html = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
   if (paginasForaDoPrazo > 0) html += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
+  const dataRecenteISO = localStorage.getItem(HISTORICO_DATA_RECENTE_KEY);
+  if (dataRecenteISO && paginasFalhas.length === 0) {
+    const d = new Date(dataRecenteISO);
+    const dataFormatada = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+    html += `<br>Seu extrato importado vai até ${dataFormatada} - é a última data que o próprio banco tinha fechado no arquivo. A partir de agora o Sifia já registra tudo automaticamente, sem precisar de outro upload.`;
+  }
   if (paginasFalhas.length > 0) {
     html += `<br><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> ${paginasFalhas.length} página(s) não puderam ser lidas (provavelmente falta de memória do aparelho no meio do processo, não um erro no arquivo). <span style="color:var(--primary); cursor:pointer; text-decoration:underline;" onclick="reprocessarPaginasFalhas()">Tentar essas páginas de novo</span>`;
   }
