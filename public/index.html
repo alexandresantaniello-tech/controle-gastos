@@ -1393,28 +1393,45 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         continue;
       }
 
-      const blob = await paginaParaBlob(pdf, i);
-      const formData = new FormData();
-      formData.append('receipt', blob, `pagina-${i}.jpg`);
-      formData.append('tipo', 'extrato');
-      const resposta = await enviarComprovante(formData, 1);
-      // Um erro do servidor (instabilidade, timeout) vem como {erro: "..."},
-      // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
-      // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
-      if (resposta.erro) throw new Error(resposta.erro);
-      // Descarta transacao com data fora da janela de 1 ano (ex: a IA
-      // alucinando um ano tipo 2020 numa pagina de continuacao sem
-      // cabecalho de mes visivel) - defesa extra alem da instrucao no
-      // prompt, ja que Pix nem existia antes de 16/11/2020.
-      const transacoes = (resposta.transacoes || []).filter(t => {
-        if (t.erro || !(Number(t.valor) > 0)) return false;
-        const d = parseData(t.data);
-        if (d) {
-          const dataTransacao = new Date(d.ano, d.mes, d.dia);
-          if (dataTransacao < umAnoAtras || dataTransacao > new Date()) return false;
-        }
-        return true;
-      });
+      const enviarEExtrair = async () => {
+        const blob = await paginaParaBlob(pdf, i);
+        const formData = new FormData();
+        formData.append('receipt', blob, `pagina-${i}.jpg`);
+        formData.append('tipo', 'extrato');
+        const resposta = await enviarComprovante(formData, 1);
+        // Um erro do servidor (instabilidade, timeout) vem como {erro: "..."},
+        // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
+        // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
+        if (resposta.erro) throw new Error(resposta.erro);
+        // Descarta transacao com data fora da janela de 1 ano (ex: a IA
+        // alucinando um ano tipo 2020 numa pagina de continuacao sem
+        // cabecalho de mes visivel) - defesa extra alem da instrucao no
+        // prompt, ja que Pix nem existia antes de 16/11/2020.
+        return (resposta.transacoes || []).filter(t => {
+          if (t.erro || !(Number(t.valor) > 0)) return false;
+          const d = parseData(t.data);
+          if (d) {
+            const dataTransacao = new Date(d.ano, d.mes, d.dia);
+            if (dataTransacao < umAnoAtras || dataTransacao > new Date()) return false;
+          }
+          return true;
+        });
+      };
+
+      let transacoes = await enviarEExtrair();
+      // Achado real testando o mesmo documento varias vezes: numa sequencia
+      // longa de paginas, alguma vez ou outra a IA volta com bem menos
+      // transacoes do que a pagina realmente tem (mesmo sem erro nenhum) -
+      // testado isolado, a mesma pagina sempre vem completa. Se o numero
+      // parece baixo demais pra uma pagina de extrato (que normalmente tem
+      // 30-50+ linhas), tenta de novo automaticamente uma vez antes de
+      // aceitar o resultado.
+      if (transacoes.length > 0 && transacoes.length < 15) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const segundaTentativa = await enviarEExtrair();
+        if (segundaTentativa.length > transacoes.length) transacoes = segundaTentativa;
+      }
+
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
       salvarPaginaFeita(i);
