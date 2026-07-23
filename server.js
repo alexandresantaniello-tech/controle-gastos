@@ -26,7 +26,8 @@ Extraia TODAS as transações visíveis na imagem e responda APENAS com um JSON 
   "tipo": ("entrada" se o dinheiro foi RECEBIDO/creditado na conta do usuário, "saida" se foi ENVIADO/debitado da conta do usuário. Preste atenção especial: textos como "você recebeu", "Pix recebido", "creditado", ou valores em VERDE geralmente indicam entrada; textos como "você enviou", "Pix enviado", "pagamento", "debitado", ou valores em VERMELHO/CINZA geralmente indicam saída. Não confunda o nome de quem aparece no comprovante com a direção — o importante é se o dinheiro ENTROU ou SAIU da conta de quem é dono do comprovante),
   "categoria": (categoria da transação, inferida do nome do estabelecimento/recebedor e contexto; use uma categoria curta e específica, ex: "Transporte", "Padaria", "Comida na rua", "Mercado", "Farmácia/Saúde", "Lazer", "Assinaturas", "Contas/Serviços", "Salário", "Cliente/Serviço prestado", "Transferência entre contas", "Outros"),
   "instituicao": (nome do banco/fintech, ou "desconhecido" se não identificar),
-  "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido". Se for uma compra no débito, prefixe com "Débito " (ex: "Débito Padaria Nova"). Se for uma compra no crédito, prefixe com "Crédito " (ex: "Crédito Anthropic"). Pix já tem seu próprio prefixo natural ("Pix enviado para X" / "Pix recebido de X") - não mexa nesses, só adicione o prefixo Débito/Crédito quando for claramente uma compra no cartão),
+  "titulo_bruto_da_notificacao": (se essa transação for uma compra no cartão (não Pix), transcreva EXATAMENTE o título/cabeçalho da notificação, ignorando qualquer outro elemento na tela (barra de status, ícones, outros botões) - ex: "Compra no débito aprovada" ou "Compra no crédito aprovada". Se for Pix, deixe null),
+  "local": (nome do recebedor/pagador ou estabelecimento, ou "desconhecido". Derive o prefixo do que você TRANSCREVEU em "titulo_bruto_da_notificacao": se contiver a palavra "débito", prefixe com "Débito " (ex: "Débito Padaria Nova"); se contiver "crédito", prefixe com "Crédito " (ex: "Crédito Anthropic") - nunca decida isso olhando a tela toda de novo, use só o que você já transcreveu. Pix já tem seu próprio prefixo natural ("Pix enviado para X" / "Pix recebido de X") - não mexa nesses),
   "data": (data da transação no formato EXATO DD/MM/AAAA — sempre com barras, sempre com o ano de 4 digitos, nunca por extenso, ou "desconhecido" se realmente não der pra determinar)
 }
 Se não conseguir identificar algum campo de uma transação, use "desconhecido" nesse campo. Se a imagem não tiver nenhuma transação bancária reconhecível, responda com {"erro": "imagem não reconhecida como comprovante"} (sem array, só esse objeto).`;
@@ -117,6 +118,7 @@ async function lerComprovante(buffer, mediaType, tipo) {
   lista.forEach(item => {
     delete item.tipo_bruto_da_coluna;
     delete item.ano_bruto_do_saldo;
+    delete item.titulo_bruto_da_notificacao;
   });
   return lista;
 }
