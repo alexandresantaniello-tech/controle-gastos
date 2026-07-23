@@ -1421,6 +1421,15 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         const formData = new FormData();
         formData.append('receipt', blob, `pagina-${i}.jpg`);
         formData.append('tipo', 'extrato');
+        // Data de referencia dessa pagina (ja calculada acima, sem custo, so
+        // pro corte de 1 ano) - manda pra IA usar como ancora quando tiver
+        // duvida do ano de alguma transacao, em vez de desistir e responder
+        // "desconhecido". O cliente ja sabe mais sobre essa pagina do que
+        // pedir pra IA adivinhar sozinha linha por linha.
+        if (dataRecentePagina) {
+          const refStr = String(dataRecentePagina.getDate()).padStart(2, '0') + '/' + String(dataRecentePagina.getMonth() + 1).padStart(2, '0') + '/' + dataRecentePagina.getFullYear();
+          formData.append('dataReferenciaPagina', refStr);
+        }
         const resposta = await enviarComprovante(formData, 1);
         // Um erro do servidor (instabilidade, timeout) vem como {erro: "..."},
         // sem "transacoes" - antes isso virava silenciosamente "0 transacoes

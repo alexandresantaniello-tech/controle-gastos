@@ -33,15 +33,24 @@ Extraia TODAS as transações visíveis na imagem e responda APENAS com um JSON 
 Se não conseguir identificar algum campo de uma transação, use "desconhecido" nesse campo. Se a imagem não tiver nenhuma transação bancária reconhecível, responda com {"erro": "imagem não reconhecida como comprovante"} (sem array, só esse objeto).`;
 }
 
-function getExtractionPromptExtrato() {
+function getExtractionPromptExtrato(dataReferenciaPagina) {
   const hoje = new Date();
   const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
   const umAnoAtras = new Date(hoje);
   umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
   const umAnoAtrasStr = String(umAnoAtras.getDate()).padStart(2, '0') + '/' + String(umAnoAtras.getMonth() + 1).padStart(2, '0') + '/' + umAnoAtras.getFullYear();
 
+  // O cliente ja escaneia o texto bruto da pagina (sem custo de IA) so pra
+  // decidir se ela esta dentro do prazo de 1 ano - a data mais recente que
+  // ele acha nesse processo e um sinal real sobre o ano dessa pagina
+  // especifica, mais confiavel que pedir pra IA adivinhar linha por linha.
+  const dicaAncora = dataReferenciaPagina
+    ? `\nDICA IMPORTANTE: uma verificacao previa (fora da IA) encontrou "${dataReferenciaPagina}" como a data mais recente visivel no texto desta pagina especifica. Use isso como ancora forte pro ano de qualquer transacao ambigua nesta pagina - se uma linha mostra so DD/MM sem ano visivel, o ano dela quase certamente e o mesmo ano dessa data de referencia (ou o ano anterior, se o mes da linha for maior que o mes da referencia, indicando uma virada de ano dentro da pagina). Prefira usar essa ancora a responder "desconhecido".`
+    : '';
+
   return `Voce recebe a imagem de UMA PAGINA de um extrato bancario brasileiro completo (varias paginas no total). Essa pagina especifica pode conter uma TABELA com varias linhas de transacoes (colunas como data, tipo, descricao, valor), ou pode nao conter nenhuma transacao (ex: capa, pagina de contato/atendimento ao cliente, SAC, Ouvidoria, aviso legal, propaganda do banco).
-A data de HOJE e ${hojeStr}. TODAS as transacoes deste extrato tem data entre ${umAnoAtrasStr} e ${hojeStr} - nao existe transacao fora desse intervalo neste documento. As linhas da tabela quase sempre mostram so DD/MM, sem ano - o ano so aparece explicitamente no cabecalho da secao do mes (ex: "Julho 2026 (...)") ou nas linhas "Saldo do dia DD/MM/AA". Se a pagina for uma CONTINUACAO de um mes (sem esse cabecalho visivel), infira o ano a partir do "Saldo do dia" mais proximo, ou do fato de que so existe UM ano possivel pra cada mes dentro do intervalo ${umAnoAtrasStr} a ${hojeStr} - NUNCA invente um ano fora desse intervalo (ex: nao existe transacao de 2020, 2019, etc. nesse documento). Se genuinamente nao conseguir determinar o ano com confianca, responda "data":"desconhecido" em vez de arriscar um ano errado - inventar e muito pior que admitir que nao sabe.
+A data de HOJE e ${hojeStr}. TODAS as transacoes deste extrato tem data entre ${umAnoAtrasStr} e ${hojeStr} - nao existe transacao fora desse intervalo neste documento. As linhas da tabela quase sempre mostram so DD/MM, sem ano - o ano so aparece explicitamente no cabecalho da secao do mes (ex: "Julho 2026 (...)") ou nas linhas "Saldo do dia DD/MM/AA". Se a pagina for uma CONTINUACAO de um mes (sem esse cabecalho visivel), infira o ano a partir do "Saldo do dia" mais proximo, ou do fato de que so existe UM ano possivel pra cada mes dentro do intervalo ${umAnoAtrasStr} a ${hojeStr} - NUNCA invente um ano fora desse intervalo (ex: nao existe transacao de 2020, 2019, etc. nesse documento).${dicaAncora}
+Se genuinamente nao conseguir determinar o ano com confianca mesmo usando essa ancora, responda "data":"desconhecido" em vez de arriscar um ano errado - inventar e muito pior que admitir que nao sabe, mas isso deve ser raro agora que voce tem a ancora acima.
 Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, uma por item do array, no formato:
 {
   "valor": (numero, ex: 150.50),
@@ -57,13 +66,13 @@ IMPORTANTE: se essa pagina NAO tiver nenhuma tabela de transacoes reais (por exe
 Responda APENAS com um JSON valido (um array), sem nenhum texto antes ou depois.`;
 }
 
-async function lerComprovante(buffer, mediaType, tipo) {
+async function lerComprovante(buffer, mediaType, tipo, dataReferenciaPagina) {
   const base64Data = buffer.toString('base64');
   const isPdf = mediaType === 'application/pdf';
   const conteudo = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
     : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } };
-  const prompt = tipo === 'extrato' ? getExtractionPromptExtrato() : getExtractionPrompt();
+  const prompt = tipo === 'extrato' ? getExtractionPromptExtrato(dataReferenciaPagina) : getExtractionPrompt();
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -137,7 +146,7 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
   try {
-    const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype, req.body.tipo);
+    const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype, req.body.tipo, req.body.dataReferenciaPagina);
     res.json({ transacoes });
   } catch (err) {
     console.error(err);
