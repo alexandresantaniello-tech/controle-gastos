@@ -1213,6 +1213,15 @@ const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
 // reabrir e importar o mesmo PDF de novo retoma dali em vez de travar
 // (achando que "ja foi usado") ou duplicar tudo que ja tinha dado certo.
 const HISTORICO_PAGINAS_FEITAS_KEY = 'controle_gastos_historico_paginas_feitas';
+// Numero de pagina sozinho nao identifica um documento - "pagina 1" de um
+// extrato de 30 dias nao tem nada a ver com "pagina 1" de um de 1 ano. Sem
+// isso, trocar de arquivo entre tentativas faz o app pular paginas do
+// arquivo novo achando que ja foram feitas (eram de outro arquivo).
+const HISTORICO_ARQUIVO_KEY = 'controle_gastos_historico_arquivo_fingerprint';
+
+function fingerprintArquivo(arquivo) {
+  return `${arquivo.name}-${arquivo.size}`;
+}
 
 function lerPaginasFeitas() {
   const raw = localStorage.getItem(HISTORICO_PAGINAS_FEITAS_KEY);
@@ -1227,6 +1236,19 @@ function salvarPaginaFeita(pagina) {
 
 function limparPaginasFeitas() {
   localStorage.removeItem(HISTORICO_PAGINAS_FEITAS_KEY);
+  localStorage.removeItem(HISTORICO_ARQUIVO_KEY);
+}
+
+// Se o arquivo selecionado agora e diferente do ultimo que tinha progresso
+// salvo, o progresso antigo nao vale nada pra esse arquivo - zera antes de
+// decidir se e uma retomada ou um import novo.
+function garantirProgressoDoArquivoCerto(arquivo) {
+  const fingerprintAtual = fingerprintArquivo(arquivo);
+  const fingerprintSalvo = localStorage.getItem(HISTORICO_ARQUIVO_KEY);
+  if (fingerprintSalvo !== fingerprintAtual) {
+    localStorage.removeItem(HISTORICO_PAGINAS_FEITAS_KEY);
+    localStorage.setItem(HISTORICO_ARQUIVO_KEY, fingerprintAtual);
+  }
 }
 
 // Link temporario so pra fase de teste - remover antes do lancamento publico.
@@ -1292,6 +1314,7 @@ async function importarHistorico() {
     return;
   }
 
+  garantirProgressoDoArquivoCerto(arquivoInput.files[0]);
   const paginasFeitas = lerPaginasFeitas();
   const retomando = paginasFeitas.size > 0;
   const mensagemConfirmacao = retomando
