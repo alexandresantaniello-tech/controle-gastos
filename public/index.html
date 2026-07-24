@@ -1292,12 +1292,13 @@ function dataMaisRecenteNoTexto(texto) {
 
 async function paginaParaBlob(pdf, numeroPagina) {
   const pagina = await pdf.getPage(numeroPagina);
-  // Escala 2.0 (nao 1.3) - testado lado a lado na mesma pagina densa: em
-  // 1.3 a IA as vezes devolve linha com "desconhecido" (nao consegue ler o
-  // texto miudo de verdade, so aproxima por padrao); em 2.0, zero linhas
-  // "desconhecido" em varias repeticoes. Custo extra de token e irrisorio
-  // perto do ganho de confiabilidade.
-  const viewport = pagina.getViewport({ scale: 2.0 });
+  // Escala 2.5 (subiu de 1.3, depois de 2.0) - testado lado a lado na mesma
+  // pagina densa: em 1.3 a IA as vezes devolve linha com "desconhecido"
+  // (nao consegue ler o texto miudo de verdade, so aproxima por padrao);
+  // em 2.0, zero linhas "desconhecido" em varias repeticoes. Subindo mais
+  // pra 2.5 como margem extra de seguranca - custo extra de token e
+  // irrisorio perto do ganho de confiabilidade.
+  const viewport = pagina.getViewport({ scale: 2.5 });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
   canvas.height = viewport.height;
@@ -1506,6 +1507,20 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         const temSemData = brutas.some(t => !parseData(t.data));
         if (temSemData) {
           throw new Error('Página retornou transação sem data reconhecida - tratando como falha pra reprocessar.');
+        }
+        // O gatilho antigo de "veio menos de 15 transacoes, tenta de novo"
+        // nao pega resposta cortada em pagina que naturalmente tem poucas
+        // linhas (ex: uma pagina de 29 transacoes que voltou so 20 nao
+        // dispara esse limite). Comparar com a data mais recente que o
+        // proprio app ja sabia que essa pagina tinha (sem custo de IA, so
+        // lendo o texto puro) e uma checagem mais confiavel: se a IA parou
+        // antes de chegar nessa data, a resposta ficou incompleta.
+        if (dataRecentePagina) {
+          const datasResposta = brutas.map(t => parseData(t.data)).filter(Boolean).map(d => new Date(d.ano, d.mes, d.dia));
+          const maisRecenteResposta = datasResposta.length ? new Date(Math.max(...datasResposta)) : null;
+          if (!maisRecenteResposta || maisRecenteResposta < dataRecentePagina) {
+            throw new Error('Página não cobriu até a data mais recente esperada - tratando como falha pra reprocessar.');
+          }
         }
         // Descarta transacao com data fora da janela de 1 ano (ex: a IA
         // alucinando um ano tipo 2020 numa pagina de continuacao sem
