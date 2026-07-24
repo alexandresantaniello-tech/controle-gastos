@@ -1885,17 +1885,6 @@ async function editarLocal(id) {
   renderizar();
 }
 
-async function editarCategoria(id) {
-  const lista = carregarTransacoes();
-  const t = lista.find(x => x.id === id);
-  if (!t) return;
-  const nova = await modalPrompt('Categoria:', t.categoria && t.categoria !== 'desconhecido' ? t.categoria : '');
-  if (nova === null) return;
-  t.categoria = nova.trim() || 'Outros';
-  salvarTransacoes(lista);
-  renderizar();
-}
-
 async function editarInstituicao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
@@ -1964,8 +1953,6 @@ function renderizarTransacao(t) {
         <span onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
         ·
         <span onclick="editarLocal(${t.id})">${escapeHtml(t.local) || '-'}</span>
-        ·
-        <span onclick="editarCategoria(${t.id})">${escapeHtml(t.categoria) || '-'}</span>
         ·
         <span onclick="editarInstituicao(${t.id})">${escapeHtml(t.instituicao) || '-'}</span>
       </div>
