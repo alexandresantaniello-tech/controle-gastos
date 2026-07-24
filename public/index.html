@@ -672,6 +672,9 @@
   <img id="zoomImagem" alt="Comprovante ampliado">
 </div>
 
+<input type="date" id="inputDataOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
+
+
 <div class="modal-overlay" id="promptOverlay">
   <div class="modal-caixa modal-caixa-larga">
     <p class="modal-mensagem">Prompt pra colar numa IA:</p>
@@ -1833,19 +1836,26 @@ async function editarTipo(id) {
   renderizar();
 }
 
-async function editarData(id) {
+function editarData(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = await modalPrompt('Data (formato DD/MM/AAAA):', t.data && t.data !== 'desconhecido' ? t.data : '');
-  if (nova === null) return;
-  if (nova.trim() && !parseData(nova.trim())) {
-    await modalAlerta('Data inválida. Use o formato DD/MM/AAAA, ex: 13/07/2026.');
-    return;
-  }
-  t.data = nova.trim();
-  salvarTransacoes(lista);
-  renderizar();
+  const inputData = document.getElementById('inputDataOculto');
+  const d = parseData(t.data);
+  // Formato exigido pelo input nativo e AAAA-MM-DD, diferente do formato
+  // DD/MM/AAAA que o resto do app usa - so faz a conversao aqui, o app
+  // continua guardando DD/MM/AAAA como sempre.
+  inputData.value = d
+    ? `${String(d.ano).padStart(4, '0')}-${String(d.mes + 1).padStart(2, '0')}-${String(d.dia).padStart(2, '0')}`
+    : '';
+  inputData.onchange = () => {
+    if (!inputData.value) return;
+    const [ano, mes, dia] = inputData.value.split('-');
+    t.data = `${dia}/${mes}/${ano}`;
+    salvarTransacoes(lista);
+    renderizar();
+  };
+  inputData.showPicker ? inputData.showPicker() : inputData.click();
 }
 
 async function editarValor(id) {
@@ -1947,17 +1957,17 @@ function renderizarTransacao(t) {
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
-        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarTipo(${t.id})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-        <span class="valor" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarValor(${t.id})">${formatarMoeda(t.valor)}</span>
+        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" onclick="editarTipo(${t.id})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <span class="valor" onclick="editarValor(${t.id})">${formatarMoeda(t.valor)}</span>
       </div>
       <div class="detalhes">
-        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
+        <span onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
         ·
-        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarLocal(${t.id})">${escapeHtml(t.local) || '-'}</span>
+        <span onclick="editarLocal(${t.id})">${escapeHtml(t.local) || '-'}</span>
         ·
-        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarCategoria(${t.id})">${escapeHtml(t.categoria) || '-'}</span>
+        <span onclick="editarCategoria(${t.id})">${escapeHtml(t.categoria) || '-'}</span>
         ·
-        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarInstituicao(${t.id})">${escapeHtml(t.instituicao) || '-'}</span>
+        <span onclick="editarInstituicao(${t.id})">${escapeHtml(t.instituicao) || '-'}</span>
       </div>
       <div class="linha-nota">
         ${notaHtml}
