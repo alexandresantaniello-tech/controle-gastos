@@ -67,6 +67,33 @@ Responda APENAS com um JSON valido (um array), sem nenhum texto antes ou depois.
 }
 
 async function lerComprovante(buffer, mediaType, tipo, dataReferenciaPagina) {
+  if (tipo === 'extrato') {
+    return chamarIaComPrompt(buffer, mediaType, 'extrato', dataReferenciaPagina);
+  }
+  // O upload manual (comprovante unico) as vezes recebe uma foto/print de
+  // uma TABELA de extrato inteira, nao uma notificacao/comprovante isolado -
+  // o prompt de comprovante unico nao reconhece esse formato: ou devolve
+  // {"erro": ...}, ou (mais comum na pratica) nem consegue montar um JSON
+  // valido e a chamada JOGA UM ERRO. Os dois casos precisam cair pro
+  // fallback de tabela de extrato - o cliente nao deveria precisar saber
+  // qual botao usar pra cada tipo de imagem.
+  let lista;
+  try {
+    lista = await chamarIaComPrompt(buffer, mediaType, 'comprovante', dataReferenciaPagina);
+  } catch (err) {
+    lista = [{ erro: mensagemErroAmigavel(err) }];
+  }
+  const naoReconheceu = lista.length === 1 && lista[0].erro;
+  if (naoReconheceu) {
+    const listaTabela = await chamarIaComPrompt(buffer, mediaType, 'extrato', null);
+    if (listaTabela.length > 0 && !listaTabela[0].erro) {
+      return listaTabela;
+    }
+  }
+  return lista;
+}
+
+async function chamarIaComPrompt(buffer, mediaType, tipo, dataReferenciaPagina) {
   const base64Data = buffer.toString('base64');
   const isPdf = mediaType === 'application/pdf';
   const conteudo = isPdf
