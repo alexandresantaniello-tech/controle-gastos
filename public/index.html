@@ -1275,10 +1275,16 @@ function resetarHistoricoTeste() {
 }
 
 function dataMaisRecenteNoTexto(texto) {
+  // O cabecalho de cada secao de mes mostra o periodo TOTAL do extrato
+  // inteiro (ex: "Julho 2026 ( 01/07/2026 - 23/07/2026 )") - a segunda data
+  // dessa faixa e quando o extrato foi gerado, nao a ultima transacao desta
+  // pagina especifica. Sem remover isso, uma pagina que so tem transacoes
+  // ate 07/07 podia "achar" que tem ate 23/07, so por causa desse texto.
+  const textoSemFaixaDePeriodo = texto.replace(/\(\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*-\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*\)/g, '');
   const regex = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g;
   let match;
   let maisRecente = null;
-  while ((match = regex.exec(texto)) !== null) {
+  while ((match = regex.exec(textoSemFaixaDePeriodo)) !== null) {
     const dia = parseInt(match[1], 10);
     const mes = parseInt(match[2], 10) - 1;
     let ano = parseInt(match[3], 10);
@@ -1497,7 +1503,15 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         // sem "transacoes" - antes isso virava silenciosamente "0 transacoes
         // nessa pagina" em vez de contar como falha de verdade pra reprocessar.
         if (resposta.erro) throw new Error(resposta.erro);
-        const brutas = (resposta.transacoes || []).filter(t => !t.erro && Number(t.valor) > 0);
+        // A IA transcreve o valor igual aparece na tabela do extrato, que
+        // mostra "-R$ X" pra saida - entao valor de saida vem negativo. O
+        // resto do app (soma de totais, etc.) espera valor sempre positivo
+        // e usa "tipo" pra decidir o sinal - por isso Math.abs aqui, tanto
+        // no filtro quanto no valor guardado (senao toda saida sumia,
+        // porque "valor > 0" rejeitava todo numero negativo).
+        const brutas = (resposta.transacoes || [])
+          .filter(t => !t.erro && Math.abs(Number(t.valor)) > 0)
+          .map(t => ({ ...t, valor: Math.abs(Number(t.valor)) }));
         // Decisao de produto: ou a pagina vem completa, ou conta como falha
         // de verdade (entra pra reprocessar) - nao aceita parcialmente e
         // deixa transacao com data desconhecida visivel pro cliente final
