@@ -1848,6 +1848,33 @@ async function editarData(id) {
   renderizar();
 }
 
+async function editarValor(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const novo = await modalPrompt('Valor (ex: 150,50):', String(t.valor || '').replace('.', ','));
+  if (novo === null) return;
+  const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
+  if (!novo.trim() || isNaN(numero) || numero <= 0) {
+    await modalAlerta('Valor inválido. Digite um número maior que zero, ex: 150,50.');
+    return;
+  }
+  t.valor = numero;
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+async function editarLocal(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const novo = await modalPrompt('Local/recebedor:', t.local && t.local !== 'desconhecido' ? t.local : '');
+  if (novo === null) return;
+  t.local = novo.trim() || 'desconhecido';
+  salvarTransacoes(lista);
+  renderizar();
+}
+
 function renderizarSemData(todas) {
   const semData = todas.filter(t => !parseData(t.data));
   const cardEl = document.getElementById('cardSemData');
@@ -1899,9 +1926,13 @@ function renderizarTransacao(t) {
     <div class="info">
       <div class="linha-topo">
         <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarTipo(${t.id})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-        <span class="valor">${formatarMoeda(t.valor)}</span>
+        <span class="valor" style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarValor(${t.id})">${formatarMoeda(t.valor)}</span>
       </div>
-      <div class="detalhes">${escapeHtml(t.data) || '-'} · ${escapeHtml(t.local) || '-'}</div>
+      <div class="detalhes">
+        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
+        ·
+        <span style="cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;" onclick="editarLocal(${t.id})">${escapeHtml(t.local) || '-'}</span>
+      </div>
       <div class="linha-nota">
         ${notaHtml}
         <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
