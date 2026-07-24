@@ -391,12 +391,8 @@
   </div>
   <div class="value" id="saldo">R$ 0,00</div>
   <div style="margin-top:8px;">
-    <select id="seletorMoeda" onchange="mudarMoeda(this.value)" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem;">
+    <select id="seletorMoeda" onchange="mudarMoeda(this.value)" style="background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; max-width:160px;">
       <option value="BRL">R$ Real</option>
-      <option value="USD">US$ Dólar</option>
-      <option value="EUR">€ Euro</option>
-      <option value="GBP">£ Libra</option>
-      <option value="ARS">AR$ Peso argentino</option>
     </select>
     <span id="taxaCambioInfo" style="font-size:0.75rem; color:var(--muted-foreground); margin-left:6px;"></span>
   </div>
@@ -1938,7 +1934,63 @@ function renderizarSemData(todas) {
 // em outra moeda.
 const MOEDA_KEY = 'controle_gastos_moeda_selecionada';
 const TAXAS_CAMBIO_KEY = 'controle_gastos_taxas_cambio';
-const SIMBOLOS_MOEDA = { BRL: 'R$', USD: 'US$', EUR: '€', GBP: '£', ARS: 'AR$' };
+const SIMBOLOS_MOEDA = {
+  BRL: 'R$', USD: 'US$', EUR: '€', GBP: '£', ARS: 'AR$', CNY: '¥', JPY: '¥',
+  PYG: '₲', UYU: '$U', CAD: 'C$', MXN: 'MX$', CHF: 'CHF', AUD: 'A$', NZD: 'NZ$',
+  INR: '₹', KRW: '₩', HKD: 'HK$', SGD: 'S$', THB: '฿', VND: '₫', ILS: '₪',
+  RUB: '₽', TRY: '₺', PLN: 'zł', SEK: 'kr', NOK: 'kr', DKK: 'kr', ZAR: 'R',
+  CLP: 'CLP$', COP: 'COL$', PEN: 'S/', BOB: 'Bs', VES: 'Bs.S', CRC: '₡',
+  PHP: '₱', IDR: 'Rp', MYR: 'RM', PKR: '₨', BDT: '৳', NGN: '₦', EGP: 'E£',
+  SAR: '﷼', AED: 'د.إ', HUF: 'Ft', CZK: 'Kč', RON: 'lei', UAH: '₴',
+};
+// Prioridade pedida pelo usuario: as 4 originais, depois China/Japao/
+// Paraguai/Uruguai/Canada/Mexico logo em seguida, o resto por ordem
+// alfabetica do nome em portugues.
+const ORDEM_PRIORITARIA_MOEDA = ['USD', 'EUR', 'GBP', 'ARS', 'CNY', 'JPY', 'PYG', 'UYU', 'CAD', 'MXN'];
+const NOMES_MOEDA = {
+  AED: 'Dirham dos Emirados Árabes', AFN: 'Afegani', ALL: 'Lek albanês', AMD: 'Dram armênio',
+  ANG: 'Florim das Antilhas', AOA: 'Kwanza angolano', ARS: 'Peso argentino', AUD: 'Dólar australiano',
+  AWG: 'Florim de Aruba', AZN: 'Manat azerbaijano', BAM: 'Marco bósnio', BBD: 'Dólar de Barbados',
+  BDT: 'Taka de Bangladesh', BGN: 'Lev búlgaro', BHD: 'Dinar do Bahrein', BIF: 'Franco do Burundi',
+  BMD: 'Dólar das Bermudas', BND: 'Dólar de Brunei', BOB: 'Boliviano', BSD: 'Dólar das Bahamas',
+  BTN: 'Ngultrum do Butão', BWP: 'Pula de Botsuana', BYN: 'Rublo bielorrusso', BZD: 'Dólar de Belize',
+  CAD: 'Dólar canadense', CDF: 'Franco congolês', CHF: 'Franco suíço', CLF: 'Unidad de Fomento (Chile)',
+  CLP: 'Peso chileno', CNH: 'Yuan chinês (offshore)', CNY: 'Yuan chinês', COP: 'Peso colombiano',
+  CRC: 'Colón costarriquenho', CUP: 'Peso cubano', CVE: 'Escudo cabo-verdiano', CZK: 'Coroa tcheca',
+  DJF: 'Franco do Djibuti', DKK: 'Coroa dinamarquesa', DOP: 'Peso dominicano', DZD: 'Dinar argelino',
+  EGP: 'Libra egípcia', ERN: 'Nakfa da Eritreia', ETB: 'Birr etíope', EUR: 'Euro',
+  FJD: 'Dólar de Fiji', FKP: 'Libra das Malvinas', FOK: 'Coroa feroesa', GBP: 'Libra esterlina',
+  GEL: 'Lari georgiano', GGP: 'Libra de Guernsey', GHS: 'Cedi ganês', GIP: 'Libra de Gibraltar',
+  GMD: 'Dalasi da Gâmbia', GNF: 'Franco guineense', GTQ: 'Quetzal guatemalteco', GYD: 'Dólar da Guiana',
+  HKD: 'Dólar de Hong Kong', HNL: 'Lempira hondurenho', HRK: 'Kuna croata', HTG: 'Gourde haitiano',
+  HUF: 'Florim húngaro', IDR: 'Rupia indonésia', ILS: 'Novo shekel israelense', IMP: 'Libra da Ilha de Man',
+  INR: 'Rupia indiana', IQD: 'Dinar iraquiano', IRR: 'Rial iraniano', ISK: 'Coroa islandesa',
+  JEP: 'Libra de Jersey', JMD: 'Dólar jamaicano', JOD: 'Dinar jordaniano', JPY: 'Iene japonês',
+  KES: 'Xelim queniano', KGS: 'Som quirguiz', KHR: 'Riel cambojano', KID: 'Dólar de Kiribati',
+  KMF: 'Franco comorense', KRW: 'Won sul-coreano', KWD: 'Dinar kuwaitiano', KYD: 'Dólar das Ilhas Cayman',
+  KZT: 'Tenge cazaque', LAK: 'Kip laosiano', LBP: 'Libra libanesa', LKR: 'Rupia do Sri Lanka',
+  LRD: 'Dólar liberiano', LSL: 'Loti do Lesoto', LYD: 'Dinar líbio', MAD: 'Dirham marroquino',
+  MDL: 'Leu moldávio', MGA: 'Ariary malgaxe', MKD: 'Dinar macedônio', MMK: 'Kyat de Mianmar',
+  MNT: 'Tugrik mongol', MOP: 'Pataca de Macau', MRU: 'Ouguiya mauritano', MUR: 'Rupia de Maurício',
+  MVR: 'Rufiyaa maldivo', MWK: 'Kwacha do Malaui', MXN: 'Peso mexicano', MYR: 'Ringgit malaio',
+  MZN: 'Metical moçambicano', NAD: 'Dólar namibiano', NGN: 'Naira nigeriano', NIO: 'Córdoba nicaraguense',
+  NOK: 'Coroa norueguesa', NPR: 'Rupia nepalesa', NZD: 'Dólar neozelandês', OMR: 'Rial de Omã',
+  PAB: 'Balboa panamenho', PEN: 'Sol peruano', PGK: 'Kina de Papua-Nova Guiné', PHP: 'Peso filipino',
+  PKR: 'Rupia paquistanesa', PLN: 'Zloti polonês', PYG: 'Guarani paraguaio', QAR: 'Rial do Catar',
+  RON: 'Leu romeno', RSD: 'Dinar sérvio', RUB: 'Rublo russo', RWF: 'Franco ruandês',
+  SAR: 'Rial saudita', SBD: 'Dólar das Ilhas Salomão', SCR: 'Rupia de Seicheles', SDG: 'Libra sudanesa',
+  SEK: 'Coroa sueca', SGD: 'Dólar de Singapura', SHP: 'Libra de Santa Helena', SLE: 'Leone de Serra Leoa',
+  SLL: 'Leone de Serra Leoa (antigo)', SOS: 'Xelim somali', SRD: 'Dólar do Suriname', SSP: 'Libra do Sudão do Sul',
+  STN: 'Dobra de São Tomé e Príncipe', SYP: 'Libra síria', SZL: 'Lilangeni suazi', THB: 'Baht tailandês',
+  TJS: 'Somoni tadjique', TMT: 'Manat turcomeno', TND: 'Dinar tunisiano', TOP: 'Paʻanga de Tonga',
+  TRY: 'Lira turca', TTD: 'Dólar de Trinidad e Tobago', TVD: 'Dólar de Tuvalu', TWD: 'Novo dólar taiwanês',
+  TZS: 'Xelim tanzaniano', UAH: 'Hryvnia ucraniano', UGX: 'Xelim ugandense', USD: 'Dólar americano',
+  UYU: 'Peso uruguaio', UZS: 'Som uzbeque', VES: 'Bolívar venezuelano', VND: 'Dong vietnamita',
+  VUV: 'Vatu de Vanuatu', WST: 'Tala samoano', XAF: 'Franco CFA (África Central)', XCD: 'Dólar do Caribe Oriental',
+  XCG: 'Florim caribenho', XDR: 'Direito Especial de Saque (FMI)', XOF: 'Franco CFA (África Ocidental)',
+  XPF: 'Franco CFP', YER: 'Rial iemenita', ZAR: 'Rand sul-africano', ZMW: 'Kwacha zambiano',
+  ZWG: 'Gold-backed dollar do Zimbábue', ZWL: 'Dólar do Zimbábue',
+};
 let moedaSelecionada = localStorage.getItem(MOEDA_KEY) || 'BRL';
 let taxasCambio = null;
 
@@ -1975,6 +2027,33 @@ function mudarMoeda(nova) {
   renderizar();
 }
 
+// So da pra montar a lista completa depois que o cambio carrega (e o que
+// diz quais moedas a API realmente suporta) - por isso isso roda depois de
+// carregarTaxasCambio(), nao no carregamento inicial da pagina.
+function popularSeletorMoeda() {
+  if (!taxasCambio) return;
+  const select = document.getElementById('seletorMoeda');
+  const codigosDisponiveis = Object.keys(taxasCambio).filter(c => c !== 'BRL');
+  const prioritarias = ORDEM_PRIORITARIA_MOEDA.filter(c => codigosDisponiveis.includes(c));
+  const resto = codigosDisponiveis
+    .filter(c => !ORDEM_PRIORITARIA_MOEDA.includes(c))
+    .sort((a, b) => (NOMES_MOEDA[a] || a).localeCompare(NOMES_MOEDA[b] || b, 'pt-BR'));
+
+  select.innerHTML = '<option value="BRL">R$ Real</option>';
+  [...prioritarias, ...resto].forEach(codigo => {
+    const opt = document.createElement('option');
+    opt.value = codigo;
+    const simbolo = SIMBOLOS_MOEDA[codigo] || codigo;
+    opt.textContent = `${simbolo} ${NOMES_MOEDA[codigo] || codigo}`;
+    select.appendChild(opt);
+  });
+  // Restaura a moeda que o usuario ja tinha escolhido (guardada no
+  // localStorage), nao o que o <select> mostrava antes de popular - antes
+  // de popularSeletorMoeda() rodar, o select so tem a opcao BRL, entao
+  // usar o valor dele aqui resetaria a escolha do usuario de volta pra BRL.
+  select.value = moedaSelecionada;
+}
+
 function atualizarInfoCambio() {
   const infoEl = document.getElementById('taxaCambioInfo');
   if (!infoEl) return;
@@ -1994,7 +2073,8 @@ function formatarMoeda(valor) {
     return 'R$ ' + numero.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   }
   const convertido = numero * taxasCambio[moedaSelecionada];
-  return SIMBOLOS_MOEDA[moedaSelecionada] + ' ' + convertido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  const simbolo = SIMBOLOS_MOEDA[moedaSelecionada] || moedaSelecionada;
+  return simbolo + ' ' + convertido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
 const ICONE_NOTA = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
@@ -2402,6 +2482,7 @@ processarComprovanteCompartilhado();
 document.getElementById('seletorMoeda').value = moedaSelecionada;
 renderizar();
 carregarTaxasCambio().then(() => {
+  popularSeletorMoeda();
   atualizarInfoCambio();
   if (moedaSelecionada !== 'BRL') renderizar();
 });
