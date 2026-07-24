@@ -1343,12 +1343,25 @@ async function importarHistorico() {
   statusEl.className = 'status';
   statusEl.textContent = 'Preparando o leitor de PDF...';
 
+  // O processamento leva minutos - se a tela do celular apagar no meio, o
+  // Android suspende a aba em segundo plano e trava o processo ate o
+  // usuario reabrir. Pedir a tela ligada evita essa causa de travamento.
+  let travaDeTela = null;
+  try {
+    if ('wakeLock' in navigator) {
+      travaDeTela = await navigator.wakeLock.request('screen');
+    }
+  } catch (err) {
+    // Sem suporte ou permissao - segue sem a trava, nao impede a importacao.
+  }
+
   try {
     await garantirPdfJsCarregado();
   } catch (err) {
     statusEl.textContent = 'Não foi possível carregar o leitor de PDF. Verifique sua internet e tente de novo.';
     statusEl.className = 'status error';
     btn.disabled = false;
+    if (travaDeTela) travaDeTela.release();
     return;
   }
 
@@ -1370,6 +1383,7 @@ async function importarHistorico() {
 
   const resultado = await processarPaginasHistorico(historicoUltimoArquivo, senha, paginasParaProcessar, statusEl);
   btn.disabled = false;
+  if (travaDeTela) travaDeTela.release();
   if (!resultado) return;
 
   if (resultado.paginasFalhas.length === 0) {
@@ -1391,6 +1405,17 @@ async function obterTotalPaginas(arquivo, senha) {
 // reprocessar falhas). Recebe o arquivo (nao o ArrayBuffer ja lido) porque
 // o pdf.js pode transferir/esvaziar o buffer ao abrir o documento - lendo o
 // arquivo de novo a cada chamada evita reusar um buffer ja consumido.
+// Corre uma promessa contra um limite de tempo. Sem isso, se a renderizacao
+// da pagina (canvas) travar no navegador do celular sob pressao de memoria,
+// a promessa correspondente nunca resolve nem rejeita - o processo inteiro
+// fica esperando pra sempre, sem erro nenhum aparecer pro usuario.
+function comLimiteDeTempo(promessa, ms) {
+  return Promise.race([
+    promessa,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Página demorou demais pra processar (provável travamento do navegador) - tratando como falha pra reprocessar.')), ms)),
+  ]);
+}
+
 async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, statusEl) {
   const buffer = await arquivo.arrayBuffer();
   let pdf;
@@ -1473,7 +1498,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         });
       };
 
-      let transacoes = await enviarEExtrair();
+      let transacoes = await comLimiteDeTempo(enviarEExtrair(), 180000);
       // Achado real testando o mesmo documento varias vezes: numa sequencia
       // longa de paginas, alguma vez ou outra a IA volta com bem menos
       // transacoes do que a pagina realmente tem (mesmo sem erro nenhum) -
@@ -1483,7 +1508,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       // aceitar o resultado.
       if (transacoes.length > 0 && transacoes.length < 15) {
         await new Promise(resolve => setTimeout(resolve, 1000));
-        const segundaTentativa = await enviarEExtrair();
+        const segundaTentativa = await comLimiteDeTempo(enviarEExtrair(), 180000);
         if (segundaTentativa.length > transacoes.length) transacoes = segundaTentativa;
       }
 
@@ -1533,7 +1558,12 @@ async function reprocessarPaginasFalhas() {
   if (!historicoUltimoArquivo || !historicoPaginasFalhas.length) return;
   const statusEl = document.getElementById('statusHistorico');
   const paginas = historicoPaginasFalhas;
+  let travaDeTela = null;
+  try {
+    if ('wakeLock' in navigator) travaDeTela = await navigator.wakeLock.request('screen');
+  } catch (err) {}
   const resultado = await processarPaginasHistorico(historicoUltimoArquivo, historicoUltimaSenha, paginas, statusEl);
+  if (travaDeTela) travaDeTela.release();
   if (!resultado) return;
   if (resultado.paginasFalhas.length === 0) {
     localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
