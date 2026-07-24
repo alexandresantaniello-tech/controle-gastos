@@ -1315,6 +1315,13 @@ async function paginaParaBlob(pdf, numeroPagina) {
 let historicoUltimoArquivo = null;
 let historicoUltimaSenha = null;
 let historicoPaginasFalhas = [];
+// Se o usuario apertar "apagar tudo" enquanto uma importacao anterior ainda
+// esta rodando em segundo plano (uma chamada de IA que nao terminou), essa
+// chamada antiga pode terminar DEPOIS do apagar e escrever uma pagina como
+// "concluida" de novo - reaparecendo dado que acabou de ser apagado. Esse
+// numero muda a cada apagar-tudo; cada rodada de importacao guarda o valor
+// que tinha quando comecou e para de escrever se ele mudar no meio.
+let importacaoEpoca = 0;
 
 async function importarHistorico() {
   const statusEl = document.getElementById('statusHistorico');
@@ -1440,8 +1447,16 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
   const paginasFalhas = [];
   const umAnoAtras = new Date();
   umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+  const epocaDestaImportacao = importacaoEpoca;
 
   for (let idx = 0; idx < paginas.length; idx++) {
+    if (importacaoEpoca !== epocaDestaImportacao) {
+      // As transacoes foram apagadas depois que essa importacao comecou -
+      // para na hora, sem escrever mais nada (senao reaparece dado que o
+      // usuario acabou de apagar).
+      pdf.destroy();
+      return null;
+    }
     const i = paginas[idx];
     statusEl.textContent = `Processando página ${i} (${idx + 1} de ${paginas.length})...`;
     try {
@@ -1517,6 +1532,13 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         if (segundaTentativa.length > transacoes.length) transacoes = segundaTentativa;
       }
 
+      // Confere de novo bem antes de escrever - a chamada de IA acima pode ter
+      // levado dezenas de segundos, tempo suficiente pro usuario ter apertado
+      // "apagar tudo" enquanto ela ainda estava em andamento.
+      if (importacaoEpoca !== epocaDestaImportacao) {
+        pdf.destroy();
+        return null;
+      }
       transacoes.forEach(dados => adicionarTransacao(dados));
       totalTransacoes += transacoes.length;
       salvarPaginaFeita(i);
@@ -2016,6 +2038,10 @@ async function apagarTodasTransacoes() {
   // de historico fica sem sentido - sem isso, o app acharia que esta
   // retomando um import com dados que nao existem mais.
   limparPaginasFeitas();
+  // Invalida qualquer importacao de extrato ainda rodando em segundo plano -
+  // sem isso, uma pagina que estava no meio de ser lida pela IA podia
+  // terminar depois do apagar e escrever transacao/progresso de novo.
+  importacaoEpoca++;
   renderizar();
   statusEl.textContent = `${total} transações apagadas.`;
   statusEl.className = 'status';
