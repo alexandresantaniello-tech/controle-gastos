@@ -63,8 +63,9 @@
     body { padding: 24px; }
   }
   h1 { font-size: 1.4rem; margin-bottom: 4px; letter-spacing: -0.02em; }
-  .header-logo { margin-bottom: 8px; }
-  .header-logo img { width: 128px; height: 128px; display: block; }
+  .header-logo { margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .header-logo img { width: 96px; height: 96px; display: block; flex-shrink: 0; }
+  .header-logo .nome-app { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; color: var(--foreground); }
   p.subtitle { color: var(--muted-foreground); margin-top: 0; font-size: 0.9rem; }
   .card {
     background: var(--card);
@@ -363,7 +364,8 @@
 <body>
 
 <div class="header-logo">
-  <img src="/logo-header.png" alt="Sifia" width="128" height="128">
+  <img src="/logo-header.png" alt="Sifia" width="96" height="96">
+  <span class="nome-app">Sifia</span>
 </div>
 <p class="subtitle">Sistema de Informação Financeira por IA, semi-automático — com apenas um print você registra suas movimentações de forma simples e segura.</p>
 
