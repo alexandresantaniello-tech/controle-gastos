@@ -884,28 +884,38 @@ function transacoesDoPeriodo() {
   });
 }
 
-// Agrupa por observacao (ou local, se nao tiver observacao) e soma cada
-// grupo - em vez de uma lista cronologica crua, o cliente ja ve "Uber: +R$X,
-// Combustivel: -R$Y" pronto, tipo uma planilha. Entradas primeiro (maior
-// pro menor), depois saidas (maior pro menor) - pedido explicito do
-// usuario, vale pra qualquer tipo de periodo (diario, semanal, mensal...).
+// So agrupa/soma quem TEM observacao de verdade (ex: "Uber", "Combustivel")
+// - vira uma planilha resumida, entradas primeiro (maior pro menor), depois
+// saidas (maior pro menor). Quem nao tem observacao continua exatamente
+// como era antes: lista individual, cronologica, sem somar nada - o
+// usuario so ganha o resumo depois que ele mesmo classifica a transacao.
 function agruparPorObservacao(transacoes) {
+  const comObservacao = transacoes.filter(t => t.observacao);
+  const semObservacao = transacoes.filter(t => !t.observacao);
+
   const grupos = {};
-  transacoes.forEach(t => {
-    const descricao = t.observacao || t.local || 'Sem observação';
-    const chave = `${t.tipo}|${descricao}`;
-    if (!grupos[chave]) grupos[chave] = { descricao, tipo: t.tipo, total: 0 };
+  comObservacao.forEach(t => {
+    const chave = `${t.tipo}|${t.observacao}`;
+    if (!grupos[chave]) grupos[chave] = { descricao: t.observacao, tipo: t.tipo, total: 0 };
     grupos[chave].total += Number(t.valor || 0);
   });
   const lista = Object.values(grupos);
   const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => b.total - a.total);
   const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => b.total - a.total);
-  return [...entradas, ...saidas];
+
+  const semObservacaoOrdenadas = [...semObservacao].sort((a, b) => {
+    const da = parseData(a.data), db = parseData(b.data);
+    if (!da || !db) return 0;
+    return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
+  });
+
+  return { grupos: [...entradas, ...saidas], semObservacao: semObservacaoOrdenadas };
 }
 
 function linhasAgrupadasHtml(transacoes) {
   if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
-  return agruparPorObservacao(transacoes).map(g => {
+  const { grupos, semObservacao } = agruparPorObservacao(transacoes);
+  const linhasGrupos = grupos.map(g => {
     const classeCor = g.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = g.tipo === 'entrada' ? '+' : '-';
     return `
@@ -914,6 +924,17 @@ function linhasAgrupadasHtml(transacoes) {
       <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
     </div>`;
   }).join('');
+  const linhasIndividuais = semObservacao.map(t => {
+    const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
+    const sinal = t.tipo === 'entrada' ? '+' : '-';
+    const descricao = escapeHtml(t.local) || '-';
+    return `
+    <div class="relatorio-resumo-linha">
+      <span>${escapeHtml(t.data) || '-'} — ${descricao}</span>
+      <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
+    </div>`;
+  }).join('');
+  return linhasGrupos + linhasIndividuais;
 }
 
 function renderizarRelatorio() {
@@ -977,9 +998,15 @@ function textoResumoRelatorio() {
 
   if (transacoes.length > 0) {
     texto += `\nTransações do período:\n`;
-    agruparPorObservacao(transacoes).forEach(g => {
+    const { grupos, semObservacao } = agruparPorObservacao(transacoes);
+    grupos.forEach(g => {
       const sinal = g.tipo === 'entrada' ? '+' : '-';
       texto += `- ${g.descricao}: ${sinal}${formatarMoeda(g.total)}\n`;
+    });
+    semObservacao.forEach(t => {
+      const sinal = t.tipo === 'entrada' ? '+' : '-';
+      const descricao = t.local || '-';
+      texto += `- ${t.data || 'sem data'} — ${descricao}: ${sinal}${formatarMoeda(t.valor)}\n`;
     });
   }
 
