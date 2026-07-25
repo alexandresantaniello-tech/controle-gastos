@@ -341,7 +341,7 @@
     padding: 20px;
     overflow-y: auto;
   }
-  .modal-overlay .modal-caixa { margin-top: 12vh; }
+  .modal-overlay .modal-caixa { margin-top: 6vh; }
   .modal-overlay.aberto { display: flex; }
   .modal-caixa {
     background: var(--card);
@@ -350,6 +350,8 @@
     padding: 20px;
     max-width: 340px;
     width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
   }
   .modal-mensagem { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--foreground); }
   .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
@@ -707,7 +709,7 @@
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
     <div class="modal-acoes" id="modalAcoes"></div>
-    <div id="modalSugestoes" style="display:none; flex-wrap:wrap; gap:6px; margin-top:12px;"></div>
+    <div id="modalSugestoes" style="display:none; flex-wrap:wrap; align-content:flex-start; gap:6px; margin-top:12px; max-height:32vh; overflow-y:auto;"></div>
     <div id="modalListaOpcoes" style="display:none; max-height:50vh; overflow-y:auto; margin-top:8px; border-radius:var(--radius-sm); border:1px solid var(--border);"></div>
   </div>
 </div>
@@ -1818,8 +1820,24 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       sugestoes.forEach(texto => {
         const chip = document.createElement('span');
         chip.className = 'modal-sugestao';
-        chip.textContent = texto;
-        chip.onclick = () => { inputEl.value = texto; inputEl.focus(); };
+        // So preenche, nao foca - focar abriria o teclado sem necessidade,
+        // ja que escolher uma sugestao pronta normalmente nao precisa digitar
+        // mais nada.
+        chip.onclick = () => { inputEl.value = texto; };
+        const rotulo = document.createElement('span');
+        rotulo.textContent = texto;
+        chip.appendChild(rotulo);
+        // "x" pra excluir a sugestao da lista - separado do toque no chip
+        // (stopPropagation pra nao preencher o campo tambem ao excluir).
+        const excluir = document.createElement('span');
+        excluir.textContent = ' ×';
+        excluir.style.opacity = '0.6';
+        excluir.onclick = (ev) => {
+          ev.stopPropagation();
+          esquecerObservacao(texto);
+          chip.remove();
+        };
+        chip.appendChild(excluir);
         sugestoesEl.appendChild(chip);
       });
       // "Criar" so limpa e foca o campo pra digitar uma categoria nova - ao
@@ -1870,8 +1888,20 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       acoesEl.appendChild(btnOk);
     }
 
+    // Toca no fundo escurecido (fora da caixa) fecha igual o Cancelar -
+    // sem isso, o unico jeito de sair sem escolher nada era o botao voltar
+    // do celular, que tira do app inteiro em vez de so fechar o modal.
+    overlay.onclick = (ev) => {
+      if (ev.target === overlay && !somenteOk) fechar(comInput || comSelect ? null : false);
+    };
+
     overlay.classList.add('aberto');
-    if (comInput) setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+    // So abre o teclado sozinho quando NAO tem chips de sugestao - com
+    // chips, o normal e so tocar numa sugestao (sem digitar nada), entao o
+    // teclado subindo automatico so atrapalha. Continua abrindo automatico
+    // pra prompt simples (ex: editar local, valor) onde digitar e a unica
+    // acao possivel.
+    if (comInput && !sugestoes) setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
   });
 }
 
@@ -1926,6 +1956,11 @@ function lembrarObservacao(texto) {
   }
 }
 
+function esquecerObservacao(texto) {
+  const conhecidas = lerObservacoesConhecidas().filter(o => o !== texto);
+  localStorage.setItem(OBSERVACOES_CONHECIDAS_KEY, JSON.stringify(conhecidas));
+}
+
 // Sugestoes de observacao: toda categoria ja conhecida (usada antes ou
 // criada manualmente), ordenada das mais frequentes nas transacoes atuais
 // pras menos - mais confiavel que depender do teclado do celular aprender
@@ -1938,7 +1973,9 @@ function observacoesFrequentes(excluirId) {
     if (!t.observacao || t.id === excluirId) return;
     contagem[t.observacao] = (contagem[t.observacao] || 0) + 1;
   });
-  return Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]).slice(0, 8);
+  // Sem limite de quantidade - a lista tem rolagem propria (#modalSugestoes),
+  // entao toda categoria ja criada/usada fica sempre disponivel.
+  return Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
 }
 
 async function editarObservacao(id) {
