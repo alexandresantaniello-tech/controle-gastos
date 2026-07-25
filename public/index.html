@@ -717,6 +717,7 @@ function garantirPdfJsCarregado() {
 
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
+const DICA_EDITAVEL_FECHADA_KEY = 'controle_gastos_dica_editavel_fechada';
 
 function fecharDica() {
   localStorage.setItem(DICA_FECHADA_KEY, '1');
@@ -2200,7 +2201,7 @@ function renderizar() {
       porDia[dia].push(t);
     });
 
-    Object.keys(porDia).map(Number).sort((a, b) => b - a).forEach(dia => {
+    Object.keys(porDia).map(Number).sort((a, b) => b - a).forEach((dia, indice) => {
       const transacoesDoDia = porDia[dia];
       const totalDia = transacoesDoDia.reduce((s, t) => s + (t.tipo === 'entrada' ? Number(t.valor || 0) : -Number(t.valor || 0)), 0);
       const aberto = diasAbertos.has(dia);
@@ -2216,6 +2217,20 @@ function renderizar() {
 
       if (aberto) {
         transacoesDoDia.forEach(t => container.appendChild(renderizarTransacao(t)));
+      }
+
+      // So uma vez, logo apos o primeiro dia da lista - avisa que da pra
+      // tocar em qualquer campo (valor, data, local, etc.) pra editar, ja
+      // que os campos nao tem mais nenhum sinal visual disso (de proposito,
+      // pra poder "camuflar" informacao sensivel sem ficar obvio que e
+      // editavel).
+      if (indice === 0 && !localStorage.getItem(DICA_EDITAVEL_FECHADA_KEY)) {
+        const dica = document.createElement('p');
+        dica.className = 'aviso-backup';
+        dica.style.cursor = 'pointer';
+        dica.innerHTML = `<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Toda informação de uma transação é editável - toque em qualquer campo (valor, data, local, etc.) pra corrigir ou alterar. (toque aqui pra não ver de novo)`;
+        dica.onclick = () => { localStorage.setItem(DICA_EDITAVEL_FECHADA_KEY, '1'); dica.remove(); };
+        container.appendChild(dica);
       }
     });
   }
