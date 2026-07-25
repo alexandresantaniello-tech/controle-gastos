@@ -2746,15 +2746,20 @@ async function editarLocalDinheiro() {
   atualizarNotaLocalDinheiro();
 }
 
-// O teclado numerico cobre boa parte da tela e o formulario de Especie e
-// mais alto que o espaco que sobra - sem isso, "Salvar lancamento" ficava
-// escondido atras do teclado depois de digitar o Valor, sem indicacao de
-// que dava pra rolar ate ele.
-document.getElementById('valorDinheiro').addEventListener('focus', () => {
-  setTimeout(() => {
-    document.getElementById('valorDinheiro').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 300);
-});
+// Padrao Sifia pra qualquer campo de texto/numero solto na pagina (fora de
+// modal, que ja tem seu proprio tratamento de teclado): ao focar, rola o
+// campo pro topo da tela, sobrando o maximo de espaco visivel abaixo do
+// teclado (seja ele numerico ou de escrita) pra alcancar o resto do
+// formulario e o botao de acao sem precisar fechar o teclado antes.
+function evitarTecladoCobrindoFormulario(idCampo) {
+  document.getElementById(idCampo).addEventListener('focus', () => {
+    setTimeout(() => {
+      document.getElementById(idCampo).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  });
+}
+evitarTecladoCobrindoFormulario('valorDinheiro');
+evitarTecladoCobrindoFormulario('senhaHistorico');
 
 let dataDinheiroSelecionadaISO = '';
 
