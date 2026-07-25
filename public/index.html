@@ -169,6 +169,10 @@
     margin-top: 2px;
     overflow-wrap: break-word;
   }
+  /* Mais area de toque em cada campo (data/local/instituicao) - sem isso,
+     campos vizinhos (ex: "Pagador" e "Instituição/espécie ou pix") ficam
+     colados e é fácil tocar no errado por engano. */
+  .transacao .detalhes > span { display: inline-block; padding: 4px 3px; margin: -4px -3px; }
   .linha-nota {
     display: flex;
     flex-wrap: wrap;
