@@ -1858,6 +1858,12 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
         };
         sugestoesEl.appendChild(chip);
       });
+      // Linha separada (margem em cima) pros botoes de acao, com cor propria
+      // - verde pra criar, vermelho pra excluir - fica visualmente distinto
+      // das sugestoes normais (azuis).
+      const linhaAcoes = document.createElement('div');
+      linhaAcoes.style.cssText = 'display:flex; flex-wrap:wrap; gap:20px; margin-top:14px; width:100%;';
+
       // "Criar" so limpa e foca o campo pra digitar uma categoria nova - ao
       // confirmar com OK, ela fica lembrada (lembrarObservacao) e vira
       // sugestao permanente nas proximas vezes, mesmo antes de qualquer
@@ -1865,20 +1871,26 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       const chipCriar = document.createElement('span');
       chipCriar.className = 'modal-sugestao';
       chipCriar.style.borderStyle = 'dashed';
+      chipCriar.style.color = 'var(--entrada)';
+      chipCriar.style.borderColor = 'var(--entrada)';
       chipCriar.textContent = '+ Criar nova';
       chipCriar.onclick = () => { inputEl.value = ''; inputEl.focus(); };
-      sugestoesEl.appendChild(chipCriar);
+      linhaAcoes.appendChild(chipCriar);
 
       const chipExcluir = document.createElement('span');
       chipExcluir.className = 'modal-sugestao';
       chipExcluir.style.borderStyle = 'dashed';
+      chipExcluir.style.color = 'var(--destructive)';
+      chipExcluir.style.borderColor = 'var(--destructive)';
       chipExcluir.textContent = '− Excluir categoria';
       chipExcluir.onclick = () => {
         modoExcluir = !modoExcluir;
         chipExcluir.textContent = modoExcluir ? 'Toque na categoria pra excluir...' : '− Excluir categoria';
         sugestoesEl.classList.toggle('modo-excluir', modoExcluir);
       };
-      sugestoesEl.appendChild(chipExcluir);
+      linhaAcoes.appendChild(chipExcluir);
+
+      sugestoesEl.appendChild(linhaAcoes);
     }
 
     function fechar(valor) {
