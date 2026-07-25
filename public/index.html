@@ -1196,7 +1196,7 @@ async function compartilharResumo() {
 async function compartilharCsv() {
   const csv = gerarCsv();
   const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
-  const nomeArquivo = `gastos-${label.replace(/[^\w]+/g, '-')}.csv`;
+  const nomeArquivo = `financas-${label.replace(/[^\w]+/g, '-')}.csv`;
   const statusEl = document.getElementById('statusRelatorio');
   const arquivo = new File([csv], nomeArquivo, { type: 'text/csv' });
 
