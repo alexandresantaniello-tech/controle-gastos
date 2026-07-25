@@ -1233,7 +1233,14 @@ function alternarRelatorio() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   renderizarRelatorio();
@@ -1249,7 +1256,14 @@ function alternarUpload() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   textoPrincipal.textContent = '– Fechar';
   iconePrincipal.style.display = 'none';
@@ -2641,7 +2655,14 @@ function alternarDinheiro() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
@@ -2697,7 +2718,14 @@ function alternarBackup() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2710,7 +2738,14 @@ function alternarUploadHistorico() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2893,7 +2928,14 @@ function alternarPrivacidade() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
   empilharVoltarSecao(secaoAnterior);
@@ -2905,7 +2947,14 @@ function alternarTermos() {
   const abrindo = card.style.display === 'none';
   const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
-  if (!abrindo) return;
+  if (!abrindo) {
+    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
+    // "cheguei onde queria", zera o historico em vez de deixar a setinha
+    // flutuante presa apontando pra um estado que nao existe mais.
+    pilhaVoltarSecao = [];
+    atualizarBotaoVoltar();
+    return;
+  }
   card.style.display = 'block';
   toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
   empilharVoltarSecao(secaoAnterior);
