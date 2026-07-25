@@ -347,6 +347,17 @@
   .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .modal-acoes button { margin-top: 0; }
   .modal-caixa-larga { max-width: 480px; max-height: 85vh; display: flex; flex-direction: column; }
+  .modal-opcao {
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    color: var(--foreground);
+    background: var(--secondary);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .modal-opcao:last-child { border-bottom: none; }
+  .modal-opcao:active { background: var(--accent); }
+  .modal-opcao.selecionada { background: var(--gradient-crystal); color: var(--primary-foreground); font-weight: 700; }
   .prompt-texto {
     background: var(--secondary);
     border: 1px solid var(--border);
@@ -677,7 +688,7 @@
   <div class="modal-caixa">
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
-    <select id="modalSelect" style="display:none; width:100%; padding:16px 18px; border-radius:var(--radius-sm); background:var(--gradient-crystal); color:var(--primary-foreground); border:none; font-size:1.05rem; font-weight:700; font-family:var(--font-sans); margin-top:8px; box-shadow:0 8px 20px -8px rgba(74,184,253,0.55); text-align:center; text-align-last:center;"></select>
+    <div id="modalListaOpcoes" style="display:none; max-height:50vh; overflow-y:auto; margin-top:8px; border-radius:var(--radius-sm); border:1px solid var(--border);"></div>
     <div class="modal-acoes" id="modalAcoes"></div>
   </div>
 </div>
@@ -1738,28 +1749,33 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
     const overlay = document.getElementById('modalOverlay');
     const msgEl = document.getElementById('modalMensagem');
     const inputEl = document.getElementById('modalInput');
-    const selectEl = document.getElementById('modalSelect');
+    const listaEl = document.getElementById('modalListaOpcoes');
     const acoesEl = document.getElementById('modalAcoes');
 
     msgEl.textContent = mensagem;
     inputEl.style.display = comInput ? 'block' : 'none';
     inputEl.value = valorInicial;
-    selectEl.style.display = comSelect ? 'block' : 'none';
-    if (comSelect) {
-      selectEl.innerHTML = '';
-      opcoesSelect.forEach(([valor, rotulo]) => {
-        const opt = document.createElement('option');
-        opt.value = valor;
-        opt.textContent = rotulo;
-        selectEl.appendChild(opt);
-      });
-      selectEl.value = valorInicial;
-    }
+    listaEl.style.display = comSelect ? 'block' : 'none';
 
     function fechar(valor) {
       overlay.classList.remove('aberto');
       acoesEl.innerHTML = '';
+      listaEl.innerHTML = '';
       resolve(valor);
+    }
+
+    if (comSelect) {
+      // Lista customizada (nao <select> nativo) - assim da pra estilizar
+      // igual o resto do app; um <select> nativo abre um picker do proprio
+      // Android/iOS quando tocado, que nao aceita CSS nenhum da pagina.
+      listaEl.innerHTML = '';
+      opcoesSelect.forEach(([valor, rotulo]) => {
+        const opcao = document.createElement('div');
+        opcao.className = 'modal-opcao' + (valor === valorInicial ? ' selecionada' : '');
+        opcao.textContent = rotulo;
+        opcao.onclick = () => fechar(valor);
+        listaEl.appendChild(opcao);
+      });
     }
 
     acoesEl.innerHTML = '';
@@ -1770,10 +1786,12 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       btnCancelar.onclick = () => fechar(comInput || comSelect ? null : false);
       acoesEl.appendChild(btnCancelar);
     }
-    const btnOk = document.createElement('button');
-    btnOk.textContent = textoOk;
-    btnOk.onclick = () => fechar(comSelect ? selectEl.value : comInput ? inputEl.value : true);
-    acoesEl.appendChild(btnOk);
+    if (!comSelect) {
+      const btnOk = document.createElement('button');
+      btnOk.textContent = textoOk;
+      btnOk.onclick = () => fechar(comInput ? inputEl.value : true);
+      acoesEl.appendChild(btnOk);
+    }
 
     overlay.classList.add('aberto');
     if (comInput) setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
