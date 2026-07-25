@@ -382,6 +382,13 @@
     cursor: pointer;
   }
   .modal-sugestao:active { background: var(--accent); }
+  /* Modo exclusao ativo: chips normais (nao os de borda tracejada, que sao
+     as acoes "+ Criar"/"- Excluir") ficam vermelhos, deixando claro que
+     tocar agora exclui em vez de selecionar. */
+  #modalSugestoes.modo-excluir .modal-sugestao:not([style*="dashed"]) {
+    color: var(--destructive);
+    border-color: var(--destructive);
+  }
   .prompt-texto {
     background: var(--secondary);
     border: 1px solid var(--border);
@@ -1827,33 +1834,28 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       // Toca na sugestao so preenche o campo (nao fecha o modal sozinho) -
       // observacao costuma precisar de um ajuste leve as vezes, diferente
       // da moeda que e escolha fechada.
+      // Modo exclusao: em vez de um "x" grudado em cada chip (facil de
+      // tocar sem querer), o botao "- Excluir categoria" liga um modo em
+      // que TOCAR NUM CHIP exclui ele (com confirmacao nativa) em vez de
+      // preenche-lo. Fica claro visualmente (chips ficam vermelhos) que o
+      // modo esta ativo.
+      let modoExcluir = false;
       sugestoes.forEach(texto => {
         const chip = document.createElement('span');
         chip.className = 'modal-sugestao';
-        // So preenche, nao foca - focar abriria o teclado sem necessidade,
-        // ja que escolher uma sugestao pronta normalmente nao precisa digitar
-        // mais nada.
-        chip.onclick = () => { inputEl.value = texto; };
-        const rotulo = document.createElement('span');
-        rotulo.textContent = texto;
-        chip.appendChild(rotulo);
-        // "x" pra excluir a sugestao da lista - separado do toque no chip
-        // (stopPropagation pra nao preencher o campo tambem ao excluir).
-        // Confirmacao nativa (window.confirm), nao o modal proprio do app -
-        // esse modal ja esta aberto nesse momento, e abrir outro por cima
-        // reusando a mesma caixa bagunçaria os dois ao mesmo tempo. Existe
-        // pra proteger contra toque sem querer no "x", que fica coladinho
-        // no resto do chip.
-        const excluir = document.createElement('span');
-        excluir.textContent = ' ×';
-        excluir.style.opacity = '0.6';
-        excluir.onclick = (ev) => {
-          ev.stopPropagation();
-          if (!window.confirm(`Excluir "${texto}" da lista de sugestões?`)) return;
-          esquecerObservacao(texto);
-          chip.remove();
+        chip.textContent = texto;
+        chip.onclick = () => {
+          if (modoExcluir) {
+            if (!window.confirm(`Excluir "${texto}" da lista de sugestões?`)) return;
+            esquecerObservacao(texto);
+            chip.remove();
+            return;
+          }
+          // So preenche, nao foca - focar abriria o teclado sem necessidade,
+          // ja que escolher uma sugestao pronta normalmente nao precisa
+          // digitar mais nada.
+          inputEl.value = texto;
         };
-        chip.appendChild(excluir);
         sugestoesEl.appendChild(chip);
       });
       // "Criar" so limpa e foca o campo pra digitar uma categoria nova - ao
@@ -1866,6 +1868,17 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       chipCriar.textContent = '+ Criar nova';
       chipCriar.onclick = () => { inputEl.value = ''; inputEl.focus(); };
       sugestoesEl.appendChild(chipCriar);
+
+      const chipExcluir = document.createElement('span');
+      chipExcluir.className = 'modal-sugestao';
+      chipExcluir.style.borderStyle = 'dashed';
+      chipExcluir.textContent = '− Excluir categoria';
+      chipExcluir.onclick = () => {
+        modoExcluir = !modoExcluir;
+        chipExcluir.textContent = modoExcluir ? 'Toque na categoria pra excluir...' : '− Excluir categoria';
+        sugestoesEl.classList.toggle('modo-excluir', modoExcluir);
+      };
+      sugestoesEl.appendChild(chipExcluir);
     }
 
     function fechar(valor) {
