@@ -180,13 +180,11 @@
     gap: 6px 10px;
     margin-top: 4px;
   }
-  /* Tag de moeda fica sempre no meio (coluna central do grid), com cor
-     dourada pra remeter a moeda de verdade, separada visualmente do azul
-     de observacao/excluir. */
+  /* Tag de moeda fica sempre no meio (coluna central do grid). */
   .linha-nota > span.nota,
   .linha-nota > span.nota-vazia {
     justify-self: center;
-    color: #d4af37 !important;
+    color: #fff !important;
   }
   .transacao .nota {
     font-size: 0.78rem;
@@ -213,6 +211,7 @@
     flex-shrink: 0;
     padding: 4px 2px;
     letter-spacing: 0.02em;
+    justify-self: end;
   }
   .excluir-link:hover { opacity: 1; }
   .status { font-size: 0.85rem; color: var(--muted-foreground); margin-top: 8px; min-height: 1.2em; }
