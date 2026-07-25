@@ -399,6 +399,25 @@
 </head>
 <body>
 
+<div id="avisoErroDiagnostico" style="display:none; background:#5a1010; color:#fff; padding:10px 14px; font-size:0.8rem; font-family:monospace; word-break:break-all; position:sticky; top:0; z-index:2000;"></div>
+<script>
+  // Diagnostico temporario - mostra erro de JS na propria tela (visivel pro
+  // usuario, sem precisar de console) - ajuda a achar bug remoto sem acesso
+  // ao aparelho. Remover depois que o bug do toque em Observacao for achado.
+  window.addEventListener('error', (ev) => {
+    const el = document.getElementById('avisoErroDiagnostico');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = `[erro] ${ev.message} — ${ev.filename ? ev.filename.split('/').pop() : ''}:${ev.lineno}:${ev.colno}`;
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    const el = document.getElementById('avisoErroDiagnostico');
+    if (!el) return;
+    el.style.display = 'block';
+    el.textContent = `[erro assincrono] ${ev.reason && ev.reason.message ? ev.reason.message : ev.reason}`;
+  });
+</script>
+
 <div class="header-logo">
   <img src="/logo-header.png" alt="Sifia" width="96" height="96">
   <span class="nome-app">Sifia</span>
