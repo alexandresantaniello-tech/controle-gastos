@@ -391,6 +391,7 @@
     align-items: center;
     justify-content: space-between;
   }
+  .campo-clicavel span.vazio { color: var(--muted-foreground); }
   .calendario-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
   .calendario-cabecalho .nav { background: transparent; border: 1px solid var(--border); color: var(--foreground); padding: 6px 16px; margin-top: 0; }
   .calendario-titulo { font-weight: 600; font-size: 1rem; text-transform: capitalize; }
@@ -573,7 +574,10 @@
     <button type="button" id="btnSaidaDinheiro" class="ativo-saida" onclick="selecionarTipoDinheiro('saida')">Saída</button>
   </div>
 
-  <div class="nota nota-vazia" id="localDinheiro" onclick="editarLocalDinheiro()" style="display:inline-block; margin-top:14px;">RECEBEDOR</div>
+  <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()" style="margin-top:14px;">
+    <span id="textoLocalDinheiro" class="vazio">RECEBEDOR</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+  </div>
 
   <label class="campo">Data</label>
   <div class="campo-clicavel" id="campoDataDinheiro" onclick="abrirCalendarioDinheiro()">
@@ -581,7 +585,10 @@
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   </div>
 
-  <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block; margin-top:14px;">OBSERVAÇÃO</div>
+  <div class="campo-clicavel" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="margin-top:14px;">
+    <span id="textoNotaDinheiro" class="vazio">OBSERVAÇÃO</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+  </div>
 
   <div style="text-align:center; margin-top:16px;">
     <button onclick="salvarDinheiro()">Salvar lançamento</button>
@@ -2732,10 +2739,10 @@ function rotuloLocalDinheiro() {
 }
 
 function atualizarNotaLocalDinheiro() {
-  const el = document.getElementById('localDinheiro');
+  const el = document.getElementById('textoLocalDinheiro');
   if (!el) return;
   el.textContent = localDinheiroAtual ? localDinheiroAtual : rotuloLocalDinheiro();
-  el.classList.toggle('nota-vazia', !localDinheiroAtual);
+  el.classList.toggle('vazio', !localDinheiroAtual);
 }
 
 async function editarLocalDinheiro() {
@@ -2778,10 +2785,10 @@ async function abrirCalendarioDinheiro() {
 let observacaoDinheiroAtual = '';
 
 function atualizarNotaDinheiro() {
-  const el = document.getElementById('notaDinheiro');
+  const el = document.getElementById('textoNotaDinheiro');
   if (!el) return;
   el.textContent = observacaoDinheiroAtual ? observacaoDinheiroAtual : 'OBSERVAÇÃO';
-  el.classList.toggle('nota-vazia', !observacaoDinheiroAtual);
+  el.classList.toggle('vazio', !observacaoDinheiroAtual);
 }
 
 // Mesmo modal com sugestoes/criar/excluir usado em qualquer transacao -
