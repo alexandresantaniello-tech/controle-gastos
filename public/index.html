@@ -377,6 +377,29 @@
     cursor: pointer;
   }
   .btn-voltar-flutuante.visivel { display: flex; }
+  .campo-clicavel {
+    width: 100%;
+    background: var(--input);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    margin-top: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .calendario-cabecalho { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .calendario-cabecalho .nav { background: transparent; border: 1px solid var(--border); color: var(--foreground); padding: 6px 16px; margin-top: 0; }
+  .calendario-titulo { font-weight: 600; font-size: 1rem; text-transform: capitalize; }
+  .calendario-dias-semana { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.75rem; color: var(--muted-foreground); margin-bottom: 6px; }
+  .calendario-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendario-dia { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 50%; cursor: pointer; font-size: 0.9rem; color: var(--foreground); }
+  .calendario-dia:hover { background: var(--secondary); }
+  .calendario-dia.hoje { border: 1px solid var(--primary); }
+  .calendario-dia.selecionado { background: var(--primary); color: var(--card); font-weight: 600; }
   .modal-caixa {
     background: var(--card);
     border: 1px solid var(--border);
@@ -550,8 +573,13 @@
     <button type="button" id="btnSaidaDinheiro" class="ativo-saida" onclick="selecionarTipoDinheiro('saida')">Saída</button>
   </div>
 
+  <div class="nota nota-vazia" id="localDinheiro" onclick="editarLocalDinheiro()" style="display:inline-block; margin-top:14px;">RECEBEDOR</div>
+
   <label class="campo">Data</label>
-  <input type="date" id="dataDinheiro">
+  <div class="campo-clicavel" id="campoDataDinheiro" onclick="abrirCalendarioDinheiro()">
+    <span id="textoDataDinheiro">-</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  </div>
 
   <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block; margin-top:14px;">OBSERVAÇÃO</div>
 
@@ -758,9 +786,20 @@
   <img id="zoomImagem" alt="Comprovante ampliado">
 </div>
 
-<input type="date" id="inputDataOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
-
-
+<div class="modal-overlay centralizado" id="calendarioOverlay">
+  <div class="modal-caixa">
+    <div class="calendario-cabecalho">
+      <button type="button" class="nav" onclick="mudarMesCalendario(-1)">‹</button>
+      <div class="calendario-titulo" id="calendarioTitulo">-</div>
+      <button type="button" class="nav" onclick="mudarMesCalendario(1)">›</button>
+    </div>
+    <div class="calendario-dias-semana"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+    <div class="calendario-grade" id="calendarioGrade"></div>
+    <div class="modal-acoes">
+      <button class="secondary" onclick="fecharCalendario(null)">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // O pdf.js so serve pra funcao de importar extrato bancario (presente de
@@ -2081,6 +2120,61 @@ function modalAlerta(mensagem) {
   return abrirModal({ mensagem, somenteOk: true });
 }
 
+// ---------- Calendario proprio (substitui o input[type=date] nativo, que
+// nao aceita CSS nenhum e abre o picker feio do proprio Android/iOS - mesma
+// logica ja usada pro seletor de moeda). ----------
+let calendarioResolve = null;
+let calendarioAnoAtual = 0;
+let calendarioMesAtual = 0;
+let calendarioDiaSelecionado = null;
+
+function abrirSeletorData(valorInicialISO) {
+  return new Promise((resolve) => {
+    calendarioResolve = resolve;
+    const base = valorInicialISO ? new Date(valorInicialISO + 'T00:00:00') : new Date();
+    calendarioAnoAtual = base.getFullYear();
+    calendarioMesAtual = base.getMonth();
+    calendarioDiaSelecionado = valorInicialISO || null;
+    renderizarCalendario();
+    document.getElementById('calendarioOverlay').classList.add('aberto');
+  });
+}
+
+function mudarMesCalendario(delta) {
+  calendarioMesAtual += delta;
+  if (calendarioMesAtual > 11) { calendarioMesAtual = 0; calendarioAnoAtual++; }
+  if (calendarioMesAtual < 0) { calendarioMesAtual = 11; calendarioAnoAtual--; }
+  renderizarCalendario();
+}
+
+function renderizarCalendario() {
+  document.getElementById('calendarioTitulo').textContent = `${NOMES_MESES[calendarioMesAtual]} de ${calendarioAnoAtual}`;
+  const grade = document.getElementById('calendarioGrade');
+  const primeiroDiaSemana = new Date(calendarioAnoAtual, calendarioMesAtual, 1).getDay();
+  const diasNoMes = new Date(calendarioAnoAtual, calendarioMesAtual + 1, 0).getDate();
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  let html = '';
+  for (let i = 0; i < primeiroDiaSemana; i++) html += '<span></span>';
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const iso = `${calendarioAnoAtual}-${String(calendarioMesAtual + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    const classes = ['calendario-dia'];
+    if (iso === calendarioDiaSelecionado) classes.push('selecionado');
+    if (iso === hojeISO) classes.push('hoje');
+    html += `<span class="${classes.join(' ')}" onclick="fecharCalendario('${iso}')">${dia}</span>`;
+  }
+  grade.innerHTML = html;
+}
+
+function fecharCalendario(iso) {
+  document.getElementById('calendarioOverlay').classList.remove('aberto');
+  if (calendarioResolve) calendarioResolve(iso);
+  calendarioResolve = null;
+}
+
+document.getElementById('calendarioOverlay').onclick = (ev) => {
+  if (ev.target.id === 'calendarioOverlay') fecharCalendario(null);
+};
+
 async function removerTransacao(id) {
   if (!(await modalConfirmar('Tem certeza que quer excluir essa transação?'))) return;
   const lista = carregarTransacoes().filter(t => t.id !== id);
@@ -2202,26 +2296,23 @@ async function editarTipo(id) {
   renderizar();
 }
 
-function editarData(id) {
+async function editarData(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const inputData = document.getElementById('inputDataOculto');
   const d = parseData(t.data);
-  // Formato exigido pelo input nativo e AAAA-MM-DD, diferente do formato
-  // DD/MM/AAAA que o resto do app usa - so faz a conversao aqui, o app
-  // continua guardando DD/MM/AAAA como sempre.
-  inputData.value = d
+  // Formato do calendario e AAAA-MM-DD, diferente do formato DD/MM/AAAA que
+  // o resto do app usa - so faz a conversao aqui, o app continua guardando
+  // DD/MM/AAAA como sempre.
+  const iso = d
     ? `${String(d.ano).padStart(4, '0')}-${String(d.mes + 1).padStart(2, '0')}-${String(d.dia).padStart(2, '0')}`
     : '';
-  inputData.onchange = () => {
-    if (!inputData.value) return;
-    const [ano, mes, dia] = inputData.value.split('-');
-    t.data = `${dia}/${mes}/${ano}`;
-    salvarTransacoes(lista);
-    renderizar();
-  };
-  inputData.showPicker ? inputData.showPicker() : inputData.click();
+  const escolhida = await abrirSeletorData(iso);
+  if (!escolhida) return;
+  const [ano, mes, dia] = escolhida.split('-');
+  t.data = `${dia}/${mes}/${ano}`;
+  salvarTransacoes(lista);
+  renderizar();
 }
 
 async function editarValor(id) {
@@ -2628,6 +2719,45 @@ function selecionarTipoDinheiro(tipo) {
   tipoDinheiroSelecionado = tipo;
   document.getElementById('btnEntradaDinheiro').classList.toggle('ativo-entrada', tipo === 'entrada');
   document.getElementById('btnSaidaDinheiro').classList.toggle('ativo-saida', tipo === 'saida');
+  atualizarNotaLocalDinheiro();
+}
+
+let localDinheiroAtual = '';
+
+// Rotulo depende do tipo (igual o resto do app: quem te pagou numa entrada,
+// quem recebeu numa saida) - por isso atualiza sozinho quando o usuario
+// troca Entrada/Saida, mesmo antes de preencher o campo.
+function rotuloLocalDinheiro() {
+  return tipoDinheiroSelecionado === 'entrada' ? 'PAGADOR' : 'RECEBEDOR';
+}
+
+function atualizarNotaLocalDinheiro() {
+  const el = document.getElementById('localDinheiro');
+  if (!el) return;
+  el.textContent = localDinheiroAtual ? localDinheiroAtual : rotuloLocalDinheiro();
+  el.classList.toggle('nota-vazia', !localDinheiroAtual);
+}
+
+async function editarLocalDinheiro() {
+  const rotulo = tipoDinheiroSelecionado === 'entrada' ? 'Pagador:' : 'Recebedor:';
+  const novo = await modalPrompt(rotulo, localDinheiroAtual);
+  if (novo === null) return;
+  localDinheiroAtual = novo.trim();
+  atualizarNotaLocalDinheiro();
+}
+
+let dataDinheiroSelecionadaISO = '';
+
+function atualizarTextoDataDinheiro() {
+  const [ano, mes, dia] = dataDinheiroSelecionadaISO.split('-');
+  document.getElementById('textoDataDinheiro').textContent = dataDinheiroSelecionadaISO ? `${dia}/${mes}/${ano}` : 'Selecione a data';
+}
+
+async function abrirCalendarioDinheiro() {
+  const escolhida = await abrirSeletorData(dataDinheiroSelecionadaISO);
+  if (!escolhida) return;
+  dataDinheiroSelecionadaISO = escolhida;
+  atualizarTextoDataDinheiro();
 }
 
 let observacaoDinheiroAtual = '';
@@ -2665,16 +2795,19 @@ function alternarDinheiro() {
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
-  document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
+  dataDinheiroSelecionadaISO = new Date().toISOString().slice(0, 10);
+  atualizarTextoDataDinheiro();
   observacaoDinheiroAtual = '';
   atualizarNotaDinheiro();
+  localDinheiroAtual = '';
+  atualizarNotaLocalDinheiro();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   empilharVoltarSecao(secaoAnterior);
 }
 
 function salvarDinheiro() {
   const valor = parseFloat(document.getElementById('valorDinheiro').value);
-  const dataISO = document.getElementById('dataDinheiro').value;
+  const dataISO = dataDinheiroSelecionadaISO;
   const statusEl = document.getElementById('statusDinheiro');
 
   if (!valor || valor <= 0) {
@@ -2693,11 +2826,9 @@ function salvarDinheiro() {
     valor,
     tipo: tipoDinheiroSelecionado,
     // instituicao "Especie" e informacao real (e dinheiro em especie de
-    // verdade, nao "desconhecido") - mas local fica desconhecido mesmo,
-    // pra mostrar o placeholder "Pagador"/"Recebedor" e poder ser
-    // preenchido depois, igual qualquer outra transacao.
+    // verdade, nao "desconhecido").
     instituicao: 'Espécie',
-    local: 'desconhecido',
+    local: localDinheiroAtual || 'desconhecido',
     data: `${dia}/${mes}/${ano}`,
     observacao: observacaoDinheiroAtual,
   });
@@ -2705,6 +2836,8 @@ function salvarDinheiro() {
   document.getElementById('valorDinheiro').value = '';
   observacaoDinheiroAtual = '';
   atualizarNotaDinheiro();
+  localDinheiroAtual = '';
+  atualizarNotaLocalDinheiro();
   statusEl.textContent = 'Lançamento adicionado.';
   statusEl.className = 'status';
   setTimeout(alternarDinheiro, 1200);
