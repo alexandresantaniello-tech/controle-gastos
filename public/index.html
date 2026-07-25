@@ -2178,6 +2178,15 @@ function renderizarTransacao(t) {
   const moedaTagHtml = t.moedaExibicao
     ? `<span class="nota" onclick="editarMoedaTransacao(${t.id})">${SIMBOLOS_MOEDA[t.moedaExibicao] || t.moedaExibicao} ${t.moedaExibicao}</span>`
     : `<span class="nota nota-vazia" onclick="editarMoedaTransacao(${t.id})">MOEDA</span>`;
+  // "desconhecido" cru nao diz nada pro cliente sobre o que falta - troca
+  // por um rotulo que já explica o que aquele campo representa (e convida
+  // a tocar e preencher), igual um placeholder de formulario.
+  const localTexto = t.local === 'desconhecido'
+    ? (t.tipo === 'entrada' ? 'Pagador' : 'Recebedor')
+    : (escapeHtml(t.local) || '-');
+  const instituicaoTexto = t.instituicao === 'desconhecido'
+    ? 'Instituição/espécie ou pix'
+    : (escapeHtml(t.instituicao) || '-');
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
@@ -2187,9 +2196,9 @@ function renderizarTransacao(t) {
       <div class="detalhes">
         <span onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
         ·
-        <span onclick="editarLocal(${t.id})">${escapeHtml(t.local) || '-'}</span>
+        <span onclick="editarLocal(${t.id})">${localTexto}</span>
         ·
-        <span onclick="editarInstituicao(${t.id})">${escapeHtml(t.instituicao) || '-'}</span>
+        <span onclick="editarInstituicao(${t.id})">${instituicaoTexto}</span>
       </div>
       <div class="linha-nota">
         ${notaHtml}
