@@ -1886,25 +1886,7 @@ async function editarValor(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  // Se a transacao ja tem moeda propria marcada, edita o valor NAQUELA
-  // moeda (o valor "de verdade") e recalcula o BRL - editar direto o BRL
-  // aqui deixaria o valor original/moeda guardados dessincronizados do
-  // que aparece na tela.
-  if (t.moedaOriginal && t.moedaOriginal !== 'BRL' && taxasCambio && taxasCambio[t.moedaOriginal]) {
-    const novo = await modalPrompt(`Valor real em ${t.moedaOriginal}:`, String(t.valorOriginal || '').replace('.', ','));
-    if (novo === null) return;
-    const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
-    if (!novo.trim() || isNaN(numero) || numero <= 0) {
-      await modalAlerta('Valor inválido. Digite um número maior que zero.');
-      return;
-    }
-    t.valorOriginal = numero;
-    t.valor = numero / taxasCambio[t.moedaOriginal];
-    salvarTransacoes(lista);
-    renderizar();
-    return;
-  }
-  const rotuloMoeda = moedaSelecionada === 'BRL' ? '' : ' em reais - o valor guardado é sempre em BRL, mesmo vendo em outra moeda';
+  const rotuloMoeda = (t.moedaExibicao || moedaSelecionada) === 'BRL' ? '' : ' em reais - o valor guardado é sempre em BRL, mesmo vendo em outra moeda';
   const novo = await modalPrompt(`Valor${rotuloMoeda} (ex: 150,50):`, String(t.valor || '').replace('.', ','));
   if (novo === null) return;
   const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
@@ -1944,6 +1926,10 @@ async function editarInstituicao(id) {
 // moeda original pra exibir, mas converte pra BRL e guarda em t.valor, que
 // e o campo que todo o resto do app (somas, totais, relatorios) ja usa -
 // assim nada quebra, so essa transacao mostra as duas informacoes.
+// Mesma logica do seletor geral (escolheu, ja converte, sem digitar nada) -
+// so que aplicada numa transacao especifica. t.valor continua sempre em
+// BRL por baixo (nunca muda) - moedaExibicao so afeta como ESSA linha
+// aparece formatada, igual moedaSelecionada afeta o app inteiro.
 async function editarMoedaTransacao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
@@ -1952,33 +1938,15 @@ async function editarMoedaTransacao(id) {
     await modalAlerta('Câmbio ainda não carregou. Tenta de novo em alguns segundos.');
     return;
   }
-  // Usa o mesmo seletor do modal (dentro da caixa visivel) em vez de um
-  // <select> escondido - selecionar escondido nao abre o picker nativo de
-  // forma confiavel em todo navegador (achado real testando no celular).
-  const valorAtual = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : 'BRL';
-  const codigo = await modalSelecionar('Moeda real dessa transação:', listaOpcoesMoeda(), valorAtual);
+  const valorAtual = t.moedaExibicao || 'BRL';
+  const codigo = await modalSelecionar('Ver essa transação em qual moeda?', listaOpcoesMoeda(), valorAtual);
   if (codigo === null) return;
 
-  if (!codigo || codigo === 'BRL') {
-    delete t.moedaOriginal;
-    delete t.valorOriginal;
-    salvarTransacoes(lista);
-    renderizar();
-    return;
+  if (codigo === 'BRL') {
+    delete t.moedaExibicao;
+  } else {
+    t.moedaExibicao = codigo;
   }
-  const valorAtualOriginal = t.valorOriginal ? String(t.valorOriginal).replace('.', ',') : '';
-  const valorDigitado = await modalPrompt(`Valor real gasto em ${codigo}:`, valorAtualOriginal);
-  if (valorDigitado === null) return;
-  const numero = Number(valorDigitado.trim().replace(/\./g, '').replace(',', '.'));
-  if (!valorDigitado.trim() || isNaN(numero) || numero <= 0) {
-    await modalAlerta('Valor inválido. Digite um número maior que zero.');
-    return;
-  }
-  t.moedaOriginal = codigo;
-  t.valorOriginal = numero;
-  // taxasCambio[codigo] e "1 BRL = X dessa moeda" - inverte pra converter
-  // o valor NA moeda estrangeira de volta pra BRL.
-  t.valor = numero / taxasCambio[codigo];
   salvarTransacoes(lista);
   renderizar();
 }
@@ -2160,13 +2128,16 @@ function atualizarInfoCambio() {
   infoEl.textContent = `1 ${moedaSelecionada} ≈ R$ ${(1 / taxa).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 }
 
-function formatarMoeda(valor) {
+// moedaOverride existe pra transacao que tem moeda de exibicao propria
+// (editarMoedaTransacao) - se nao vier, usa a moeda geral do app.
+function formatarMoeda(valor, moedaOverride) {
   const numero = Number(valor || 0);
-  if (moedaSelecionada === 'BRL' || !taxasCambio || !taxasCambio[moedaSelecionada]) {
+  const moeda = moedaOverride || moedaSelecionada;
+  if (moeda === 'BRL' || !taxasCambio || !taxasCambio[moeda]) {
     return 'R$ ' + numero.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   }
-  const convertido = numero * taxasCambio[moedaSelecionada];
-  const simbolo = SIMBOLOS_MOEDA[moedaSelecionada] || moedaSelecionada;
+  const convertido = numero * taxasCambio[moeda];
+  const simbolo = SIMBOLOS_MOEDA[moeda] || moeda;
   return simbolo + ' ' + convertido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 }
 
@@ -2188,17 +2159,12 @@ function renderizarTransacao(t) {
   const notaHtml = t.observacao
     ? `<div class="nota" onclick="editarObservacao(${t.id})">${ICONE_NOTA} ${escapeHtml(t.observacao)}</div>`
     : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">OBSERVAÇÃO</div>`;
-  // Se essa transacao especifica foi marcada com moeda original diferente
-  // de BRL (ex: uma compra real em dolar), mostra o valor real gasto E a
-  // conversao pra BRL - t.valor continua sempre em BRL por baixo, pra nao
-  // quebrar nenhuma soma/total existente.
-  const temMoedaPropria = t.moedaOriginal && t.moedaOriginal !== 'BRL' && t.valorOriginal;
-  const simboloOriginal = temMoedaPropria ? (SIMBOLOS_MOEDA[t.moedaOriginal] || t.moedaOriginal) : '';
-  const valorHtml = temMoedaPropria
-    ? `${simboloOriginal} ${Number(t.valorOriginal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} <span style="opacity:0.6; font-size:0.85em;">(≈ ${formatarMoeda(t.valor)})</span>`
-    : formatarMoeda(t.valor);
-  const moedaTagHtml = temMoedaPropria
-    ? `<span class="nota" onclick="editarMoedaTransacao(${t.id})">${simboloOriginal} ${t.moedaOriginal}</span>`
+  // Se essa transacao tem moeda de exibicao propria, mostra convertida
+  // nessa moeda especifica (t.valor continua sempre em BRL por baixo,
+  // nunca muda - so a formatacao dessa linha usa outra moeda).
+  const valorHtml = formatarMoeda(t.valor, t.moedaExibicao);
+  const moedaTagHtml = t.moedaExibicao
+    ? `<span class="nota" onclick="editarMoedaTransacao(${t.id})">${SIMBOLOS_MOEDA[t.moedaExibicao] || t.moedaExibicao} ${t.moedaExibicao}</span>`
     : `<span class="nota nota-vazia" onclick="editarMoedaTransacao(${t.id})">MOEDA</span>`;
   div.innerHTML = `
     <div class="info">
