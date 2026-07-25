@@ -1729,7 +1729,13 @@ function resetForm() {
 
 function carregarTransacoes() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try {
+    const dados = JSON.parse(raw);
+    return Array.isArray(dados) ? dados : [];
+  } catch (err) {
+    return [];
+  }
 }
 
 function salvarTransacoes(lista) {
@@ -1960,7 +1966,15 @@ const OBSERVACOES_CONHECIDAS_KEY = 'controle_gastos_observacoes_conhecidas';
 
 function lerObservacoesConhecidas() {
   const raw = localStorage.getItem(OBSERVACOES_CONHECIDAS_KEY);
-  return raw ? JSON.parse(raw) : [];
+  if (!raw) return [];
+  try {
+    const dados = JSON.parse(raw);
+    return Array.isArray(dados) ? dados : [];
+  } catch (err) {
+    // Dado corrompido nao pode travar o resto do app (ex: abrir o modal de
+    // observacao) - descarta e comeca uma lista limpa.
+    return [];
+  }
 }
 
 function lembrarObservacao(texto) {
