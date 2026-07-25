@@ -576,7 +576,7 @@
   </div>
 
   <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()" style="margin-top:14px;">
-    <span id="textoLocalDinheiro" class="vazio">RECEBEDOR</span>
+    <span id="textoLocalDinheiro" class="vazio">DE QUEM</span>
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
@@ -2347,7 +2347,7 @@ async function editarLocal(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const rotuloLocal = t.tipo === 'entrada' ? 'Pagador:' : 'Recebedor:';
+  const rotuloLocal = t.tipo === 'entrada' ? 'De quem:' : 'Para quem:';
   const novo = await modalPrompt(rotuloLocal, t.local && t.local !== 'desconhecido' ? t.local : '');
   if (novo === null) return;
   t.local = novo.trim() || 'desconhecido';
@@ -2614,7 +2614,7 @@ function renderizarTransacao(t) {
   // por um rotulo que já explica o que aquele campo representa (e convida
   // a tocar e preencher), igual um placeholder de formulario.
   const localTexto = t.local === 'desconhecido'
-    ? (t.tipo === 'entrada' ? 'Pagador' : 'Recebedor')
+    ? (t.tipo === 'entrada' ? 'De quem' : 'Para quem')
     : (escapeHtml(t.local) || '-');
   const instituicaoTexto = t.instituicao === 'desconhecido'
     ? 'Instituição/espécie ou pix'
@@ -2735,11 +2735,11 @@ function selecionarTipoDinheiro(tipo) {
 
 let localDinheiroAtual = '';
 
-// Rotulo depende do tipo (igual o resto do app: quem te pagou numa entrada,
-// quem recebeu numa saida) - por isso atualiza sozinho quando o usuario
-// troca Entrada/Saida, mesmo antes de preencher o campo.
+// Rotulo depende do tipo, em linguagem falada (mais natural que
+// Pagador/Recebedor): quem te pagou numa entrada, pra quem voce pagou numa
+// saida.
 function rotuloLocalDinheiro() {
-  return tipoDinheiroSelecionado === 'entrada' ? 'PAGADOR' : 'RECEBEDOR';
+  return tipoDinheiroSelecionado === 'entrada' ? 'DE QUEM' : 'PARA QUEM';
 }
 
 function atualizarNotaLocalDinheiro() {
@@ -2750,7 +2750,7 @@ function atualizarNotaLocalDinheiro() {
 }
 
 async function editarLocalDinheiro() {
-  const rotulo = tipoDinheiroSelecionado === 'entrada' ? 'Pagador:' : 'Recebedor:';
+  const rotulo = tipoDinheiroSelecionado === 'entrada' ? 'De quem:' : 'Para quem:';
   const novo = await modalPrompt(rotulo, localDinheiroAtual);
   if (novo === null) return;
   localDinheiroAtual = novo.trim();
