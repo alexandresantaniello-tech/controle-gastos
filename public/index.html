@@ -490,8 +490,8 @@
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico">
-    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe seu histórico bancário completo (uma vez só)</label>
-    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Escolha o período <strong>do dia 1º de um mês há 12 meses atrás até hoje</strong> (ex: se hoje é julho, peça de 1º de julho do ano passado até hoje) — é o jeito mais fácil de pedir certo, mesmo que venha um pouco a mais do que 1 ano (12 meses / 365 dias), porque nós descartamos automaticamente o que passar do prazo. Envie o PDF aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
+    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe seu histórico bancário completo</label>
+    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Pedimos o período <strong>do dia 1º de um mês há 12 meses atrás até hoje</strong> (ex: se hoje é julho, peça de 1º de julho do ano passado até hoje) — é o jeito mais fácil de cobrir o último ano completo de uma vez só, o período que realmente importa pro seu controle financeiro do dia a dia. Envie o PDF aqui, quantas vezes quiser. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
@@ -522,15 +522,11 @@
     <button type="button" id="btnSaidaDinheiro" class="ativo-saida" onclick="selecionarTipoDinheiro('saida')">Saída</button>
   </div>
 
-  <label class="campo">Categoria</label>
-  <input type="text" id="categoriaDinheiro" list="listaCategorias" placeholder="Ex: Comida na rua">
-  <datalist id="listaCategorias"></datalist>
-
   <label class="campo">Data</label>
   <input type="date" id="dataDinheiro">
 
   <label class="campo">Observação (opcional)</label>
-  <input type="text" id="obsDinheiro" placeholder="Opcional">
+  <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block;">OBSERVAÇÃO</div>
 
   <button onclick="salvarDinheiro()">Salvar lançamento</button>
   <div class="status" id="statusDinheiro"></div>
@@ -2519,9 +2515,23 @@ function selecionarTipoDinheiro(tipo) {
   document.getElementById('btnSaidaDinheiro').classList.toggle('ativo-saida', tipo === 'saida');
 }
 
-function atualizarListaCategoriasDatalist() {
-  const categorias = [...new Set(carregarTransacoes().map(t => t.categoria).filter(Boolean))];
-  document.getElementById('listaCategorias').innerHTML = categorias.map(c => `<option value="${c}"></option>`).join('');
+let observacaoDinheiroAtual = '';
+
+function atualizarNotaDinheiro() {
+  const el = document.getElementById('notaDinheiro');
+  if (!el) return;
+  el.textContent = observacaoDinheiroAtual ? observacaoDinheiroAtual : 'OBSERVAÇÃO';
+  el.classList.toggle('nota-vazia', !observacaoDinheiroAtual);
+}
+
+// Mesmo modal com sugestoes/criar/excluir usado em qualquer transacao -
+// antes esse formulario tinha um campo de texto solto proprio, diferente
+// do resto do app.
+async function editarObservacaoDinheiro() {
+  const nova = await modalPrompt('Observação:', observacaoDinheiroAtual, observacoesFrequentes());
+  if (nova === null) return;
+  observacaoDinheiroAtual = nova.trim();
+  atualizarNotaDinheiro();
 }
 
 function alternarDinheiro() {
@@ -2532,15 +2542,14 @@ function alternarDinheiro() {
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Espécie';
   if (abrindo) {
     document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
-    atualizarListaCategoriasDatalist();
+    observacaoDinheiroAtual = '';
+    atualizarNotaDinheiro();
   }
 }
 
 function salvarDinheiro() {
   const valor = parseFloat(document.getElementById('valorDinheiro').value);
-  const categoria = document.getElementById('categoriaDinheiro').value.trim();
   const dataISO = document.getElementById('dataDinheiro').value;
-  const observacao = document.getElementById('obsDinheiro').value.trim();
   const statusEl = document.getElementById('statusDinheiro');
 
   if (!valor || valor <= 0) {
@@ -2558,16 +2567,19 @@ function salvarDinheiro() {
   adicionarTransacao({
     valor,
     tipo: tipoDinheiroSelecionado,
-    categoria: categoria || 'Outros',
+    // instituicao "Especie" e informacao real (e dinheiro em especie de
+    // verdade, nao "desconhecido") - mas local fica desconhecido mesmo,
+    // pra mostrar o placeholder "Pagador"/"Recebedor" e poder ser
+    // preenchido depois, igual qualquer outra transacao.
     instituicao: 'Espécie',
-    local: 'Espécie',
+    local: 'desconhecido',
     data: `${dia}/${mes}/${ano}`,
-    observacao,
+    observacao: observacaoDinheiroAtual,
   });
 
   document.getElementById('valorDinheiro').value = '';
-  document.getElementById('categoriaDinheiro').value = '';
-  document.getElementById('obsDinheiro').value = '';
+  observacaoDinheiroAtual = '';
+  atualizarNotaDinheiro();
   statusEl.textContent = 'Lançamento adicionado.';
   statusEl.className = 'status';
   setTimeout(alternarDinheiro, 1200);
