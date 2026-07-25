@@ -275,6 +275,8 @@
   label.campo:first-child { margin-top: 0; }
   .tipo-toggle { display: flex; gap: 8px; margin-top: 6px; }
   .tipo-toggle button { flex: 1; margin-top: 0; background: var(--card); border: 1px solid var(--border); color: var(--foreground); }
+  .tipo-toggle button#btnEntradaDinheiro { border-color: rgba(74, 222, 128, 0.4); color: var(--entrada); }
+  .tipo-toggle button#btnSaidaDinheiro { border-color: rgba(248, 113, 113, 0.4); color: var(--saida); }
   .tipo-toggle button.ativo-entrada { background: rgba(74, 222, 128, 0.15); border-color: var(--entrada); color: var(--entrada); }
   .tipo-toggle button.ativo-saida { background: rgba(248, 113, 113, 0.15); border-color: var(--saida); color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
@@ -548,10 +550,11 @@
   <label class="campo">Data</label>
   <input type="date" id="dataDinheiro">
 
-  <label class="campo">Observação (opcional)</label>
   <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block;">OBSERVAÇÃO</div>
 
-  <button onclick="salvarDinheiro()">Salvar lançamento</button>
+  <div style="text-align:center; margin-top:16px;">
+    <button onclick="salvarDinheiro()">Salvar lançamento</button>
+  </div>
   <div class="status" id="statusDinheiro"></div>
 </div>
 
