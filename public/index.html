@@ -518,7 +518,7 @@
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico">
     <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe seu histórico bancário</label>
-    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Pedimos o período <strong>do dia 1º de um mês há 12 meses atrás até hoje</strong> (ex: se hoje é julho, peça de 1º de julho do ano passado até hoje) — é o jeito mais fácil de cobrir o último ano de uma vez só, o período que realmente importa pro seu controle financeiro do dia a dia. Envie o PDF aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
+    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Geralmente as instituições financeiras só permitem baixar até 365 dias a partir de hoje — peça o período mais longo disponível. Envie o PDF aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
