@@ -1833,11 +1833,14 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
         chip.appendChild(rotulo);
         // "x" pra excluir a sugestao da lista - separado do toque no chip
         // (stopPropagation pra nao preencher o campo tambem ao excluir).
-        const excluir = document.createElement('span');
-        excluir.textContent = ' ×';
-        excluir.style.opacity = '0.6';
+        // Confirmacao nativa (window.confirm), nao o modal proprio do app -
+        // esse modal ja esta aberto nesse momento, e abrir outro por cima
+        // reusando a mesma caixa bagunçaria os dois ao mesmo tempo. Existe
+        // pra proteger contra toque sem querer no "x", que fica coladinho
+        // no resto do chip.
         excluir.onclick = (ev) => {
           ev.stopPropagation();
+          if (!window.confirm(`Excluir "${texto}" da lista de sugestões?`)) return;
           esquecerObservacao(texto);
           chip.remove();
         };
