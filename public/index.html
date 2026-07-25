@@ -713,7 +713,7 @@
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
     <div class="modal-acoes" id="modalAcoes"></div>
-    <div id="modalSugestoes" style="display:none; flex-wrap:wrap; align-content:flex-start; gap:6px; margin-top:12px; max-height:32vh; overflow-y:auto;"></div>
+    <div id="modalSugestoes" style="display:none; flex-wrap:wrap; align-content:flex-start; gap:6px; margin-top:12px; max-height:60vh; overflow-y:auto; transition:max-height 0.15s;"></div>
     <div id="modalListaOpcoes" style="display:none; max-height:50vh; overflow-y:auto; margin-top:8px; border-radius:var(--radius-sm); border:1px solid var(--border);"></div>
   </div>
 </div>
@@ -1901,6 +1901,15 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
     overlay.onclick = (ev) => {
       if (ev.target === overlay && !somenteOk) fechar(comInput || comSelect ? null : false);
     };
+
+    // Enquanto o teclado nao esta aberto, a lista de sugestoes pode usar
+    // bastante tela (sem precisar rolar pra achar a opcao) - so encolhe
+    // quando o campo ganha foco de verdade (teclado vai abrir e tomar
+    // espaço), pra garantir que Cancelar/OK continuem visiveis.
+    if (comInput && sugestoes) {
+      inputEl.onfocus = () => { sugestoesEl.style.maxHeight = '22vh'; };
+      inputEl.onblur = () => { sugestoesEl.style.maxHeight = '60vh'; };
+    }
 
     overlay.classList.add('aberto');
     // So abre o teclado sozinho quando NAO tem chips de sugestao - com
