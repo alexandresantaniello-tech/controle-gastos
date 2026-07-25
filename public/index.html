@@ -669,6 +669,7 @@
   <div class="modal-caixa">
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
+    <select id="modalSelect" style="display:none; width:100%; padding:10px; border-radius:8px; background:var(--input); color:var(--foreground); border:1px solid var(--border); margin-top:8px;"></select>
     <div class="modal-acoes" id="modalAcoes"></div>
   </div>
 </div>
@@ -678,7 +679,6 @@
 </div>
 
 <input type="date" id="inputDataOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
-<select id="seletorMoedaTransacaoOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;"></select>
 
 
 
@@ -1758,16 +1758,28 @@ function abrirRegistroNoDia(t) {
 // ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
 // nao dava pra estilizar e mostravam a URL do site num popup feio) ----------
 
-function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false }) {
+function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false, comSelect = false, opcoesSelect = null }) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('modalOverlay');
     const msgEl = document.getElementById('modalMensagem');
     const inputEl = document.getElementById('modalInput');
+    const selectEl = document.getElementById('modalSelect');
     const acoesEl = document.getElementById('modalAcoes');
 
     msgEl.textContent = mensagem;
     inputEl.style.display = comInput ? 'block' : 'none';
     inputEl.value = valorInicial;
+    selectEl.style.display = comSelect ? 'block' : 'none';
+    if (comSelect) {
+      selectEl.innerHTML = '';
+      opcoesSelect.forEach(([valor, rotulo]) => {
+        const opt = document.createElement('option');
+        opt.value = valor;
+        opt.textContent = rotulo;
+        selectEl.appendChild(opt);
+      });
+      selectEl.value = valorInicial;
+    }
 
     function fechar(valor) {
       overlay.classList.remove('aberto');
@@ -1780,17 +1792,21 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       const btnCancelar = document.createElement('button');
       btnCancelar.className = 'secondary';
       btnCancelar.textContent = textoCancelar;
-      btnCancelar.onclick = () => fechar(comInput ? null : false);
+      btnCancelar.onclick = () => fechar(comInput || comSelect ? null : false);
       acoesEl.appendChild(btnCancelar);
     }
     const btnOk = document.createElement('button');
     btnOk.textContent = textoOk;
-    btnOk.onclick = () => fechar(comInput ? inputEl.value : true);
+    btnOk.onclick = () => fechar(comSelect ? selectEl.value : comInput ? inputEl.value : true);
     acoesEl.appendChild(btnOk);
 
     overlay.classList.add('aberto');
     if (comInput) setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
   });
+}
+
+function modalSelecionar(mensagem, opcoesSelect, valorInicial = '') {
+  return abrirModal({ mensagem, comSelect: true, opcoesSelect, valorInicial });
 }
 
 function modalConfirmar(mensagem) {
@@ -1936,15 +1952,12 @@ async function editarMoedaTransacao(id) {
     await modalAlerta('Câmbio ainda não carregou. Tenta de novo em alguns segundos.');
     return;
   }
-  const select = document.getElementById('seletorMoedaTransacaoOculto');
-  select.value = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : 'BRL';
-  // Espera o usuario escolher no seletor nativo (a mesma lista de moedas
-  // do seletor global) em vez de digitar um codigo - mais facil de usar,
-  // igual pediu.
-  const codigo = await new Promise(resolve => {
-    select.onchange = () => resolve(select.value);
-    select.showPicker ? select.showPicker() : select.click();
-  });
+  // Usa o mesmo seletor do modal (dentro da caixa visivel) em vez de um
+  // <select> escondido - selecionar escondido nao abre o picker nativo de
+  // forma confiavel em todo navegador (achado real testando no celular).
+  const valorAtual = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : 'BRL';
+  const codigo = await modalSelecionar('Moeda real dessa transação:', listaOpcoesMoeda(), valorAtual);
+  if (codigo === null) return;
 
   if (!codigo || codigo === 'BRL') {
     delete t.moedaOriginal;
@@ -2101,34 +2114,37 @@ function mudarMoeda(nova) {
 // lugares que precisam disso (o seletor global e o seletor escondido usado
 // pra marcar moeda de uma transacao especifica) - evita duplicar a logica
 // de ordenacao/nome em dois lugares.
-function popularOpcoesDeMoeda(select, incluirBRL) {
-  if (!taxasCambio) return;
+// Monta a lista [codigo, rotulo] de moedas disponiveis, na ordem combinada
+// (prioritarias primeiro, resto alfabetico) - usada tanto pra popular o
+// <select> global quanto pro seletor dentro do modal (transacao especifica).
+function listaOpcoesMoeda() {
+  if (!taxasCambio) return [];
   const codigosDisponiveis = Object.keys(taxasCambio).filter(c => c !== 'BRL');
   const prioritarias = ORDEM_PRIORITARIA_MOEDA.filter(c => codigosDisponiveis.includes(c));
   const resto = codigosDisponiveis
     .filter(c => !ORDEM_PRIORITARIA_MOEDA.includes(c))
     .sort((a, b) => (NOMES_MOEDA[a] || a).localeCompare(NOMES_MOEDA[b] || b, 'pt-BR'));
-
-  select.innerHTML = incluirBRL ? '<option value="BRL">R$ Real</option>' : '';
-  [...prioritarias, ...resto].forEach(codigo => {
-    const opt = document.createElement('option');
-    opt.value = codigo;
+  return [['BRL', 'R$ Real'], ...[...prioritarias, ...resto].map(codigo => {
     const simbolo = SIMBOLOS_MOEDA[codigo] || codigo;
-    opt.textContent = `${simbolo} ${NOMES_MOEDA[codigo] || codigo}`;
-    select.appendChild(opt);
-  });
+    return [codigo, `${simbolo} ${NOMES_MOEDA[codigo] || codigo}`];
+  })];
 }
 
 function popularSeletorMoeda() {
   if (!taxasCambio) return;
   const select = document.getElementById('seletorMoeda');
-  popularOpcoesDeMoeda(select, true);
+  select.innerHTML = '';
+  listaOpcoesMoeda().forEach(([valor, rotulo]) => {
+    const opt = document.createElement('option');
+    opt.value = valor;
+    opt.textContent = rotulo;
+    select.appendChild(opt);
+  });
   // Restaura a moeda que o usuario ja tinha escolhido (guardada no
   // localStorage), nao o que o <select> mostrava antes de popular - antes
   // de popularSeletorMoeda() rodar, o select so tem a opcao BRL, entao
   // usar o valor dele aqui resetaria a escolha do usuario de volta pra BRL.
   select.value = moedaSelecionada;
-  popularOpcoesDeMoeda(document.getElementById('seletorMoedaTransacaoOculto'), true);
 }
 
 function atualizarInfoCambio() {
