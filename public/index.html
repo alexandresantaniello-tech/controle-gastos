@@ -905,12 +905,15 @@ function alternarListaMes() {
 let saldoAtual = 0;
 let totalEntradasAtual = 0;
 let totalSaidasAtual = 0;
-// Sempre comeca visivel ao abrir/recarregar o app - quem quiser privacidade
-// num momento especifico toca no cristal pra ocultar rapidamente.
-let saldoOculto = false;
+// Lembra a escolha de cada cliente entre uma abertura do app e outra - quem
+// prefere abrir sempre oculto (privacidade) ou sempre visivel, o app respeita
+// o ultimo estado deixado, em vez de forcar um padrao fixo pra todo mundo.
+const SALDO_OCULTO_KEY = 'controle_gastos_saldo_oculto';
+let saldoOculto = localStorage.getItem(SALDO_OCULTO_KEY) === '1';
 
 function alternarVisibilidadeSaldo() {
   saldoOculto = !saldoOculto;
+  localStorage.setItem(SALDO_OCULTO_KEY, saldoOculto ? '1' : '0');
   atualizarValoresExibidos();
 }
 
