@@ -554,7 +554,7 @@
 
 <div class="card" id="uploadCard" style="display:none;">
   <div class="drop-zone" id="dropZone">
-    <div id="dropText">Escolha o arquivo</div>
+    <div id="dropText"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Escolha o arquivo</div>
     <img id="preview" onclick="event.stopPropagation(); abrirZoomImagem()">
     <p class="aviso-backup" id="dicaZoom" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Toque na imagem pra ampliar e conferir antes de analisar</p>
     <input type="file" id="fileInput" accept="image/*,application/pdf">
@@ -1360,7 +1360,7 @@ const preview = document.getElementById('preview');
 const dropText = document.getElementById('dropText');
 const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
-const TEXTO_PADRAO_DROPZONE = 'Escolha o arquivo';
+const TEXTO_PADRAO_DROPZONE = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Escolha o arquivo';
 
 // Temporariamente visivel em qualquer aparelho so pra visualizacao/teste -
 // depois volta a ser so-iOS (ver iPhone|iPad|iPod no user agent).
@@ -1897,7 +1897,7 @@ function resetForm() {
   imagemSelecionada = null;
   preview.style.display = 'none';
   preview.src = '';
-  dropText.textContent = TEXTO_PADRAO_DROPZONE;
+  dropText.innerHTML = TEXTO_PADRAO_DROPZONE;
   fileInput.value = '';
   sendBtn.disabled = true;
 }
