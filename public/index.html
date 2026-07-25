@@ -1863,6 +1863,9 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
         // reusando a mesma caixa bagunçaria os dois ao mesmo tempo. Existe
         // pra proteger contra toque sem querer no "x", que fica coladinho
         // no resto do chip.
+        const excluir = document.createElement('span');
+        excluir.textContent = ' ×';
+        excluir.style.opacity = '0.6';
         excluir.onclick = (ev) => {
           ev.stopPropagation();
           if (!window.confirm(`Excluir "${texto}" da lista de sugestões?`)) return;
