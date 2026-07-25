@@ -1223,25 +1223,8 @@ function voltarSecaoAnterior() {
 }
 
 function atualizarBotaoVoltar() {
-  // So garante que ela suma se o historico zerou - a aparicao em si e
-  // controlada pelo scroll listener abaixo, nao por isso aqui.
-  if (pilhaVoltarSecao.length === 0) {
-    document.getElementById('btnVoltarFlutuante').classList.remove('visivel');
-  }
+  document.getElementById('btnVoltarFlutuante').classList.toggle('visivel', pilhaVoltarSecao.length > 0);
 }
-
-// A seta so aparece durante o movimento de rolagem (igual a "voltar ao
-// topo" da Amazon/iFood) - nao fica flutuando fixa o tempo todo, so pisca
-// quando ha historico pra voltar E a tela esta se mexendo, sumindo sozinha
-// pouco depois de parar.
-let timeoutBotaoVoltar = null;
-window.addEventListener('scroll', () => {
-  if (pilhaVoltarSecao.length === 0) return;
-  const btn = document.getElementById('btnVoltarFlutuante');
-  btn.classList.add('visivel');
-  clearTimeout(timeoutBotaoVoltar);
-  timeoutBotaoVoltar = setTimeout(() => btn.classList.remove('visivel'), 1200);
-}, { passive: true });
 
 function alternarRelatorio() {
   const card = document.getElementById('relatorioCard');
