@@ -924,12 +924,15 @@ function linhasAgrupadasHtml(transacoes) {
       <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
     </div>`;
   }).join('');
+  // Sem observacao ainda: a linha inteira e tocavel pra adicionar
+  // observacao na hora - foi o toque intuitivo que o proprio usuario tentou
+  // fazer aqui, direto na lista solta embaixo do resumo agrupado.
   const linhasIndividuais = semObservacao.map(t => {
     const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = t.tipo === 'entrada' ? '+' : '-';
     const descricao = escapeHtml(t.local) || '-';
     return `
-    <div class="relatorio-resumo-linha">
+    <div class="relatorio-resumo-linha" style="cursor:pointer;" onclick="editarObservacao(${t.id})">
       <span>${escapeHtml(t.data) || '-'} — ${descricao}</span>
       <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
     </div>`;
@@ -1845,6 +1848,11 @@ async function editarObservacao(id) {
   t.observacao = nova.trim();
   salvarTransacoes(lista);
   renderizar();
+  // Se a tela de relatorio estiver aberta, atualiza ela tambem - e onde
+  // esse toque pode ter vindo (transacao sem observacao, listada solta
+  // embaixo do resumo agrupado), e o usuario espera ver ela subir pro
+  // grupo na hora, sem precisar trocar de tela.
+  if (document.getElementById('resumoRelatorio')) renderizarRelatorio();
 }
 
 async function editarTipo(id) {
