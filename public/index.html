@@ -1136,7 +1136,10 @@ function alternarRelatorio() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Relatórios';
-  if (abrindo) renderizarRelatorio();
+  if (abrindo) {
+    renderizarRelatorio();
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function alternarUpload() {
@@ -2541,6 +2544,7 @@ function alternarDinheiro() {
     document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
     observacaoDinheiroAtual = '';
     atualizarNotaDinheiro();
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -2590,6 +2594,7 @@ function alternarBackup() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Backup';
+  if (abrindo) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function alternarUploadHistorico() {
@@ -2598,6 +2603,7 @@ function alternarUploadHistorico() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Upload';
+  if (abrindo) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function apagarTodasTransacoes() {
