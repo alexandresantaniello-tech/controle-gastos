@@ -171,9 +171,10 @@
   }
   .linha-nota {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 6px 10px;
     margin-top: 4px;
   }
   .transacao .nota {
@@ -185,6 +186,11 @@
     min-width: 0;
     letter-spacing: 0.02em;
   }
+  /* A observacao (div, pode ser longa) fica livre pra crescer/quebrar; a
+     tag de moeda (span, sempre curta - "MOEDA" ou "USD") nunca pode
+     encolher a ponto de quebrar palavra no meio. */
+  .linha-nota > div.nota { flex: 1 1 auto; min-width: 120px; }
+  .linha-nota > span.nota { flex-shrink: 0; white-space: nowrap; }
   .transacao .nota-vazia {
     color: var(--primary);
     opacity: 0.7;
