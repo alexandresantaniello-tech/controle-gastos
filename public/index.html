@@ -497,7 +497,6 @@
   <div class="relatorio-acoes">
     <button onclick="compartilharResumo()">Compartilhar resumo</button>
     <button class="secondary" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
-    <button class="secondary" onclick="copiarPromptIA()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Copiar prompt para IA</button>
   </div>
   <button class="secondary perigo" id="btnApagarPeriodo" style="margin-top:12px; display:none;" onclick="apagarTransacoesDoPeriodo()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span id="btnApagarPeriodoTexto">Apagar transações</span></button>
   <div class="status" id="statusRelatorio"></div>
@@ -680,17 +679,6 @@
 
 <input type="date" id="inputDataOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
 
-
-<div class="modal-overlay" id="promptOverlay">
-  <div class="modal-caixa modal-caixa-larga">
-    <p class="modal-mensagem">Prompt pra colar numa IA:</p>
-    <pre class="prompt-texto" id="promptTexto"></pre>
-    <div class="modal-acoes">
-      <button class="secondary" onclick="fecharPromptIA()">Fechar</button>
-      <button onclick="copiarESairPromptIA()">Copiar</button>
-    </div>
-  </div>
-</div>
 
 
 <script>
@@ -895,21 +883,34 @@ function transacoesDoPeriodo() {
   });
 }
 
-function linhasCronologicasHtml(transacoes) {
-  if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
-  const ordenadas = [...transacoes].sort((a, b) => {
-    const da = parseData(a.data), db = parseData(b.data);
-    if (!da || !db) return 0;
-    return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
+// Agrupa por observacao (ou local, se nao tiver observacao) e soma cada
+// grupo - em vez de uma lista cronologica crua, o cliente ja ve "Uber: +R$X,
+// Combustivel: -R$Y" pronto, tipo uma planilha. Entradas primeiro (maior
+// pro menor), depois saidas (maior pro menor) - pedido explicito do
+// usuario, vale pra qualquer tipo de periodo (diario, semanal, mensal...).
+function agruparPorObservacao(transacoes) {
+  const grupos = {};
+  transacoes.forEach(t => {
+    const descricao = t.observacao || t.local || 'Sem observação';
+    const chave = `${t.tipo}|${descricao}`;
+    if (!grupos[chave]) grupos[chave] = { descricao, tipo: t.tipo, total: 0 };
+    grupos[chave].total += Number(t.valor || 0);
   });
-  return ordenadas.map(t => {
-    const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
-    const sinal = t.tipo === 'entrada' ? '+' : '-';
-    const descricao = escapeHtml(t.observacao || t.local) || '-';
+  const lista = Object.values(grupos);
+  const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => b.total - a.total);
+  const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => b.total - a.total);
+  return [...entradas, ...saidas];
+}
+
+function linhasAgrupadasHtml(transacoes) {
+  if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
+  return agruparPorObservacao(transacoes).map(g => {
+    const classeCor = g.tipo === 'entrada' ? 'entrada' : 'saida';
+    const sinal = g.tipo === 'entrada' ? '+' : '-';
     return `
     <div class="relatorio-resumo-linha">
-      <span>${escapeHtml(t.data) || '-'} — ${descricao}</span>
-      <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
+      <span>${escapeHtml(g.descricao)}</span>
+      <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
     </div>`;
   }).join('');
 }
@@ -938,7 +939,7 @@ function renderizarRelatorio() {
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
     ${temSemObservacao ? '<p class="dica-observacao"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
     <div class="grupo-dia">Transações do período</div>
-    ${linhasCronologicasHtml(transacoes)}
+    ${linhasAgrupadasHtml(transacoes)}
   `;
 
   const btnApagarPeriodo = document.getElementById('btnApagarPeriodo');
@@ -975,15 +976,9 @@ function textoResumoRelatorio() {
 
   if (transacoes.length > 0) {
     texto += `\nTransações do período:\n`;
-    const ordenadas = [...transacoes].sort((a, b) => {
-      const da = parseData(a.data), db = parseData(b.data);
-      if (!da || !db) return 0;
-      return new Date(db.ano, db.mes, db.dia) - new Date(da.ano, da.mes, da.dia);
-    });
-    ordenadas.forEach(t => {
-      const sinal = t.tipo === 'entrada' ? '+' : '-';
-      const descricao = t.observacao || t.local || '-';
-      texto += `- ${t.data || 'sem data'} — ${descricao}: ${sinal}${formatarMoeda(t.valor)}\n`;
+    agruparPorObservacao(transacoes).forEach(g => {
+      const sinal = g.tipo === 'entrada' ? '+' : '-';
+      texto += `- ${g.descricao}: ${sinal}${formatarMoeda(g.total)}\n`;
     });
   }
 
@@ -1015,27 +1010,6 @@ async function compartilharResumo() {
   }
   await navigator.clipboard.writeText(texto);
   statusEl.textContent = 'Resumo copiado (compartilhamento direto não disponível neste navegador).';
-}
-
-function montarPromptIA() {
-  const texto = textoResumoRelatorio();
-  return `Aqui está o resumo das minhas movimentações financeiras. Analise meus hábitos de entrada e saída de dinheiro e me dê observações e sugestões práticas:\n\n${texto}`;
-}
-
-function copiarPromptIA() {
-  document.getElementById('promptTexto').textContent = montarPromptIA();
-  document.getElementById('promptOverlay').classList.add('aberto');
-}
-
-function fecharPromptIA() {
-  document.getElementById('promptOverlay').classList.remove('aberto');
-}
-
-async function copiarESairPromptIA() {
-  await navigator.clipboard.writeText(montarPromptIA());
-  const statusEl = document.getElementById('statusRelatorio');
-  statusEl.textContent = 'Prompt copiado! Cole numa IA de sua preferência pra analisar seus dados.';
-  fecharPromptIA();
 }
 
 async function compartilharCsv() {
@@ -1868,6 +1842,24 @@ async function editarValor(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
+  // Se a transacao ja tem moeda propria marcada, edita o valor NAQUELA
+  // moeda (o valor "de verdade") e recalcula o BRL - editar direto o BRL
+  // aqui deixaria o valor original/moeda guardados dessincronizados do
+  // que aparece na tela.
+  if (t.moedaOriginal && t.moedaOriginal !== 'BRL' && taxasCambio && taxasCambio[t.moedaOriginal]) {
+    const novo = await modalPrompt(`Valor real em ${t.moedaOriginal}:`, String(t.valorOriginal || '').replace('.', ','));
+    if (novo === null) return;
+    const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
+    if (!novo.trim() || isNaN(numero) || numero <= 0) {
+      await modalAlerta('Valor inválido. Digite um número maior que zero.');
+      return;
+    }
+    t.valorOriginal = numero;
+    t.valor = numero / taxasCambio[t.moedaOriginal];
+    salvarTransacoes(lista);
+    renderizar();
+    return;
+  }
   const rotuloMoeda = moedaSelecionada === 'BRL' ? '' : ' em reais - o valor guardado é sempre em BRL, mesmo vendo em outra moeda';
   const novo = await modalPrompt(`Valor${rotuloMoeda} (ex: 150,50):`, String(t.valor || '').replace('.', ','));
   if (novo === null) return;
@@ -1899,6 +1891,52 @@ async function editarInstituicao(id) {
   const nova = await modalPrompt('Instituição/banco:', t.instituicao && t.instituicao !== 'desconhecido' ? t.instituicao : '');
   if (nova === null) return;
   t.instituicao = nova.trim() || 'desconhecido';
+  salvarTransacoes(lista);
+  renderizar();
+}
+
+// Marca uma transacao especifica como tendo sido feita numa moeda diferente
+// de verdade (ex: compra em dolar numa viagem) - guarda o valor real na
+// moeda original pra exibir, mas converte pra BRL e guarda em t.valor, que
+// e o campo que todo o resto do app (somas, totais, relatorios) ja usa -
+// assim nada quebra, so essa transacao mostra as duas informacoes.
+async function editarMoedaTransacao(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  if (!taxasCambio) {
+    await modalAlerta('Câmbio ainda não carregou. Tenta de novo em alguns segundos.');
+    return;
+  }
+  const codigoAtual = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : '';
+  const codigoDigitado = await modalPrompt('Código da moeda real dessa transação (ex: USD, EUR, ARS) - deixe em branco pra voltar a ser só em reais:', codigoAtual);
+  if (codigoDigitado === null) return;
+  const codigo = codigoDigitado.trim().toUpperCase();
+
+  if (!codigo || codigo === 'BRL') {
+    delete t.moedaOriginal;
+    delete t.valorOriginal;
+    salvarTransacoes(lista);
+    renderizar();
+    return;
+  }
+  if (!taxasCambio[codigo]) {
+    await modalAlerta(`Não reconheci "${codigo}" como código de moeda. Usa a sigla de 3 letras, ex: USD, EUR, ARS.`);
+    return;
+  }
+  const valorAtualOriginal = t.valorOriginal ? String(t.valorOriginal).replace('.', ',') : '';
+  const valorDigitado = await modalPrompt(`Valor real gasto em ${codigo}:`, valorAtualOriginal);
+  if (valorDigitado === null) return;
+  const numero = Number(valorDigitado.trim().replace(/\./g, '').replace(',', '.'));
+  if (!valorDigitado.trim() || isNaN(numero) || numero <= 0) {
+    await modalAlerta('Valor inválido. Digite um número maior que zero.');
+    return;
+  }
+  t.moedaOriginal = codigo;
+  t.valorOriginal = numero;
+  // taxasCambio[codigo] e "1 BRL = X dessa moeda" - inverte pra converter
+  // o valor NA moeda estrangeira de volta pra BRL.
+  t.valor = numero / taxasCambio[codigo];
   salvarTransacoes(lista);
   renderizar();
 }
@@ -2095,11 +2133,23 @@ function renderizarTransacao(t) {
   const notaHtml = t.observacao
     ? `<div class="nota" onclick="editarObservacao(${t.id})">${ICONE_NOTA} ${escapeHtml(t.observacao)}</div>`
     : `<div class="nota nota-vazia" onclick="editarObservacao(${t.id})">OBSERVAÇÃO</div>`;
+  // Se essa transacao especifica foi marcada com moeda original diferente
+  // de BRL (ex: uma compra real em dolar), mostra o valor real gasto E a
+  // conversao pra BRL - t.valor continua sempre em BRL por baixo, pra nao
+  // quebrar nenhuma soma/total existente.
+  const temMoedaPropria = t.moedaOriginal && t.moedaOriginal !== 'BRL' && t.valorOriginal;
+  const simboloOriginal = temMoedaPropria ? (SIMBOLOS_MOEDA[t.moedaOriginal] || t.moedaOriginal) : '';
+  const valorHtml = temMoedaPropria
+    ? `${simboloOriginal} ${Number(t.valorOriginal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} <span style="opacity:0.6; font-size:0.85em;">(≈ ${formatarMoeda(t.valor)})</span>`
+    : formatarMoeda(t.valor);
+  const moedaTagHtml = temMoedaPropria
+    ? `<span class="nota" onclick="editarMoedaTransacao(${t.id})">${simboloOriginal} ${t.moedaOriginal}</span>`
+    : `<span class="nota nota-vazia" onclick="editarMoedaTransacao(${t.id})">MOEDA</span>`;
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
         <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" onclick="editarTipo(${t.id})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-        <span class="valor" onclick="editarValor(${t.id})">${formatarMoeda(t.valor)}</span>
+        <span class="valor" onclick="editarValor(${t.id})">${valorHtml}</span>
       </div>
       <div class="detalhes">
         <span onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>
@@ -2110,6 +2160,7 @@ function renderizarTransacao(t) {
       </div>
       <div class="linha-nota">
         ${notaHtml}
+        ${moedaTagHtml}
         <span class="excluir-link" onclick="removerTransacao(${t.id})">EXCLUIR</span>
       </div>
     </div>
