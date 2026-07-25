@@ -1785,7 +1785,7 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
     inputEl.value = valorInicial;
     listaEl.style.display = comSelect ? 'block' : 'none';
     sugestoesEl.innerHTML = '';
-    sugestoesEl.style.display = (comInput && sugestoes && sugestoes.length > 0) ? 'flex' : 'none';
+    sugestoesEl.style.display = (comInput && sugestoes) ? 'flex' : 'none';
     if (comInput && sugestoes) {
       // Toca na sugestao so preenche o campo (nao fecha o modal sozinho) -
       // observacao costuma precisar de um ajuste leve as vezes, diferente
@@ -1797,6 +1797,16 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
         chip.onclick = () => { inputEl.value = texto; inputEl.focus(); };
         sugestoesEl.appendChild(chip);
       });
+      // "Criar" so limpa e foca o campo pra digitar uma categoria nova - ao
+      // confirmar com OK, ela fica lembrada (lembrarObservacao) e vira
+      // sugestao permanente nas proximas vezes, mesmo antes de qualquer
+      // transacao usa-la de verdade.
+      const chipCriar = document.createElement('span');
+      chipCriar.className = 'modal-sugestao';
+      chipCriar.style.borderStyle = 'dashed';
+      chipCriar.textContent = '+ Criar nova';
+      chipCriar.onclick = () => { inputEl.value = ''; inputEl.focus(); };
+      sugestoesEl.appendChild(chipCriar);
     }
 
     function fechar(valor) {
@@ -1871,12 +1881,34 @@ async function removerTransacao(id) {
   renderizar();
 }
 
-// Sugestoes de observacao ja usadas antes, das mais frequentes pras menos -
-// mais confiavel que depender do teclado do celular aprender sozinho (que
-// e lento e as vezes nao sugere nada, mesmo pra termos usados varias
-// vezes, tipo "Uber"/"99").
+// Registro permanente de toda observacao ja usada, separado das transacoes -
+// assim uma categoria continua sugerida mesmo se a unica transacao que a
+// usava for apagada depois. E tambem onde "criar uma observacao" guarda a
+// categoria antes mesmo dela ter sido usada em qualquer transacao.
+const OBSERVACOES_CONHECIDAS_KEY = 'controle_gastos_observacoes_conhecidas';
+
+function lerObservacoesConhecidas() {
+  const raw = localStorage.getItem(OBSERVACOES_CONHECIDAS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function lembrarObservacao(texto) {
+  if (!texto) return;
+  const conhecidas = lerObservacoesConhecidas();
+  if (!conhecidas.includes(texto)) {
+    conhecidas.push(texto);
+    localStorage.setItem(OBSERVACOES_CONHECIDAS_KEY, JSON.stringify(conhecidas));
+  }
+}
+
+// Sugestoes de observacao: toda categoria ja conhecida (usada antes ou
+// criada manualmente), ordenada das mais frequentes nas transacoes atuais
+// pras menos - mais confiavel que depender do teclado do celular aprender
+// sozinho (que e lento e as vezes nao sugere nada, mesmo pra termos usados
+// varias vezes, tipo "Uber"/"99").
 function observacoesFrequentes(excluirId) {
   const contagem = {};
+  lerObservacoesConhecidas().forEach(o => { contagem[o] = 0; });
   carregarTransacoes().forEach(t => {
     if (!t.observacao || t.id === excluirId) return;
     contagem[t.observacao] = (contagem[t.observacao] || 0) + 1;
@@ -1891,6 +1923,7 @@ async function editarObservacao(id) {
   const nova = await modalPrompt('Observação:', t.observacao || '', observacoesFrequentes(id));
   if (nova === null) return;
   t.observacao = nova.trim();
+  lembrarObservacao(t.observacao);
   salvarTransacoes(lista);
   renderizar();
   // Se a tela de relatorio estiver aberta, atualiza ela tambem - e onde
