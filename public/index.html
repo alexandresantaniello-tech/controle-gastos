@@ -465,7 +465,7 @@
 <button class="secondary" id="btnFalarTransacao" onclick="iniciarComandoDeVoz()" style="width:100%; margin-top:8px; display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Falar uma transação</span></button>
 <div class="status" id="statusVoz"></div>
 
-<div class="toggles-linha">
+<div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Espécie</span></div>
   <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto">Upload</span></div>
@@ -1138,7 +1138,7 @@ function alternarRelatorio() {
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Relatórios';
   if (abrindo) {
     renderizarRelatorio();
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -1153,7 +1153,7 @@ function alternarUpload() {
   iconePrincipal.style.display = abrindo ? 'none' : '';
   if (abrindo) {
     atualizarIndicadorUso();
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -2547,7 +2547,7 @@ function alternarDinheiro() {
     document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
     observacaoDinheiroAtual = '';
     atualizarNotaDinheiro();
-    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -2597,7 +2597,7 @@ function alternarBackup() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Backup';
-  if (abrindo) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (abrindo) document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function alternarUploadHistorico() {
@@ -2606,7 +2606,7 @@ function alternarUploadHistorico() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Upload';
-  if (abrindo) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (abrindo) document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function apagarTodasTransacoes() {
