@@ -352,6 +352,24 @@
   .modal-overlay.centralizado { align-items: center; }
   .modal-overlay.centralizado .modal-caixa { margin-top: 0; }
   .modal-overlay.aberto { display: flex; }
+  .btn-voltar-flutuante {
+    display: none;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--card);
+    border: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    z-index: 900;
+    cursor: pointer;
+  }
+  .btn-voltar-flutuante.visivel { display: flex; }
   .modal-caixa {
     background: var(--card);
     border: 1px solid var(--border);
@@ -713,6 +731,10 @@
     </ul>
   </div>
 </div>
+
+<button class="btn-voltar-flutuante" id="btnVoltarFlutuante" onclick="voltarSecaoAnterior()" aria-label="Voltar pra seção anterior">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+</button>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-caixa">
@@ -1152,16 +1174,59 @@ function fecharTodasSecoes() {
   document.getElementById('btnAdicionarPrincipal').querySelector('svg').style.display = '';
 }
 
+// ---------- Botao flutuante "voltar pra secao anterior" ----------
+// Guarda, a cada secao aberta, qual secao (ou nenhuma) estava aberta antes -
+// igual o botao voltar do celular: desfaz um passo de navegacao por vez, nao
+// so fecha tudo de uma vez. `navegandoParaTras` evita que o proprio ato de
+// voltar empilhe um novo passo (senao voltar viraria um ping-pong em vez de
+// percorrer o historico de verdade).
+let pilhaVoltarSecao = [];
+let navegandoParaTras = false;
+
+const SECAO_TOGGLE_FN = {
+  relatorioCard: () => alternarRelatorio(),
+  dinheiroCard: () => alternarDinheiro(),
+  backupCard: () => alternarBackup(),
+  uploadHistoricoCard: () => alternarUploadHistorico(),
+  uploadCard: () => alternarUpload(),
+};
+
+function secaoAbertaAtual() {
+  return Object.keys(SECAO_TOGGLE_FN).find(id => document.getElementById(id).style.display !== 'none') || null;
+}
+
+function empilharVoltarSecao(secaoAnterior) {
+  if (navegandoParaTras) return;
+  pilhaVoltarSecao.push(secaoAnterior);
+  atualizarBotaoVoltar();
+}
+
+function voltarSecaoAnterior() {
+  if (pilhaVoltarSecao.length === 0) return;
+  const anterior = pilhaVoltarSecao.pop();
+  navegandoParaTras = true;
+  if (anterior) SECAO_TOGGLE_FN[anterior]();
+  else fecharTodasSecoes();
+  navegandoParaTras = false;
+  atualizarBotaoVoltar();
+}
+
+function atualizarBotaoVoltar() {
+  document.getElementById('btnVoltarFlutuante').classList.toggle('visivel', pilhaVoltarSecao.length > 0);
+}
+
 function alternarRelatorio() {
   const card = document.getElementById('relatorioCard');
   const toggle = document.getElementById('relatorioToggle');
   const abrindo = card.style.display === 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) return;
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   renderizarRelatorio();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 function alternarUpload() {
@@ -1170,6 +1235,7 @@ function alternarUpload() {
   const textoPrincipal = document.getElementById('btnAdicionarPrincipalTexto');
   const iconePrincipal = btnPrincipal.querySelector('svg');
   const abrindo = card.style.display === 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) return;
   card.style.display = 'block';
@@ -1177,6 +1243,7 @@ function alternarUpload() {
   iconePrincipal.style.display = 'none';
   atualizarIndicadorUso();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 // ---------- Uso mensal (so contador informativo - decisao de produto: sem limite nenhum, mesmo no plano pago) ----------
@@ -2560,6 +2627,7 @@ function alternarDinheiro() {
   const card = document.getElementById('dinheiroCard');
   const toggle = document.getElementById('dinheiroToggle');
   const abrindo = card.style.display === 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) return;
   card.style.display = 'block';
@@ -2568,6 +2636,7 @@ function alternarDinheiro() {
   observacaoDinheiroAtual = '';
   atualizarNotaDinheiro();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 function salvarDinheiro() {
@@ -2614,22 +2683,26 @@ function alternarBackup() {
   const card = document.getElementById('backupCard');
   const toggle = document.getElementById('backupToggle');
   const abrindo = card.style.display === 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) return;
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 function alternarUploadHistorico() {
   const card = document.getElementById('uploadHistoricoCard');
   const toggle = document.getElementById('uploadHistoricoToggle');
   const abrindo = card.style.display === 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) return;
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 async function apagarTodasTransacoes() {
