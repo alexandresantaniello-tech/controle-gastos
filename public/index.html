@@ -1915,7 +1915,8 @@ async function editarLocal(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const novo = await modalPrompt('Local/recebedor:', t.local && t.local !== 'desconhecido' ? t.local : '');
+  const rotuloLocal = t.tipo === 'entrada' ? 'Pagador:' : 'Recebedor:';
+  const novo = await modalPrompt(rotuloLocal, t.local && t.local !== 'desconhecido' ? t.local : '');
   if (novo === null) return;
   t.local = novo.trim() || 'desconhecido';
   salvarTransacoes(lista);
@@ -1926,7 +1927,7 @@ async function editarInstituicao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = await modalPrompt('Instituição/banco:', t.instituicao && t.instituicao !== 'desconhecido' ? t.instituicao : '');
+  const nova = await modalPrompt('Instituição/espécie ou pix:', t.instituicao && t.instituicao !== 'desconhecido' ? t.instituicao : '');
   if (nova === null) return;
   t.instituicao = nova.trim() || 'desconhecido';
   salvarTransacoes(lista);
