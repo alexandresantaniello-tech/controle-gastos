@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <title>Sifia — Controle da sua Renda</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
@@ -330,10 +330,12 @@
     inset: 0;
     background: rgba(0, 9, 25, 0.75);
     z-index: 1000;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 20px;
+    overflow-y: auto;
   }
+  .modal-overlay .modal-caixa { margin-top: 12vh; }
   .modal-overlay.aberto { display: flex; }
   .modal-caixa {
     background: var(--card);
@@ -358,6 +360,16 @@
   .modal-opcao:last-child { border-bottom: none; }
   .modal-opcao:active { background: var(--accent); }
   .modal-opcao.selecionada { background: var(--gradient-crystal); color: var(--primary-foreground); font-weight: 700; }
+  .modal-sugestao {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    color: var(--primary);
+    background: var(--secondary);
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .modal-sugestao:active { background: var(--accent); }
   .prompt-texto {
     background: var(--secondary);
     border: 1px solid var(--border);
@@ -688,6 +700,7 @@
   <div class="modal-caixa">
     <p class="modal-mensagem" id="modalMensagem"></p>
     <input type="text" id="modalInput" style="display:none;">
+    <div id="modalSugestoes" style="display:none; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
     <div id="modalListaOpcoes" style="display:none; max-height:50vh; overflow-y:auto; margin-top:8px; border-radius:var(--radius-sm); border:1px solid var(--border);"></div>
     <div class="modal-acoes" id="modalAcoes"></div>
   </div>
@@ -1758,18 +1771,33 @@ function abrirRegistroNoDia(t) {
 // ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
 // nao dava pra estilizar e mostravam a URL do site num popup feio) ----------
 
-function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false, comSelect = false, opcoesSelect = null }) {
+function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false, comSelect = false, opcoesSelect = null, sugestoes = null }) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('modalOverlay');
     const msgEl = document.getElementById('modalMensagem');
     const inputEl = document.getElementById('modalInput');
     const listaEl = document.getElementById('modalListaOpcoes');
+    const sugestoesEl = document.getElementById('modalSugestoes');
     const acoesEl = document.getElementById('modalAcoes');
 
     msgEl.textContent = mensagem;
     inputEl.style.display = comInput ? 'block' : 'none';
     inputEl.value = valorInicial;
     listaEl.style.display = comSelect ? 'block' : 'none';
+    sugestoesEl.innerHTML = '';
+    sugestoesEl.style.display = (comInput && sugestoes && sugestoes.length > 0) ? 'flex' : 'none';
+    if (comInput && sugestoes) {
+      // Toca na sugestao so preenche o campo (nao fecha o modal sozinho) -
+      // observacao costuma precisar de um ajuste leve as vezes, diferente
+      // da moeda que e escolha fechada.
+      sugestoes.forEach(texto => {
+        const chip = document.createElement('span');
+        chip.className = 'modal-sugestao';
+        chip.textContent = texto;
+        chip.onclick = () => { inputEl.value = texto; inputEl.focus(); };
+        sugestoesEl.appendChild(chip);
+      });
+    }
 
     function fechar(valor) {
       overlay.classList.remove('aberto');
@@ -1819,8 +1847,8 @@ function modalSelecionar(mensagem, opcoesSelect, valorInicial = '') {
 function modalConfirmar(mensagem) {
   return abrirModal({ mensagem });
 }
-function modalPrompt(mensagem, valorInicial = '') {
-  return abrirModal({ mensagem, comInput: true, valorInicial });
+function modalPrompt(mensagem, valorInicial = '', sugestoes = null) {
+  return abrirModal({ mensagem, comInput: true, valorInicial, sugestoes });
 }
 function modalAlerta(mensagem) {
   return abrirModal({ mensagem, somenteOk: true });
@@ -1843,11 +1871,24 @@ async function removerTransacao(id) {
   renderizar();
 }
 
+// Sugestoes de observacao ja usadas antes, das mais frequentes pras menos -
+// mais confiavel que depender do teclado do celular aprender sozinho (que
+// e lento e as vezes nao sugere nada, mesmo pra termos usados varias
+// vezes, tipo "Uber"/"99").
+function observacoesFrequentes(excluirId) {
+  const contagem = {};
+  carregarTransacoes().forEach(t => {
+    if (!t.observacao || t.id === excluirId) return;
+    contagem[t.observacao] = (contagem[t.observacao] || 0) + 1;
+  });
+  return Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]).slice(0, 8);
+}
+
 async function editarObservacao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = await modalPrompt('Observação:', t.observacao || '');
+  const nova = await modalPrompt('Observação:', t.observacao || '', observacoesFrequentes(id));
   if (nova === null) return;
   t.observacao = nova.trim();
   salvarTransacoes(lista);
