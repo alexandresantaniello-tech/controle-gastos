@@ -962,11 +962,16 @@ function agruparPorObservacao(transacoes) {
 function linhasAgrupadasHtml(transacoes) {
   if (transacoes.length === 0) return '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>';
   const { grupos, semObservacao } = agruparPorObservacao(transacoes);
+  // Grupo inteiro e tocavel pra renomear de uma vez - resolve caso tipo
+  // "Cigarro da Minha mãe" vs "Cigarro da minha mãe" (mesma categoria,
+  // maiuscula/minuscula diferente) numa unica acao, em vez de editar
+  // transacao por transacao. encodeURIComponent evita quebrar o HTML se a
+  // observacao tiver aspas ou outro caractere especial.
   const linhasGrupos = grupos.map(g => {
     const classeCor = g.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = g.tipo === 'entrada' ? '+' : '-';
     return `
-    <div class="relatorio-resumo-linha">
+    <div class="relatorio-resumo-linha" style="cursor:pointer;" onclick="renomearObservacaoEmGrupo('${encodeURIComponent(g.descricao)}')">
       <span>${escapeHtml(g.descricao)}</span>
       <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
     </div>`;
@@ -1930,6 +1935,30 @@ async function editarObservacao(id) {
   // esse toque pode ter vindo (transacao sem observacao, listada solta
   // embaixo do resumo agrupado), e o usuario espera ver ela subir pro
   // grupo na hora, sem precisar trocar de tela.
+  if (document.getElementById('resumoRelatorio')) renderizarRelatorio();
+}
+
+// Renomeia TODAS as transacoes que tem exatamente essa observacao de uma
+// vez - pensado pro caso de duas categorias que deveriam ser uma so (ex:
+// "Cigarro da Minha mãe" vs "Cigarro da minha mãe", so maiuscula/minuscula
+// diferente). Usa as mesmas sugestoes de sempre, entao da pra escolher a
+// grafia certa que ja existe em vez de digitar de novo.
+async function renomearObservacaoEmGrupo(nomeAntigoCodificado) {
+  const nomeAntigo = decodeURIComponent(nomeAntigoCodificado);
+  const novo = await modalPrompt(`Renomear "${nomeAntigo}" (afeta todas as transações com esse nome) para:`, nomeAntigo, observacoesFrequentes());
+  if (novo === null || !novo.trim() || novo.trim() === nomeAntigo) return;
+  const lista = carregarTransacoes();
+  let afetadas = 0;
+  lista.forEach(t => {
+    if (t.observacao === nomeAntigo) {
+      t.observacao = novo.trim();
+      afetadas++;
+    }
+  });
+  if (afetadas === 0) return;
+  lembrarObservacao(novo.trim());
+  salvarTransacoes(lista);
+  renderizar();
   if (document.getElementById('resumoRelatorio')) renderizarRelatorio();
 }
 
