@@ -678,6 +678,7 @@
 </div>
 
 <input type="date" id="inputDataOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;">
+<select id="seletorMoedaTransacaoOculto" style="position:fixed; top:-9999px; left:-9999px; opacity:0;"></select>
 
 
 
@@ -1908,20 +1909,21 @@ async function editarMoedaTransacao(id) {
     await modalAlerta('Câmbio ainda não carregou. Tenta de novo em alguns segundos.');
     return;
   }
-  const codigoAtual = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : '';
-  const codigoDigitado = await modalPrompt('Código da moeda real dessa transação (ex: USD, EUR, ARS) - deixe em branco pra voltar a ser só em reais:', codigoAtual);
-  if (codigoDigitado === null) return;
-  const codigo = codigoDigitado.trim().toUpperCase();
+  const select = document.getElementById('seletorMoedaTransacaoOculto');
+  select.value = t.moedaOriginal && t.moedaOriginal !== 'BRL' ? t.moedaOriginal : 'BRL';
+  // Espera o usuario escolher no seletor nativo (a mesma lista de moedas
+  // do seletor global) em vez de digitar um codigo - mais facil de usar,
+  // igual pediu.
+  const codigo = await new Promise(resolve => {
+    select.onchange = () => resolve(select.value);
+    select.showPicker ? select.showPicker() : select.click();
+  });
 
   if (!codigo || codigo === 'BRL') {
     delete t.moedaOriginal;
     delete t.valorOriginal;
     salvarTransacoes(lista);
     renderizar();
-    return;
-  }
-  if (!taxasCambio[codigo]) {
-    await modalAlerta(`Não reconheci "${codigo}" como código de moeda. Usa a sigla de 3 letras, ex: USD, EUR, ARS.`);
     return;
   }
   const valorAtualOriginal = t.valorOriginal ? String(t.valorOriginal).replace('.', ',') : '';
@@ -2068,16 +2070,19 @@ function mudarMoeda(nova) {
 // So da pra montar a lista completa depois que o cambio carrega (e o que
 // diz quais moedas a API realmente suporta) - por isso isso roda depois de
 // carregarTaxasCambio(), nao no carregamento inicial da pagina.
-function popularSeletorMoeda() {
+// Preenche um <select> de moeda com a mesma lista/ordem em ambos os
+// lugares que precisam disso (o seletor global e o seletor escondido usado
+// pra marcar moeda de uma transacao especifica) - evita duplicar a logica
+// de ordenacao/nome em dois lugares.
+function popularOpcoesDeMoeda(select, incluirBRL) {
   if (!taxasCambio) return;
-  const select = document.getElementById('seletorMoeda');
   const codigosDisponiveis = Object.keys(taxasCambio).filter(c => c !== 'BRL');
   const prioritarias = ORDEM_PRIORITARIA_MOEDA.filter(c => codigosDisponiveis.includes(c));
   const resto = codigosDisponiveis
     .filter(c => !ORDEM_PRIORITARIA_MOEDA.includes(c))
     .sort((a, b) => (NOMES_MOEDA[a] || a).localeCompare(NOMES_MOEDA[b] || b, 'pt-BR'));
 
-  select.innerHTML = '<option value="BRL">R$ Real</option>';
+  select.innerHTML = incluirBRL ? '<option value="BRL">R$ Real</option>' : '';
   [...prioritarias, ...resto].forEach(codigo => {
     const opt = document.createElement('option');
     opt.value = codigo;
@@ -2085,11 +2090,18 @@ function popularSeletorMoeda() {
     opt.textContent = `${simbolo} ${NOMES_MOEDA[codigo] || codigo}`;
     select.appendChild(opt);
   });
+}
+
+function popularSeletorMoeda() {
+  if (!taxasCambio) return;
+  const select = document.getElementById('seletorMoeda');
+  popularOpcoesDeMoeda(select, true);
   // Restaura a moeda que o usuario ja tinha escolhido (guardada no
   // localStorage), nao o que o <select> mostrava antes de popular - antes
   // de popularSeletorMoeda() rodar, o select so tem a opcao BRL, entao
   // usar o valor dele aqui resetaria a escolha do usuario de volta pra BRL.
   select.value = moedaSelecionada;
+  popularOpcoesDeMoeda(document.getElementById('seletorMoedaTransacaoOculto'), true);
 }
 
 function atualizarInfoCambio() {
