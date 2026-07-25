@@ -10,6 +10,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 app.use(express.static('public', {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
 }));
+app.use(express.json());
 
 function getExtractionPrompt() {
   const hoje = new Date();
@@ -64,6 +65,53 @@ Se a pagina tiver uma tabela de transacoes, extraia TODAS as linhas da tabela, u
 }
 IMPORTANTE: se essa pagina NAO tiver nenhuma tabela de transacoes reais (por exemplo, e uma pagina de contato, telefone de atendimento, SAC, Ouvidoria, capa, ou texto institucional/propaganda), responda com um array VAZIO: []. NUNCA invente uma transacao a partir de texto que nao seja uma linha real de extrato - nao crie valores como R$0,00 ou transacoes ficticias.
 Responda APENAS com um JSON valido (um array), sem nenhum texto antes ou depois.`;
+}
+
+function getExtractionPromptTexto() {
+  const hoje = new Date();
+  const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
+  const ontem = new Date(hoje);
+  ontem.setDate(ontem.getDate() - 1);
+  const ontemStr = String(ontem.getDate()).padStart(2, '0') + '/' + String(ontem.getMonth() + 1).padStart(2, '0') + '/' + ontem.getFullYear();
+
+  return `Você recebe uma frase falada (transcrita por voz) ou digitada por um usuário brasileiro descrevendo UMA transação financeira que ele fez ou recebeu, ex: "gastei 40 reais no posto de gasolina", "recebi 200 de pix do Fernando", "paguei 30 de comida ontem".
+A data de HOJE é ${hojeStr}. Se a frase não mencionar quando foi, use ${hojeStr}. Se disser "ontem", use ${ontemStr}.
+Responda APENAS com um JSON válido, sem nenhum texto antes ou depois: um ARRAY com um item, no formato:
+{
+  "valor": (número, ex: 40.00 - extraia o valor mencionado),
+  "tipo": ("entrada" se a pessoa RECEBEU o dinheiro, "saida" se ela GASTOU/PAGOU/ENVIOU. Palavras como "gastei", "paguei", "comprei" = saida; "recebi", "ganhei", "me pagaram" = entrada),
+  "categoria": (categoria curta inferida do contexto, ex: "Transporte", "Combustível", "Comida na rua", "Mercado", "Lazer", "Salário", "Transferência entre contas", "Outros"),
+  "instituicao": "desconhecido",
+  "local": (nome do estabelecimento/pessoa mencionado, ou "desconhecido" se não foi dito),
+  "data": (formato EXATO DD/MM/AAAA)
+}
+Se a frase não descrever nenhuma transação financeira reconhecível (valor + direção do dinheiro), responda com {"erro": "não conseguimos entender essa transação, tente descrever de novo"} (sem array, só esse objeto).`;
+}
+
+async function lerTextoTransacao(texto) {
+  const message = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 400,
+    temperature: 0,
+    messages: [
+      { role: 'user', content: [{ type: 'text', text: `${getExtractionPromptTexto()}\n\nFrase do usuário: "${texto}"` }] },
+    ],
+  }, { timeout: 15000 });
+
+  const textResponse = message.content[0].text.trim();
+  const inicioArray = textResponse.indexOf('[');
+  const inicioObjeto = textResponse.indexOf('{');
+  let bruto = null;
+  if (inicioArray !== -1 && (inicioObjeto === -1 || inicioArray < inicioObjeto)) {
+    bruto = textResponse.slice(inicioArray, textResponse.lastIndexOf(']') + 1);
+  } else if (inicioObjeto !== -1) {
+    bruto = textResponse.slice(inicioObjeto, textResponse.lastIndexOf('}') + 1);
+  }
+  if (!bruto) {
+    throw new Error('Não foi possível interpretar a frase');
+  }
+  const resultado = JSON.parse(bruto);
+  return Array.isArray(resultado) ? resultado : [resultado];
 }
 
 async function lerComprovante(buffer, mediaType, tipo, dataReferenciaPagina) {
@@ -174,6 +222,24 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
   }
   try {
     const transacoes = await lerComprovante(req.file.buffer, req.file.mimetype, req.body.tipo, req.body.dataReferenciaPagina);
+    res.json({ transacoes });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: mensagemErroAmigavel(err) });
+  }
+});
+
+// Comando de voz (ou texto digitado) - mesma ideia do parse-receipt, so que
+// pra frase falada/transcrita em vez de imagem. Usado tanto pelo microfone
+// no navegador (Android/desktop) quanto pelo Atalho do iOS (dita e manda
+// pra ca via ?voz=).
+app.post('/api/parse-texto', async (req, res) => {
+  const texto = (req.body && req.body.texto || '').trim();
+  if (!texto) {
+    return res.status(400).json({ erro: 'Nenhum texto enviado' });
+  }
+  try {
+    const transacoes = await lerTextoTransacao(texto);
     res.json({ transacoes });
   } catch (err) {
     console.error(err);
