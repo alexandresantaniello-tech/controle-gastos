@@ -450,7 +450,6 @@
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
-    <p class="aviso-backup" style="margin-top:8px;"><span style="color:var(--primary); cursor:pointer;" onclick="resetarHistoricoTeste()">[modo teste] resetar o "já usado"</span></p>
   </div>
 </div>
 
@@ -1088,13 +1087,9 @@ function alternarUpload() {
   if (abrindo) atualizarIndicadorUso();
 }
 
-// ---------- Limite mensal gratis (so conta comprovantes lidos por IA - dinheiro em especie nao entra) ----------
+// ---------- Uso mensal (so contador informativo - decisao de produto: sem limite nenhum, mesmo no plano pago) ----------
 
 const USO_MENSAL_KEY = 'controle_gastos_uso_mensal';
-const LIMITE_MENSAL_GRATIS = 30;
-// Fase de teste com poucos usuarios (beta fechado) - limite fica so contando,
-// sem bloquear ninguem. Reverter pra false antes do lancamento pago (17/08).
-const SEM_LIMITE_FASE_TESTE = true;
 
 function mesAtualChave() {
   const d = new Date();
@@ -1115,22 +1110,12 @@ function registrarUsoComprovante() {
   atualizarIndicadorUso();
 }
 
-function limiteAtingido() {
-  if (SEM_LIMITE_FASE_TESTE) return false;
-  return lerUsoMensal().contagem >= LIMITE_MENSAL_GRATIS;
-}
-
 function atualizarIndicadorUso() {
   const uso = lerUsoMensal();
   const el = document.getElementById('usoLimite');
   if (!el) return;
-  if (SEM_LIMITE_FASE_TESTE) {
-    el.textContent = `${uso.contagem} comprovantes usados esse mês (sem limite na fase de teste).`;
-    el.className = 'uso-limite';
-    return;
-  }
-  el.textContent = `${uso.contagem} de ${LIMITE_MENSAL_GRATIS} comprovantes gratuitos usados esse mês.`;
-  el.className = 'uso-limite' + (uso.contagem >= LIMITE_MENSAL_GRATIS ? ' no-limite' : uso.contagem >= LIMITE_MENSAL_GRATIS - 5 ? ' perto-limite' : '');
+  el.textContent = `${uso.contagem} comprovante${uso.contagem === 1 ? '' : 's'} usado${uso.contagem === 1 ? '' : 's'} esse mês.`;
+  el.className = 'uso-limite';
 }
 
 let imagemSelecionada = null;
@@ -1224,9 +1209,8 @@ async function enviarComprovante(formData, tentativa) {
   }
 }
 
-// ---------- Importar histórico (presente de boas-vindas, uma vez por conta) ----------
+// ---------- Importar histórico (presente de boas-vindas - sem limite de quantas vezes usar) ----------
 
-const HISTORICO_IMPORTADO_KEY = 'controle_gastos_historico_importado';
 // Guarda quais paginas ja foram processadas com sucesso, mesmo entre
 // fechamentos do app - se o cliente fechar o app no meio (ou o app travar),
 // reabrir e importar o mesmo PDF de novo retoma dali em vez de travar
@@ -1283,14 +1267,6 @@ function garantirProgressoDoArquivoCerto(arquivo) {
     localStorage.removeItem(HISTORICO_DATA_RECENTE_KEY);
     localStorage.setItem(HISTORICO_ARQUIVO_KEY, fingerprintAtual);
   }
-}
-
-// Link temporario so pra fase de teste - remover antes do lancamento publico.
-function resetarHistoricoTeste() {
-  localStorage.removeItem(HISTORICO_IMPORTADO_KEY);
-  limparPaginasFeitas();
-  document.getElementById('btnImportarHistorico').disabled = false;
-  document.getElementById('statusHistorico').textContent = '[modo teste] Liberado pra importar de novo.';
 }
 
 function dataMaisRecenteNoTexto(texto) {
@@ -1355,12 +1331,6 @@ async function importarHistorico() {
   const senha = document.getElementById('senhaHistorico').value;
   const btn = document.getElementById('btnImportarHistorico');
 
-  if (localStorage.getItem(HISTORICO_IMPORTADO_KEY)) {
-    statusEl.textContent = 'Esse presente de boas-vindas já foi usado nesse aparelho — só funciona uma vez.';
-    statusEl.className = 'status error';
-    return;
-  }
-
   if (!arquivoInput.files.length) {
     statusEl.textContent = 'Selecione o arquivo PDF do extrato primeiro.';
     statusEl.className = 'status error';
@@ -1372,7 +1342,7 @@ async function importarHistorico() {
   const retomando = paginasFeitas.size > 0;
   const mensagemConfirmacao = retomando
     ? `Detectamos uma importação anterior incompleta (${paginasFeitas.size} página(s) já processada(s) com sucesso). Vamos continuar de onde parou, sem duplicar nada - envie o mesmo arquivo PDF de antes. Continuar?`
-    : 'Isso vai processar todo o extrato e é seu presente de boas-vindas único — não pode ser refeito depois. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?';
+    : 'Isso vai processar todo o extrato. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?';
   if (!(await modalConfirmar(mensagemConfirmacao))) {
     return;
   }
@@ -1425,7 +1395,6 @@ async function importarHistorico() {
   if (!resultado) return;
 
   if (resultado.paginasFalhas.length === 0) {
-    localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
     limparPaginasFeitas();
   }
   mostrarResultadoHistorico(resultado, statusEl);
@@ -1641,7 +1610,6 @@ async function reprocessarPaginasFalhas() {
   if (travaDeTela) travaDeTela.release();
   if (!resultado) return;
   if (resultado.paginasFalhas.length === 0) {
-    localStorage.setItem(HISTORICO_IMPORTADO_KEY, '1');
     limparPaginasFeitas();
   }
   mostrarResultadoHistorico(resultado, statusEl);
@@ -1649,12 +1617,6 @@ async function reprocessarPaginasFalhas() {
 
 sendBtn.addEventListener('click', async () => {
   if (!imagemSelecionada) return;
-
-  if (limiteAtingido()) {
-    status.textContent = `Você atingiu o limite gratuito de ${LIMITE_MENSAL_GRATIS} comprovantes esse mês. O limite renova no mês que vem.`;
-    status.className = 'status error';
-    return;
-  }
 
   sendBtn.disabled = true;
   status.textContent = 'Analisando comprovante...';
@@ -2346,10 +2308,6 @@ function alternarUploadHistorico() {
   const abrindo = card.style.display === 'none';
   card.style.display = abrindo ? 'block' : 'none';
   toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Upload';
-  if (abrindo && localStorage.getItem(HISTORICO_IMPORTADO_KEY)) {
-    document.getElementById('btnImportarHistorico').disabled = true;
-    document.getElementById('statusHistorico').textContent = 'Presente de boas-vindas já usado nesse aparelho.';
-  }
 }
 
 async function apagarTodasTransacoes() {
