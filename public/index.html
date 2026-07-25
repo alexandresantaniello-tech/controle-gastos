@@ -571,8 +571,8 @@
 
   <label class="campo">Tipo</label>
   <div class="tipo-toggle">
-    <button type="button" id="btnEntradaDinheiro" onclick="selecionarTipoDinheiro('entrada')">Entrada</button>
-    <button type="button" id="btnSaidaDinheiro" class="ativo-saida" onclick="selecionarTipoDinheiro('saida')">Saída</button>
+    <button type="button" id="btnEntradaDinheiro" class="ativo-entrada" onclick="selecionarTipoDinheiro('entrada')">Entrada</button>
+    <button type="button" id="btnSaidaDinheiro" onclick="selecionarTipoDinheiro('saida')">Saída</button>
   </div>
 
   <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()" style="margin-top:14px;">
@@ -2721,7 +2721,7 @@ function renderizar() {
 
 // ---------- Dinheiro em especie (lancamento manual, sem IA, sem servidor) ----------
 
-let tipoDinheiroSelecionado = 'saida';
+let tipoDinheiroSelecionado = 'entrada';
 
 function selecionarTipoDinheiro(tipo) {
   tipoDinheiroSelecionado = tipo;
@@ -2818,6 +2818,7 @@ function alternarDinheiro() {
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  selecionarTipoDinheiro('entrada');
   dataDinheiroSelecionadaISO = new Date().toISOString().slice(0, 10);
   atualizarTextoDataDinheiro();
   observacaoDinheiroAtual = '';
