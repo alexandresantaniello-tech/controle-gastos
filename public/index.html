@@ -274,9 +274,10 @@
   label.campo { display: block; font-size: 0.8rem; color: var(--muted-foreground); margin-top: 14px; }
   label.campo:first-child { margin-top: 0; }
   .tipo-toggle { display: flex; gap: 8px; margin-top: 6px; }
-  .tipo-toggle button { flex: 1; margin-top: 0; background: var(--card); border: 1px solid var(--border); color: var(--foreground); }
+  .tipo-toggle button { flex: 1; margin-top: 0; background: var(--card); border: 1px solid var(--border); color: var(--foreground); opacity: 0.45; transition: opacity 0.15s, transform 0.15s; }
   .tipo-toggle button#btnEntradaDinheiro { background: rgba(74, 222, 128, 0.15); border-color: rgba(74, 222, 128, 0.4); color: var(--entrada); }
   .tipo-toggle button#btnSaidaDinheiro { background: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.4); color: var(--saida); }
+  .tipo-toggle button.ativo-entrada, .tipo-toggle button.ativo-saida { opacity: 1; font-weight: 700; transform: scale(1.02); }
   .tipo-toggle button.ativo-entrada { border-color: var(--entrada); }
   .tipo-toggle button.ativo-saida { border-color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
