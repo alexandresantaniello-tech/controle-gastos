@@ -2746,6 +2746,16 @@ async function editarLocalDinheiro() {
   atualizarNotaLocalDinheiro();
 }
 
+// O teclado numerico cobre boa parte da tela e o formulario de Especie e
+// mais alto que o espaco que sobra - sem isso, "Salvar lancamento" ficava
+// escondido atras do teclado depois de digitar o Valor, sem indicacao de
+// que dava pra rolar ate ele.
+document.getElementById('valorDinheiro').addEventListener('focus', () => {
+  setTimeout(() => {
+    document.getElementById('valorDinheiro').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 300);
+});
+
 let dataDinheiroSelecionadaISO = '';
 
 function atualizarTextoDataDinheiro() {
