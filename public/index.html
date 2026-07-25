@@ -550,7 +550,7 @@
   <label class="campo">Data</label>
   <input type="date" id="dataDinheiro">
 
-  <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block;">OBSERVAÇÃO</div>
+  <div class="nota nota-vazia" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="display:inline-block; margin-top:14px;">OBSERVAÇÃO</div>
 
   <div style="text-align:center; margin-top:16px;">
     <button onclick="salvarDinheiro()">Salvar lançamento</button>
@@ -738,7 +738,7 @@
 </div>
 
 <button class="btn-voltar-flutuante" id="btnVoltarFlutuante" onclick="voltarSecaoAnterior()" aria-label="Voltar pra seção anterior">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
 </button>
 
 <div class="modal-overlay" id="modalOverlay">
@@ -1221,8 +1221,25 @@ function voltarSecaoAnterior() {
 }
 
 function atualizarBotaoVoltar() {
-  document.getElementById('btnVoltarFlutuante').classList.toggle('visivel', pilhaVoltarSecao.length > 0);
+  // So garante que ela suma se o historico zerou - a aparicao em si e
+  // controlada pelo scroll listener abaixo, nao por isso aqui.
+  if (pilhaVoltarSecao.length === 0) {
+    document.getElementById('btnVoltarFlutuante').classList.remove('visivel');
+  }
 }
+
+// A seta so aparece durante o movimento de rolagem (igual a "voltar ao
+// topo" da Amazon/iFood) - nao fica flutuando fixa o tempo todo, so pisca
+// quando ha historico pra voltar E a tela esta se mexendo, sumindo sozinha
+// pouco depois de parar.
+let timeoutBotaoVoltar = null;
+window.addEventListener('scroll', () => {
+  if (pilhaVoltarSecao.length === 0) return;
+  const btn = document.getElementById('btnVoltarFlutuante');
+  btn.classList.add('visivel');
+  clearTimeout(timeoutBotaoVoltar);
+  timeoutBotaoVoltar = setTimeout(() => btn.classList.remove('visivel'), 1200);
+}, { passive: true });
 
 function alternarRelatorio() {
   const card = document.getElementById('relatorioCard');
