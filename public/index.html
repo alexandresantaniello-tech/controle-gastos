@@ -1833,11 +1833,6 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
     listaEl.style.display = comSelect ? 'block' : 'none';
     sugestoesEl.innerHTML = '';
     sugestoesEl.style.display = (comInput && sugestoes) ? 'flex' : 'none';
-    // Linha de acao (Criar/Excluir) fica FORA da lista com rolagem, logo
-    // depois do Cancelar/OK - sempre visivel, sem precisar rolar pra achar.
-    // So sugestao em si (que pode ser uma lista longa) rola.
-    const linhaAcoesExistente = document.getElementById('modalLinhaAcoesObservacao');
-    if (linhaAcoesExistente) linhaAcoesExistente.remove();
     if (comInput && sugestoes) {
       // Modo exclusao: em vez de um "x" grudado em cada chip (facil de
       // tocar sem querer), o botao "Excluir" liga um modo em que TOCAR NUM
@@ -1864,8 +1859,7 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       });
 
       const linhaAcoes = document.createElement('div');
-      linhaAcoes.id = 'modalLinhaAcoesObservacao';
-      linhaAcoes.style.cssText = 'display:flex; gap:10px; margin-top:12px;';
+      linhaAcoes.style.cssText = 'display:flex; gap:10px; margin-top:14px; width:100%;';
 
       // "Criar" so limpa e foca o campo pra digitar uma categoria nova - ao
       // confirmar com OK, ela fica lembrada (lembrarObservacao) e vira
@@ -1889,8 +1883,7 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       };
       linhaAcoes.appendChild(chipExcluir);
 
-      // Insere entre o Cancelar/OK e a lista de sugestoes (que rola).
-      sugestoesEl.parentNode.insertBefore(linhaAcoes, sugestoesEl);
+      sugestoesEl.appendChild(linhaAcoes);
     }
 
     function fechar(valor) {
