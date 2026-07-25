@@ -326,6 +326,8 @@
     font-size: 0.8rem;
     cursor: pointer;
     margin-top: 40px;
+    margin-bottom: 16px;
+    scroll-margin-top: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1164,6 +1166,8 @@ function fecharTodasSecoes() {
     ['dinheiroCard', 'dinheiroToggle', 'Espécie'],
     ['backupCard', 'backupToggle', 'Backup'],
     ['uploadHistoricoCard', 'uploadHistoricoToggle', 'Upload'],
+    ['termosCard', 'termosToggle', 'Termos de Uso'],
+    ['privacidadeCard', 'privacidadeToggle', 'Política de Privacidade'],
   ];
   secoes.forEach(([cardId, toggleId, rotulo]) => {
     document.getElementById(cardId).style.display = 'none';
@@ -1189,6 +1193,8 @@ const SECAO_TOGGLE_FN = {
   backupCard: () => alternarBackup(),
   uploadHistoricoCard: () => alternarUploadHistorico(),
   uploadCard: () => alternarUpload(),
+  termosCard: () => alternarTermos(),
+  privacidadeCard: () => alternarPrivacidade(),
 };
 
 function secaoAbertaAtual() {
@@ -2877,14 +2883,26 @@ function importarCsvTexto() {
 
 function alternarPrivacidade() {
   const card = document.getElementById('privacidadeCard');
+  const toggle = document.getElementById('privacidadeToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 function alternarTermos() {
   const card = document.getElementById('termosCard');
+  const toggle = document.getElementById('termosToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
+  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  empilharVoltarSecao(secaoAnterior);
 }
 
 // Ponto de entrada unico pra qualquer comprovante que chega ja analisado
