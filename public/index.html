@@ -349,6 +349,8 @@
     overflow-y: auto;
   }
   .modal-overlay .modal-caixa { margin-top: 6vh; }
+  .modal-overlay.centralizado { align-items: center; }
+  .modal-overlay.centralizado .modal-caixa { margin-top: 0; }
   .modal-overlay.aberto { display: flex; }
   .modal-caixa {
     background: var(--card);
@@ -1130,16 +1132,36 @@ async function compartilharCsv() {
   statusEl.textContent = 'CSV copiado como texto (compartilhamento de arquivo não disponível neste navegador).';
 }
 
+// So uma secao (Relatorios/Especie/Upload/Backup/Adicionar comprovante) fica
+// aberta por vez - abrir uma fecha automaticamente qualquer outra que ja
+// estivesse aberta, pra pagina nunca empilhar varios cards longos ao mesmo
+// tempo.
+function fecharTodasSecoes() {
+  const secoes = [
+    ['relatorioCard', 'relatorioToggle', 'Relatórios'],
+    ['dinheiroCard', 'dinheiroToggle', 'Espécie'],
+    ['backupCard', 'backupToggle', 'Backup'],
+    ['uploadHistoricoCard', 'uploadHistoricoToggle', 'Upload'],
+  ];
+  secoes.forEach(([cardId, toggleId, rotulo]) => {
+    document.getElementById(cardId).style.display = 'none';
+    document.getElementById(toggleId).querySelector('.toggle-texto').textContent = rotulo;
+  });
+  document.getElementById('uploadCard').style.display = 'none';
+  document.getElementById('btnAdicionarPrincipalTexto').textContent = 'Adicionar comprovante';
+  document.getElementById('btnAdicionarPrincipal').querySelector('svg').style.display = '';
+}
+
 function alternarRelatorio() {
   const card = document.getElementById('relatorioCard');
   const toggle = document.getElementById('relatorioToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Relatórios';
-  if (abrindo) {
-    renderizarRelatorio();
-    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  renderizarRelatorio();
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function alternarUpload() {
@@ -1148,13 +1170,13 @@ function alternarUpload() {
   const textoPrincipal = document.getElementById('btnAdicionarPrincipalTexto');
   const iconePrincipal = btnPrincipal.querySelector('svg');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  textoPrincipal.textContent = abrindo ? '– Fechar' : 'Adicionar comprovante';
-  iconePrincipal.style.display = abrindo ? 'none' : '';
-  if (abrindo) {
-    atualizarIndicadorUso();
-    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  textoPrincipal.textContent = '– Fechar';
+  iconePrincipal.style.display = 'none';
+  atualizarIndicadorUso();
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---------- Uso mensal (so contador informativo - decisao de produto: sem limite nenhum, mesmo no plano pago) ----------
@@ -1938,6 +1960,10 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
       inputEl.onblur = () => { sugestoesEl.style.maxHeight = '60vh'; };
     }
 
+    // Modais sem campo de texto (ex: confirmar exclusao) nunca abrem
+    // teclado, entao nao precisam ficar perto do topo reservando espaço pra
+    // ele - ficam centralizados de verdade na tela.
+    overlay.classList.toggle('centralizado', !comInput && !comSelect);
     overlay.classList.add('aberto');
     // So abre o teclado sozinho quando NAO tem chips de sugestao - com
     // chips, o normal e so tocar numa sugestao (sem digitar nada), entao o
@@ -2534,14 +2560,14 @@ function alternarDinheiro() {
   const card = document.getElementById('dinheiroCard');
   const toggle = document.getElementById('dinheiroToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Espécie';
-  if (abrindo) {
-    document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
-    observacaoDinheiroAtual = '';
-    atualizarNotaDinheiro();
-    document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  document.getElementById('dataDinheiro').value = new Date().toISOString().slice(0, 10);
+  observacaoDinheiroAtual = '';
+  atualizarNotaDinheiro();
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function salvarDinheiro() {
@@ -2588,18 +2614,22 @@ function alternarBackup() {
   const card = document.getElementById('backupCard');
   const toggle = document.getElementById('backupToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Backup';
-  if (abrindo) document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function alternarUploadHistorico() {
   const card = document.getElementById('uploadHistoricoCard');
   const toggle = document.getElementById('uploadHistoricoToggle');
   const abrindo = card.style.display === 'none';
-  card.style.display = abrindo ? 'block' : 'none';
-  toggle.querySelector('.toggle-texto').textContent = abrindo ? '– Fechar' : 'Upload';
-  if (abrindo) document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  fecharTodasSecoes();
+  if (!abrindo) return;
+  card.style.display = 'block';
+  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function apagarTodasTransacoes() {
