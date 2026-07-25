@@ -1151,7 +1151,10 @@ function alternarUpload() {
   card.style.display = abrindo ? 'block' : 'none';
   textoPrincipal.textContent = abrindo ? '– Fechar' : 'Adicionar comprovante';
   iconePrincipal.style.display = abrindo ? 'none' : '';
-  if (abrindo) atualizarIndicadorUso();
+  if (abrindo) {
+    atualizarIndicadorUso();
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 // ---------- Uso mensal (so contador informativo - decisao de produto: sem limite nenhum, mesmo no plano pago) ----------
