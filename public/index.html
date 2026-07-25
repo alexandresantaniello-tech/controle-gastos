@@ -364,9 +364,11 @@
     width: 52px;
     height: 52px;
     border-radius: 50%;
-    background: var(--primary);
-    color: var(--card);
-    border: none;
+    background: rgba(74, 184, 253, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--foreground);
+    border: 1px solid rgba(74, 184, 253, 0.55);
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
@@ -738,7 +740,7 @@
 </div>
 
 <button class="btn-voltar-flutuante" id="btnVoltarFlutuante" onclick="voltarSecaoAnterior()" aria-label="Voltar pra seção anterior">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="15 18 9 12 15 6"/></svg>
 </button>
 
 <div class="modal-overlay" id="modalOverlay">
