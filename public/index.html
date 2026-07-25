@@ -1741,6 +1741,20 @@ async function registrarTransacoesRecebidas(transacoes) {
   let ultimaComData = null;
   for (const dados of transacoes) {
     if (dados.erro) continue;
+    // Nunca registra R$0,00 como se fosse um valor real - se a IA nao
+    // achou valor nenhum na imagem (ex: print que nao mostra o valor da
+    // transacao), pede pro usuario confirmar/digitar em vez de guardar um
+    // zero que pareceria um valor de verdade depois.
+    const valorNumerico = Number(dados.valor);
+    if (!dados.valor || dados.valor === 'desconhecido' || isNaN(valorNumerico) || valorNumerico <= 0) {
+      const referencia = dados.local && dados.local !== 'desconhecido' ? dados.local : (dados.data || 'esse comprovante');
+      const novoValor = await modalPrompt(`Não conseguimos identificar o valor de "${referencia}". Confira se a imagem mostra a tela inteira, incluindo o valor da transação. Qual o valor? (deixe em branco pra não registrar)`, '');
+      const numeroDigitado = novoValor ? Number(novoValor.trim().replace(/\./g, '').replace(',', '.')) : NaN;
+      if (!novoValor || !novoValor.trim() || isNaN(numeroDigitado) || numeroDigitado <= 0) {
+        continue;
+      }
+      dados.valor = numeroDigitado;
+    }
     if (!parseData(dados.data)) {
       const referencia = dados.local && dados.local !== 'desconhecido' ? dados.local : formatarMoeda(dados.valor);
       const novaData = await modalPrompt(`Não conseguimos identificar a data desse comprovante (${referencia}). Qual a data? (DD/MM/AAAA)`, '');
