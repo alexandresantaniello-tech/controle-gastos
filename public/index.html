@@ -2408,6 +2408,18 @@ async function editarLocal(id) {
   renderizar();
 }
 
+async function editarFormaPagamento(id) {
+  const lista = carregarTransacoes();
+  const t = lista.find(x => x.id === id);
+  if (!t) return;
+  const opcoes = [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']];
+  const nova = await modalSelecionar('Forma de pagamento:', opcoes, formaPagamentoDaTransacao(t));
+  if (nova === null) return;
+  t.formaPagamento = nova;
+  salvarTransacoes(lista);
+  renderizar();
+}
+
 async function editarInstituicao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
@@ -2672,13 +2684,13 @@ function renderizarTransacao(t) {
   const instituicaoTexto = t.instituicao === 'desconhecido'
     ? 'Instituição/espécie ou pix'
     : (escapeHtml(t.instituicao) || '-');
-  // Forma de pagamento so aparece quando da pra identificar - pra
-  // transacoes antigas sem essa informacao, evita poluir a linha com
-  // "Nao identificado" toda hora.
+  // Forma de pagamento sempre aparece, clicavel - mesmo "nao identificado"
+  // vira um convite pra tocar e preencher, igual local/instituicao.
   const formaPagamento = formaPagamentoDaTransacao(t);
+  const formaPagamentoTexto = formaPagamento !== 'desconhecido' ? ROTULOS_FORMA_PAGAMENTO[formaPagamento] : 'Forma de pagamento';
   const segmentosDetalhes = [
     `<span onclick="editarData(${t.id})">${escapeHtml(t.data) || '-'}</span>`,
-    formaPagamento !== 'desconhecido' ? `<span>${ROTULOS_FORMA_PAGAMENTO[formaPagamento]}</span>` : null,
+    `<span onclick="editarFormaPagamento(${t.id})">${formaPagamentoTexto}</span>`,
     `<span onclick="editarLocal(${t.id})">${localTexto}</span>`,
     `<span onclick="editarInstituicao(${t.id})">${instituicaoTexto}</span>`,
   ].filter(Boolean);
