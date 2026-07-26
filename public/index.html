@@ -511,7 +511,7 @@
 
 <div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
-  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span class="toggle-texto">Espécie</span></div>
+  <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto">Manual</span></div>
   <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto">Upload</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
 </div>
@@ -558,13 +558,24 @@
 </div>
 
 <div class="card" id="dinheiroCard" style="display:none;">
-  <label class="campo">Valor</label>
-  <input type="number" id="valorDinheiro" step="0.01" min="0" placeholder="0,00">
-
   <label class="campo">Tipo</label>
   <div class="tipo-toggle">
     <button type="button" id="btnEntradaDinheiro" class="ativo-entrada" onclick="selecionarTipoDinheiro('entrada')">Entrada</button>
     <button type="button" id="btnSaidaDinheiro" onclick="selecionarTipoDinheiro('saida')">Saída</button>
+  </div>
+
+  <label class="campo">Valor</label>
+  <input type="number" id="valorDinheiro" step="0.01" min="0" placeholder="0,00">
+
+  <label class="campo">Data</label>
+  <div class="campo-clicavel" id="campoDataDinheiro" onclick="abrirCalendarioDinheiro()">
+    <span id="textoDataDinheiro">-</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  </div>
+
+  <div class="campo-clicavel" id="formaPagamentoDinheiro" onclick="editarFormaPagamentoDinheiro()" style="margin-top:14px;">
+    <span id="textoFormaPagamentoDinheiro" class="vazio">FORMA DE PAGAMENTO</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
   <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()" style="margin-top:14px;">
@@ -572,10 +583,9 @@
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
-  <label class="campo">Data</label>
-  <div class="campo-clicavel" id="campoDataDinheiro" onclick="abrirCalendarioDinheiro()">
-    <span id="textoDataDinheiro">-</span>
-    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+  <div class="campo-clicavel" id="instituicaoDinheiro" onclick="editarInstituicaoDinheiro()" style="margin-top:14px;">
+    <span id="textoInstituicaoDinheiro" class="vazio">INSTITUIÇÃO/ESPÉCIE OU PIX</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
   <div class="campo-clicavel" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="margin-top:14px;">
@@ -1265,7 +1275,7 @@ async function compartilharCsv() {
 function fecharTodasSecoes() {
   const secoes = [
     ['relatorioCard', 'relatorioToggle', 'Relatórios'],
-    ['dinheiroCard', 'dinheiroToggle', 'Espécie'],
+    ['dinheiroCard', 'dinheiroToggle', 'Manual'],
     ['backupCard', 'backupToggle', 'Backup'],
     ['uploadHistoricoCard', 'uploadHistoricoToggle', 'Upload'],
     ['termosCard', 'termosToggle', 'Termos de Uso'],
@@ -1961,6 +1971,35 @@ function carregarTransacoes() {
 
 function salvarTransacoes(lista) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+}
+
+// Limpeza unica (2026-07-26): antes da forma de pagamento virar campo
+// proprio, a IA colava "Debito "/"Credito " no inicio do local - isso
+// deixava o texto duplicado com o campo novo (ex: "Debito · Debito
+// PadariaNovaElite"). So tira o prefixo de quem ainda tem esse formato
+// antigo, fixando formaPagamento explicitamente pra nao depender mais da
+// inferencia por texto. Roda uma vez so (marca a flag) e nunca mais mexe.
+const LIMPEZA_PREFIXO_LOCAL_KEY = 'controle_gastos_limpeza_prefixo_local_v1';
+function limparPrefixoLocalAntigo() {
+  if (localStorage.getItem(LIMPEZA_PREFIXO_LOCAL_KEY)) return;
+  const lista = carregarTransacoes();
+  let mudou = false;
+  lista.forEach(t => {
+    if (typeof t.local !== 'string') return;
+    const matchDebito = t.local.match(/^d[ée]bito\s+(.+)/i);
+    const matchCredito = t.local.match(/^cr[ée]dito\s+(.+)/i);
+    if (matchDebito) {
+      t.local = matchDebito[1];
+      if (!t.formaPagamento) t.formaPagamento = 'debito';
+      mudou = true;
+    } else if (matchCredito) {
+      t.local = matchCredito[1];
+      if (!t.formaPagamento) t.formaPagamento = 'credito';
+      mudou = true;
+    }
+  });
+  if (mudou) salvarTransacoes(lista);
+  localStorage.setItem(LIMPEZA_PREFIXO_LOCAL_KEY, '1');
 }
 
 function adicionarTransacao(dados) {
@@ -2857,6 +2896,39 @@ async function abrirCalendarioDinheiro() {
   atualizarTextoDataDinheiro();
 }
 
+let formaPagamentoDinheiroAtual = '';
+
+function atualizarFormaPagamentoDinheiro() {
+  const el = document.getElementById('textoFormaPagamentoDinheiro');
+  if (!el) return;
+  el.textContent = formaPagamentoDinheiroAtual ? ROTULOS_FORMA_PAGAMENTO[formaPagamentoDinheiroAtual] : 'FORMA DE PAGAMENTO';
+  el.classList.toggle('vazio', !formaPagamentoDinheiroAtual);
+}
+
+async function editarFormaPagamentoDinheiro() {
+  const opcoes = [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']];
+  const nova = await modalSelecionar('Forma de pagamento:', opcoes, formaPagamentoDinheiroAtual);
+  if (nova === null) return;
+  formaPagamentoDinheiroAtual = nova;
+  atualizarFormaPagamentoDinheiro();
+}
+
+let instituicaoDinheiroAtual = '';
+
+function atualizarInstituicaoDinheiro() {
+  const el = document.getElementById('textoInstituicaoDinheiro');
+  if (!el) return;
+  el.textContent = instituicaoDinheiroAtual || 'INSTITUIÇÃO/ESPÉCIE OU PIX';
+  el.classList.toggle('vazio', !instituicaoDinheiroAtual);
+}
+
+async function editarInstituicaoDinheiro() {
+  const nova = await modalPrompt('Instituição/espécie ou pix:', instituicaoDinheiroAtual);
+  if (nova === null) return;
+  instituicaoDinheiroAtual = nova.trim();
+  atualizarInstituicaoDinheiro();
+}
+
 let observacaoDinheiroAtual = '';
 
 function atualizarNotaDinheiro() {
@@ -2899,6 +2971,10 @@ function alternarDinheiro() {
   atualizarNotaDinheiro();
   localDinheiroAtual = '';
   atualizarNotaLocalDinheiro();
+  formaPagamentoDinheiroAtual = '';
+  atualizarFormaPagamentoDinheiro();
+  instituicaoDinheiroAtual = '';
+  atualizarInstituicaoDinheiro();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   empilharVoltarSecao(secaoAnterior);
 }
@@ -2923,10 +2999,8 @@ function salvarDinheiro() {
   adicionarTransacao({
     valor,
     tipo: tipoDinheiroSelecionado,
-    // instituicao "Especie" e informacao real (e dinheiro em especie de
-    // verdade, nao "desconhecido").
-    instituicao: 'Espécie',
-    formaPagamento: 'especie',
+    instituicao: instituicaoDinheiroAtual || 'desconhecido',
+    formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
     local: localDinheiroAtual || 'desconhecido',
     data: `${dia}/${mes}/${ano}`,
     observacao: observacaoDinheiroAtual,
@@ -2937,6 +3011,10 @@ function salvarDinheiro() {
   atualizarNotaDinheiro();
   localDinheiroAtual = '';
   atualizarNotaLocalDinheiro();
+  formaPagamentoDinheiroAtual = '';
+  atualizarFormaPagamentoDinheiro();
+  instituicaoDinheiroAtual = '';
+  atualizarInstituicaoDinheiro();
   statusEl.textContent = 'Lançamento adicionado.';
   statusEl.className = 'status';
   setTimeout(alternarDinheiro, 1200);
@@ -3301,6 +3379,7 @@ async function iniciarComandoDeVoz() {
   recognition.start();
 }
 
+limparPrefixoLocalAntigo();
 processarComprovanteCompartilhado();
 renderizar();
 carregarTaxasCambio().then(() => {
