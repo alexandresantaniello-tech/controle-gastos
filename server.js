@@ -2,8 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
+// Render fica atras de um proxy reverso - sem isso, o rate limit contaria
+// todo mundo como o mesmo IP (o do proxy), em vez do IP real de cada
+// cliente.
+app.set('trust proxy', 1);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -11,6 +16,20 @@ app.use(express.static('public', {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
 }));
 app.use(express.json());
+
+// Protecao contra abuso: os endpoints que chamam a API da Anthropic (custo
+// real por chamada) nao tinham NENHUM limite - qualquer pessoa que
+// descobrisse a URL podia esgotar os creditos sem nunca abrir o app de
+// verdade. 20 requisicoes/minuto por IP fica bem acima do uso normal de uma
+// pessoa (a importacao em lote do extrato processa pagina por pagina, uma de
+// cada vez, nao em paralelo), mas barra abuso automatizado.
+const limiteApiIA = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas requisições em pouco tempo - aguarde um minuto e tente de novo.' },
+});
 
 function getExtractionPrompt() {
   const hoje = new Date();
@@ -219,7 +238,7 @@ function mensagemErroAmigavel(err) {
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
 }
 
-app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
+app.post('/api/parse-receipt', limiteApiIA, upload.single('receipt'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
@@ -236,7 +255,7 @@ app.post('/api/parse-receipt', upload.single('receipt'), async (req, res) => {
 // pra frase falada/transcrita em vez de imagem. Usado tanto pelo microfone
 // no navegador (Android/desktop) quanto pelo Atalho do iOS (dita e manda
 // pra ca via ?voz=).
-app.post('/api/parse-texto', async (req, res) => {
+app.post('/api/parse-texto', limiteApiIA, async (req, res) => {
   const texto = (req.body && req.body.texto || '').trim();
   if (!texto) {
     return res.status(400).json({ erro: 'Nenhum texto enviado' });
@@ -254,7 +273,7 @@ app.post('/api/parse-texto', async (req, res) => {
 // So redireciona pra "/?compartilhado=..." - quem realmente adiciona as
 // transacoes (e pergunta a data quando a IA nao reconhece) e o mesmo codigo
 // cliente usado pelo Atalho do iOS e, indiretamente, pelo upload manual.
-app.post('/share-target', upload.single('receipt'), async (req, res) => {
+app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res) => {
   let transacoes = null;
   let erro = null;
 

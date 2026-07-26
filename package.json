@@ -7,9 +7,10 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "multer": "^1.4.5-lts.1",
+    "@anthropic-ai/sdk": "^0.32.1",
     "dotenv": "^16.4.5",
-    "@anthropic-ai/sdk": "^0.32.1"
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.6.1",
+    "multer": "^1.4.5-lts.1"
   }
 }
