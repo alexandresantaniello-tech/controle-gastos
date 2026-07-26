@@ -1090,6 +1090,44 @@ function linhasAgrupadasHtml(transacoes) {
   return linhasGrupos + linhasIndividuais;
 }
 
+const ROTULOS_FORMA_PAGAMENTO = { pix: 'Pix', debito: 'Débito', credito: 'Crédito', especie: 'Espécie', desconhecido: 'Não identificado' };
+
+// Transacoes novas ja vem com formaPagamento direto da IA/Especie. Pra
+// transacoes antigas (gravadas antes desse campo existir), infere a partir
+// do que ja estava escrito no local (prefixo "Débito"/"Crédito"/"Pix") ou na
+// instituicao ("Espécie") - reaproveita informacao real que ja tinha sido
+// capturada, em vez de jogar tudo em "nao identificado" sem necessidade.
+function formaPagamentoDaTransacao(t) {
+  if (t.formaPagamento) return t.formaPagamento;
+  if (t.instituicao === 'Espécie') return 'especie';
+  const local = t.local || '';
+  if (/^d[ée]bito /i.test(local)) return 'debito';
+  if (/^cr[ée]dito /i.test(local)) return 'credito';
+  if (/^pix (enviado|recebido)/i.test(local)) return 'pix';
+  return 'desconhecido';
+}
+
+function linhasFormaPagamentoHtml(transacoes) {
+  const totais = {};
+  transacoes.forEach(t => {
+    const fp = formaPagamentoDaTransacao(t);
+    if (!totais[fp]) totais[fp] = { entrada: 0, saida: 0 };
+    totais[fp][t.tipo === 'entrada' ? 'entrada' : 'saida'] += Number(t.valor || 0);
+  });
+  const ordem = ['pix', 'debito', 'credito', 'especie', 'desconhecido'];
+  return ordem.filter(fp => totais[fp]).map(fp => {
+    const { entrada, saida } = totais[fp];
+    const partes = [];
+    if (entrada > 0) partes.push(`<strong class="entrada">+${formatarMoeda(entrada)}</strong>`);
+    if (saida > 0) partes.push(`<strong class="saida">-${formatarMoeda(saida)}</strong>`);
+    return `
+    <div class="relatorio-resumo-linha">
+      <span>${ROTULOS_FORMA_PAGAMENTO[fp]}</span>
+      <span style="display:flex; gap:10px;">${partes.join('')}</span>
+    </div>`;
+  }).join('');
+}
+
 function renderizarRelatorio() {
   const tiposEl = document.getElementById('periodoTipos');
   tiposEl.innerHTML = TIPOS_PERIODO.map(tp =>
@@ -1112,6 +1150,8 @@ function renderizarRelatorio() {
     <div class="relatorio-resumo-linha"><span>Entradas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saídas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Saldo</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
+    <div class="grupo-dia">Por forma de pagamento</div>
+    ${transacoes.length > 0 ? linhasFormaPagamentoHtml(transacoes) : '<div class="relatorio-resumo-linha"><span>Nenhuma</span></div>'}
     ${temSemObservacao ? '<p class="dica-observacao"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.</p>' : ''}
     <div class="grupo-dia">Transações do período</div>
     ${linhasAgrupadasHtml(transacoes)}
@@ -1150,6 +1190,20 @@ function textoResumoRelatorio() {
   texto += `Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
 
   if (transacoes.length > 0) {
+    texto += `\nPor forma de pagamento:\n`;
+    const totaisPagamento = {};
+    transacoes.forEach(t => {
+      const fp = formaPagamentoDaTransacao(t);
+      if (!totaisPagamento[fp]) totaisPagamento[fp] = { entrada: 0, saida: 0 };
+      totaisPagamento[fp][t.tipo === 'entrada' ? 'entrada' : 'saida'] += Number(t.valor || 0);
+    });
+    ['pix', 'debito', 'credito', 'especie', 'desconhecido'].filter(fp => totaisPagamento[fp]).forEach(fp => {
+      const { entrada, saida } = totaisPagamento[fp];
+      const partes = [];
+      if (entrada > 0) partes.push(`+${formatarMoeda(entrada)}`);
+      if (saida > 0) partes.push(`-${formatarMoeda(saida)}`);
+      texto += `- ${ROTULOS_FORMA_PAGAMENTO[fp]}: ${partes.join(' / ')}\n`;
+    });
     texto += `\nTransações do período:\n`;
     const { grupos, semObservacao } = agruparPorObservacao(transacoes);
     grupos.forEach(g => {
@@ -1168,9 +1222,9 @@ function textoResumoRelatorio() {
 
 function gerarCsv() {
   const transacoes = transacoesDoPeriodo();
-  let csv = 'Data,Tipo,Categoria,Valor,Instituicao,Local,Observacao\n';
+  let csv = 'Data,Tipo,Categoria,FormaPagamento,Valor,Instituicao,Local,Observacao\n';
   transacoes.forEach(t => {
-    const linha = [t.data || '', t.tipo || '', t.categoria || '', t.valor || 0, t.instituicao || '', t.local || '', t.observacao || '']
+    const linha = [t.data || '', t.tipo || '', t.categoria || '', ROTULOS_FORMA_PAGAMENTO[formaPagamentoDaTransacao(t)], t.valor || 0, t.instituicao || '', t.local || '', t.observacao || '']
       .map(campo => `"${String(campo).replace(/"/g, '""')}"`)
       .join(',');
     csv += linha + '\n';
@@ -1934,6 +1988,13 @@ async function registrarTransacoesRecebidas(transacoes) {
   let ultimaComData = null;
   for (const dados of transacoes) {
     if (dados.erro) continue;
+    // A IA manda a forma de pagamento em snake_case (forma_pagamento) - o
+    // resto do app usa camelCase (formaPagamento), normaliza aqui antes de
+    // guardar.
+    if (dados.forma_pagamento) {
+      dados.formaPagamento = dados.forma_pagamento;
+      delete dados.forma_pagamento;
+    }
     // Nunca registra R$0,00 como se fosse um valor real - se a IA nao
     // achou valor nenhum na imagem (ex: print que nao mostra o valor da
     // transacao), pede pro usuario confirmar/digitar em vez de guardar um
@@ -2855,6 +2916,7 @@ function salvarDinheiro() {
     // instituicao "Especie" e informacao real (e dinheiro em especie de
     // verdade, nao "desconhecido").
     instituicao: 'Espécie',
+    formaPagamento: 'especie',
     local: localDinheiroAtual || 'desconhecido',
     data: `${dia}/${mes}/${ano}`,
     observacao: observacaoDinheiroAtual,
