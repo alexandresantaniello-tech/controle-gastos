@@ -31,6 +31,17 @@ const limiteApiIA = rateLimit({
   message: { erro: 'Muitas requisições em pouco tempo - aguarde um minuto e tente de novo.' },
 });
 
+// Segunda camada, so no endpoint mais caro (analise de imagem): exige um
+// segredo que so o proprio Sifia manda automaticamente. Nao aplicamos no
+// /api/parse-texto porque o Atalho do iOS chama ele direto, sem esse
+// cabecalho - exigir la quebraria esse caminho pra quem ja configurou.
+function exigirSegredoApp(req, res, next) {
+  if (req.headers['x-app-secret'] !== process.env.APP_SECRET) {
+    return res.status(403).json({ erro: 'acesso negado' });
+  }
+  next();
+}
+
 function getExtractionPrompt() {
   const hoje = new Date();
   const hojeStr = String(hoje.getDate()).padStart(2, '0') + '/' + String(hoje.getMonth() + 1).padStart(2, '0') + '/' + hoje.getFullYear();
@@ -239,7 +250,7 @@ function mensagemErroAmigavel(err) {
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
 }
 
-app.post('/api/parse-receipt', limiteApiIA, upload.single('receipt'), async (req, res) => {
+app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('receipt'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
