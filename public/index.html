@@ -504,10 +504,10 @@
   <div id="listaSemData"></div>
 </div>
 
-<button class="btn-adicionar-principal" id="btnAdicionarPrincipal" onclick="alternarUpload()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
-
-<button class="secondary" id="btnFalarTransacao" onclick="iniciarComandoDeVoz()" style="width:100%; margin-top:8px; display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Falar uma transação</span></button>
+<button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
 <div class="status" id="statusVoz"></div>
+
+<button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:8px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
 
 <div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
@@ -3307,24 +3307,43 @@ if (SpeechRecognitionClasse) {
   document.getElementById('btnFalarTransacao').style.display = 'block';
 }
 
-async function iniciarComandoDeVoz() {
+// Texto de instrucao mostrado assim que o usuario aperta e segura o botao -
+// segue a mesma ordem de campos usada em qualquer transacao (Tipo, Valor,
+// Data, Forma de pagamento, Local, Instituicao, Observacao). Nenhum campo e
+// obrigatorio de falar (o app usa "desconhecido" pro que faltar), mas quanto
+// mais a pessoa falar nessa ordem, mais completo o registro sai.
+function textoInstrucaoVoz() {
+  return 'Fale naturalmente, nessa ordem: se foi entrada ou saída, o valor, a data, a forma de pagamento, o local, a instituição e uma observação. Exemplo: "Paguei 35 reais hoje, no débito, no mercado, pelo Nubank, comida da semana."';
+}
+
+let reconhecimentoVozAtual = null;
+let vozCapturouResultado = false;
+
+// Segura-fala-solta, igual o audio do WhatsApp - antes era um toque so pra
+// iniciar, e o proprio navegador decidia quando parar de ouvir (silencio),
+// o que deixava a duracao imprevisivel pro usuario.
+function iniciarGravacaoVoz(ev) {
+  if (ev) ev.preventDefault();
+  if (!SpeechRecognitionClasse || reconhecimentoVozAtual) return;
   const statusEl = document.getElementById('statusVoz');
   const btn = document.getElementById('btnFalarTransacao');
   const textoBtn = document.getElementById('btnFalarTransacaoTexto');
-  if (!SpeechRecognitionClasse) return;
 
   const recognition = new SpeechRecognitionClasse();
   recognition.lang = 'pt-BR';
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
+  reconhecimentoVozAtual = recognition;
+  vozCapturouResultado = false;
 
-  btn.disabled = true;
-  textoBtn.textContent = 'Ouvindo... fale a transação';
-  statusEl.textContent = '';
+  textoBtn.textContent = 'Ouvindo... solte pra enviar';
+  statusEl.textContent = textoInstrucaoVoz();
   statusEl.className = 'status';
 
   recognition.onresult = async (event) => {
+    vozCapturouResultado = true;
     const texto = event.results[0][0].transcript;
+    btn.disabled = true;
     textoBtn.textContent = 'Analisando...';
     try {
       const resp = await fetch('/api/parse-texto', {
@@ -3336,7 +3355,7 @@ async function iniciarComandoDeVoz() {
       if (dados.erro) throw new Error(dados.erro);
       const validas = (dados.transacoes || []).filter(t => !t.erro);
       if (validas.length === 0) {
-        statusEl.textContent = `Não entendemos "${texto}" como uma transação. Tente de novo, ex: "gastei 40 no posto".`;
+        statusEl.textContent = `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`;
         statusEl.className = 'status error';
       } else {
         // Sem mensagem de sucesso - igual o upload manual, a transacao
@@ -3350,24 +3369,35 @@ async function iniciarComandoDeVoz() {
       statusEl.className = 'status error';
     }
     btn.disabled = false;
-    textoBtn.textContent = 'Falar uma transação';
+    textoBtn.textContent = 'Registro por Voz';
   };
 
-  recognition.onerror = () => {
-    statusEl.textContent = 'Não conseguimos ouvir. Verifique a permissão de microfone e tente de novo.';
-    statusEl.className = 'status error';
+  recognition.onerror = (event) => {
+    reconhecimentoVozAtual = null;
+    // "no-speech"/"aborted" acontecem em toques muito rapidos (sem tempo de
+    // falar nada) - nao vale mostrar erro assustador por isso, so reseta.
+    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      statusEl.textContent = 'Não conseguimos ouvir. Verifique a permissão de microfone e tente de novo.';
+      statusEl.className = 'status error';
+    }
     btn.disabled = false;
-    textoBtn.textContent = 'Falar uma transação';
+    textoBtn.textContent = 'Registro por Voz';
   };
 
   recognition.onend = () => {
-    if (btn.disabled && textoBtn.textContent === 'Ouvindo... fale a transação') {
+    reconhecimentoVozAtual = null;
+    if (!vozCapturouResultado) {
       btn.disabled = false;
-      textoBtn.textContent = 'Falar uma transação';
+      textoBtn.textContent = 'Registro por Voz';
     }
   };
 
   recognition.start();
+}
+
+function pararGravacaoVoz(ev) {
+  if (ev) ev.preventDefault();
+  if (reconhecimentoVozAtual) reconhecimentoVozAtual.stop();
 }
 
 limparPrefixoLocalAntigo();
