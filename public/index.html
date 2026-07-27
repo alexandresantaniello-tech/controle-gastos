@@ -141,7 +141,7 @@
     font-size: 1.05rem;
     font-weight: 700;
     padding: 16px 18px;
-    margin: 6px 0 18px;
+    margin: 0 0 14px;
     box-shadow: 0 8px 20px -8px rgba(74,184,253,0.55);
   }
   .btn-adicionar-principal .icone-toggle { width: 20px; height: 20px; }
@@ -213,7 +213,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
   .mes-nav button.nav {
     background: var(--card);
@@ -292,8 +292,8 @@
   .dia-header:hover { border-color: var(--primary); }
   .dia-header .seta { color: var(--muted-foreground); margin-right: 6px; }
   .dia-header .contagem { color: var(--muted-foreground); font-size: 0.8rem; }
-  .saldo-card { padding: 10px 20px; margin-bottom: 18px; }
-  .summary { margin-bottom: 18px; }
+  .saldo-card { padding: 10px 20px; margin-bottom: 14px; }
+  .summary { margin-bottom: 14px; }
   .saldo-linha { display: flex; justify-content: space-between; align-items: center; }
   .saldo-linha .label { font-size: 0.8rem; color: var(--muted-foreground); }
   .cristal-toggle {
@@ -507,7 +507,7 @@
 <button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
 <div class="status" id="statusVoz"></div>
 
-<button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:8px; margin-bottom:26px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
+<button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
 
 <div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
