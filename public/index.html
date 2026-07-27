@@ -3309,11 +3309,13 @@ if (SpeechRecognitionClasse) {
 
 // Texto de instrucao mostrado assim que o usuario aperta e segura o botao -
 // segue a mesma ordem de campos usada em qualquer transacao (Tipo, Valor,
-// Data, Forma de pagamento, Local, Instituicao, Observacao). Nenhum campo e
-// obrigatorio de falar (o app usa "desconhecido" pro que faltar), mas quanto
-// mais a pessoa falar nessa ordem, mais completo o registro sai.
+// Data, Forma de pagamento, Local, Instituicao, Observacao). A data nao
+// precisa ser falada - vale o dia de hoje automaticamente, igual o Manual
+// ja preenche sozinho. Nenhum outro campo e obrigatorio de falar (o app usa
+// "desconhecido" pro que faltar), mas quanto mais a pessoa falar nessa
+// ordem, mais completo o registro sai.
 function textoInstrucaoVoz() {
-  return 'Fale naturalmente, nessa ordem: se foi entrada ou saída, o valor, a data, a forma de pagamento, o local, a instituição e uma observação. Exemplo: "Paguei 35 reais hoje, no débito, no mercado, pelo banco X, comida da semana."';
+  return 'Fale naturalmente: se foi entrada ou saída, o valor, a forma de pagamento, o local, a instituição e uma observação. A data já é hoje automaticamente - só fale se for outro dia. Exemplo: "Paguei 35 reais no débito, no mercado, pelo banco X, comida da semana."';
 }
 
 let reconhecimentoVozAtual = null;
