@@ -3313,7 +3313,7 @@ if (SpeechRecognitionClasse) {
 // obrigatorio de falar (o app usa "desconhecido" pro que faltar), mas quanto
 // mais a pessoa falar nessa ordem, mais completo o registro sai.
 function textoInstrucaoVoz() {
-  return 'Fale naturalmente, nessa ordem: se foi entrada ou saída, o valor, a data, a forma de pagamento, o local, a instituição e uma observação. Exemplo: "Paguei 35 reais hoje, no débito, no mercado, pelo Nubank, comida da semana."';
+  return 'Fale naturalmente, nessa ordem: se foi entrada ou saída, o valor, a data, a forma de pagamento, o local, a instituição e uma observação. Exemplo: "Paguei 35 reais hoje, no débito, no mercado, pelo banco X, comida da semana."';
 }
 
 let reconhecimentoVozAtual = null;
@@ -3397,7 +3397,12 @@ function iniciarGravacaoVoz(ev) {
 
 function pararGravacaoVoz(ev) {
   if (ev) ev.preventDefault();
-  if (reconhecimentoVozAtual) reconhecimentoVozAtual.stop();
+  if (reconhecimentoVozAtual) {
+    reconhecimentoVozAtual.stop();
+    // O texto de instrucao so faz sentido enquanto esta segurando - some na
+    // hora de soltar, antes mesmo do resultado da IA chegar.
+    document.getElementById('statusVoz').textContent = '';
+  }
 }
 
 limparPrefixoLocalAntigo();

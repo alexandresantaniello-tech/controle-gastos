@@ -102,7 +102,7 @@ Responda APENAS com um JSON válido, sem nenhum texto antes ou depois: um ARRAY 
   "valor": (número, ex: 40.00 - extraia o valor mencionado),
   "tipo": ("entrada" se a pessoa RECEBEU o dinheiro, "saida" se ela GASTOU/PAGOU/ENVIOU. Palavras como "gastei", "paguei", "comprei" = saida; "recebi", "ganhei", "me pagaram" = entrada),
   "categoria": (categoria curta inferida do contexto, ex: "Transporte", "Combustível", "Comida na rua", "Mercado", "Lazer", "Salário", "Transferência entre contas", "Outros"),
-  "instituicao": (nome do banco/fintech mencionado, ex: "pelo Nubank", "no C6", "pelo Itaú" = "Nubank"/"C6"/"Itaú". Se não for mencionado, "desconhecido"),
+  "instituicao": (nome do banco/fintech mencionado pela pessoa, transcrito exatamente como ela falou (ex: se disser "pelo banco X", responda "banco X"). Se não for mencionado, "desconhecido"),
   "local": (nome do estabelecimento/pessoa mencionado, ou "desconhecido" se não foi dito),
   "forma_pagamento": (se a pessoa mencionar a forma de pagamento, use EXATAMENTE um destes valores: "debito", "credito", "pix", "especie" (dinheiro/espécie). Ex: "no crédito"/"no cartão de crédito" = "credito"; "no débito" = "debito"; "de pix"/"por pix" = "pix"; "em dinheiro"/"em espécie" = "especie". Se não for mencionado, "desconhecido"),
   "observacao": (se a pessoa mencionar uma nota/categoria pessoal pra essa transação, geralmente no final da frase, ex: "observação combustível", "marca como comida na rua" = "combustível"/"comida na rua". Se não for mencionado, deixe vazio ""),
