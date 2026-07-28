@@ -214,6 +214,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 14px;
+    scroll-margin-top: 16px;
   }
   .mes-nav button.nav {
     background: var(--card);
@@ -2033,6 +2034,23 @@ function adicionarTransacao(dados) {
 async function registrarTransacoesRecebidas(transacoes) {
   let adicionadas = 0;
   let ultimaComData = null;
+
+  // Varias transacoes sem data (comum em lista de extrato agrupada por dia,
+  // quando a IA nao associa o cabecalho de data a cada linha) - oferece
+  // preencher todas de uma vez em vez de perguntar transacao por transacao.
+  const semData = transacoes.filter(t => !t.erro && !parseData(t.data));
+  let dataParaTodos = null;
+  if (semData.length > 1) {
+    const usarMesma = await modalConfirmar(`${semData.length} transações sem data identificada. Usar a mesma data pra todas?`);
+    if (usarMesma) {
+      const escolhida = await abrirSeletorData(new Date().toISOString().slice(0, 10));
+      if (escolhida) {
+        const [ano, mes, dia] = escolhida.split('-');
+        dataParaTodos = `${dia}/${mes}/${ano}`;
+      }
+    }
+  }
+
   for (const dados of transacoes) {
     if (dados.erro) continue;
     // A IA manda a forma de pagamento em snake_case (forma_pagamento) - o
@@ -2057,10 +2075,14 @@ async function registrarTransacoesRecebidas(transacoes) {
       dados.valor = numeroDigitado;
     }
     if (!parseData(dados.data)) {
-      const referencia = dados.local && dados.local !== 'desconhecido' ? dados.local : formatarMoeda(dados.valor);
-      const novaData = await modalPrompt(`Não conseguimos identificar a data desse comprovante (${referencia}). Qual a data? (DD/MM/AAAA)`, '');
-      if (novaData && novaData.trim() && parseData(novaData.trim())) {
-        dados.data = novaData.trim();
+      if (dataParaTodos) {
+        dados.data = dataParaTodos;
+      } else {
+        const escolhida = await abrirSeletorData(new Date().toISOString().slice(0, 10));
+        if (escolhida) {
+          const [ano, mes, dia] = escolhida.split('-');
+          dados.data = `${dia}/${mes}/${ano}`;
+        }
       }
     }
     adicionarTransacao(dados);
