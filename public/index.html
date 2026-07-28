@@ -214,7 +214,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 14px;
-    scroll-margin-top: 16px;
+    scroll-margin-top: 28px;
   }
   .mes-nav button.nav {
     background: var(--card);
@@ -908,10 +908,14 @@ function alternarDia(dia) {
 }
 
 function alternarListaMes() {
+  const abrindo = !mesListaAberta;
   mesListaAberta = !mesListaAberta;
   renderizar();
-  if (mesListaAberta) {
+  if (abrindo) {
     document.getElementById('tituloMes').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    abrirSecaoNoHistorico('listaMes');
+  } else {
+    fecharSecaoNoHistorico();
   }
 }
 
@@ -1320,6 +1324,7 @@ const SECAO_TOGGLE_FN = {
   uploadCard: () => alternarUpload(),
   termosCard: () => alternarTermos(),
   privacidadeCard: () => alternarPrivacidade(),
+  listaMes: () => alternarListaMes(),
 };
 
 function abrirSecaoNoHistorico(secaoId) {
@@ -1344,8 +1349,17 @@ function voltarSecaoAnterior() {
 window.addEventListener('popstate', (event) => {
   navegandoParaTras = true;
   const secao = event.state && event.state.sifiaSecao;
-  if (secao) SECAO_TOGGLE_FN[secao]();
-  else fecharTodasSecoes();
+  if (secao) {
+    SECAO_TOGGLE_FN[secao]();
+  } else {
+    fecharTodasSecoes();
+    // fecharTodasSecoes so cobre as 7 secoes (Relatorios/Manual/etc) - a
+    // lista de meses e um estado separado, precisa ser fechada aqui tambem.
+    if (mesListaAberta) {
+      mesListaAberta = false;
+      renderizar();
+    }
+  }
   navegandoParaTras = false;
   atualizarBotaoVoltar();
 });
