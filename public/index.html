@@ -273,7 +273,7 @@
   .tipo-toggle button.ativo-entrada { border-color: var(--entrada); }
   .tipo-toggle button.ativo-saida { border-color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
-  .toggles-linha { display: flex; gap: 6px; justify-content: space-between; margin-bottom: 16px; scroll-margin-top: 16px; }
+  .toggles-linha { display: flex; gap: 6px; justify-content: space-between; margin-top: 20px; margin-bottom: 16px; scroll-margin-top: 16px; }
   .toggles-linha .upload-toggle { font-size: 0.78rem; gap: 4px; margin-bottom: 0; }
   .toggles-linha .icone-toggle { width: 15px; height: 15px; }
   .dia-header {
@@ -507,7 +507,7 @@
 <button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
 <div class="status" id="statusVoz"></div>
 
-<button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
+<button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
 
 <div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
@@ -909,6 +909,9 @@ function alternarDia(dia) {
 function alternarListaMes() {
   mesListaAberta = !mesListaAberta;
   renderizar();
+  if (mesListaAberta) {
+    document.getElementById('tituloMes').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 let saldoAtual = 0;
@@ -1297,13 +1300,15 @@ function fecharTodasSecoes() {
   document.getElementById('btnAdicionarPrincipal').querySelector('svg').style.display = '';
 }
 
-// ---------- Botao flutuante "voltar pra secao anterior" ----------
-// Guarda, a cada secao aberta, qual secao (ou nenhuma) estava aberta antes -
-// igual o botao voltar do celular: desfaz um passo de navegacao por vez, nao
-// so fecha tudo de uma vez. `navegandoParaTras` evita que o proprio ato de
-// voltar empilhe um novo passo (senao voltar viraria um ping-pong em vez de
-// percorrer o historico de verdade).
-let pilhaVoltarSecao = [];
+// ---------- Voltar pra secao anterior: botao nativo do celular + botao
+// flutuante, os dois integrados no historico REAL do navegador ----------
+// Antes isso era controlado so por uma pilha em memoria - funcionava pro
+// botao flutuante, mas o botao/gesto nativo de voltar do celular nao tem
+// como saber disso, e simplesmente fechava o app inteiro (o navegador so
+// entende o historico de verdade, via History API). Agora cada
+// abertura/fechamento de secao empilha um estado real (history.pushState),
+// entao o botao nativo passa a se comportar exatamente como em qualquer
+// outro app - fecha a secao certa, nao sai do Sifia.
 let navegandoParaTras = false;
 
 const SECAO_TOGGLE_FN = {
@@ -1316,49 +1321,55 @@ const SECAO_TOGGLE_FN = {
   privacidadeCard: () => alternarPrivacidade(),
 };
 
-function secaoAbertaAtual() {
-  return Object.keys(SECAO_TOGGLE_FN).find(id => document.getElementById(id).style.display !== 'none') || null;
+function abrirSecaoNoHistorico(secaoId) {
+  if (navegandoParaTras) return;
+  history.pushState({ sifiaSecao: secaoId }, '');
+  atualizarBotaoVoltar();
 }
 
-function empilharVoltarSecao(secaoAnterior) {
+function fecharSecaoNoHistorico() {
   if (navegandoParaTras) return;
-  pilhaVoltarSecao.push(secaoAnterior);
+  history.pushState({ sifiaSecao: null }, '');
   atualizarBotaoVoltar();
 }
 
 function voltarSecaoAnterior() {
-  if (pilhaVoltarSecao.length === 0) return;
-  const anterior = pilhaVoltarSecao.pop();
+  history.back();
+}
+
+// Dispara tanto no gesto/botao nativo de voltar do celular quanto quando o
+// nosso proprio botao flutuante chama history.back() - um so caminho pros
+// dois casos, sem duplicar logica.
+window.addEventListener('popstate', (event) => {
   navegandoParaTras = true;
-  if (anterior) SECAO_TOGGLE_FN[anterior]();
+  const secao = event.state && event.state.sifiaSecao;
+  if (secao) SECAO_TOGGLE_FN[secao]();
   else fecharTodasSecoes();
   navegandoParaTras = false;
   atualizarBotaoVoltar();
-}
+});
 
 function atualizarBotaoVoltar() {
-  document.getElementById('btnVoltarFlutuante').classList.toggle('visivel', pilhaVoltarSecao.length > 0);
+  document.getElementById('btnVoltarFlutuante').classList.toggle('visivel', !!(history.state && history.state.sifiaSecao));
 }
 
 function alternarRelatorio() {
   const card = document.getElementById('relatorioCard');
   const toggle = document.getElementById('relatorioToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   renderizarRelatorio();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('relatorioCard');
 }
 
 function alternarUpload() {
@@ -1367,14 +1378,12 @@ function alternarUpload() {
   const textoPrincipal = document.getElementById('btnAdicionarPrincipalTexto');
   const iconePrincipal = btnPrincipal.querySelector('svg');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
@@ -1382,7 +1391,7 @@ function alternarUpload() {
   iconePrincipal.style.display = 'none';
   atualizarIndicadorUso();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('uploadCard');
 }
 
 // ---------- Uso mensal (so contador informativo - decisao de produto: sem limite nenhum, mesmo no plano pago) ----------
@@ -2950,14 +2959,12 @@ function alternarDinheiro() {
   const card = document.getElementById('dinheiroCard');
   const toggle = document.getElementById('dinheiroToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
@@ -2974,7 +2981,7 @@ function alternarDinheiro() {
   instituicaoDinheiroAtual = '';
   atualizarInstituicaoDinheiro();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('dinheiroCard');
 }
 
 function salvarDinheiro() {
@@ -3024,40 +3031,36 @@ function alternarBackup() {
   const card = document.getElementById('backupCard');
   const toggle = document.getElementById('backupToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('backupCard');
 }
 
 function alternarUploadHistorico() {
   const card = document.getElementById('uploadHistoricoCard');
   const toggle = document.getElementById('uploadHistoricoToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('uploadHistoricoCard');
 }
 
 async function apagarTodasTransacoes() {
@@ -3234,38 +3237,34 @@ function alternarPrivacidade() {
   const card = document.getElementById('privacidadeCard');
   const toggle = document.getElementById('privacidadeToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
   toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('privacidadeCard');
 }
 
 function alternarTermos() {
   const card = document.getElementById('termosCard');
   const toggle = document.getElementById('termosToggle');
   const abrindo = card.style.display === 'none';
-  const secaoAnterior = abrindo ? secaoAbertaAtual() : null;
   fecharTodasSecoes();
   if (!abrindo) {
-    // Fechou a secao com a mao (nao usando o botao voltar) - trata como
-    // "cheguei onde queria", zera o historico em vez de deixar a setinha
-    // flutuante presa apontando pra um estado que nao existe mais.
-    pilhaVoltarSecao = [];
-    atualizarBotaoVoltar();
+    // Fechou a secao com a mao (nao usando o botao voltar) - registra isso
+    // tambem no historico, senao o botao nativo/flutuante de voltar
+    // restauraria uma secao que ja foi fechada manualmente.
+    fecharSecaoNoHistorico();
     return;
   }
   card.style.display = 'block';
   toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  empilharVoltarSecao(secaoAnterior);
+  abrirSecaoNoHistorico('termosCard');
 }
 
 // Ponto de entrada unico pra qualquer comprovante que chega ja analisado
