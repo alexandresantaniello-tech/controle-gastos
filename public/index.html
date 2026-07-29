@@ -171,8 +171,8 @@
     overflow-wrap: break-word;
   }
   /* Mais area de toque em cada campo (data/local/instituicao) - sem isso,
-     campos vizinhos (ex: "Pagador" e "Instituição/espécie ou pix") ficam
-     colados e é fácil tocar no errado por engano. */
+     campos vizinhos (ex: "Local" e "Instituição") ficam colados e é fácil
+     tocar no errado por engano. */
   .transacao .detalhes > span { display: inline-block; padding: 4px 3px; margin: -4px -3px; }
   .linha-nota {
     display: flex;
@@ -585,7 +585,7 @@
   </div>
 
   <div class="campo-clicavel" id="instituicaoDinheiro" onclick="editarInstituicaoDinheiro()" style="margin-top:14px;">
-    <span id="textoInstituicaoDinheiro" class="vazio">INSTITUIÇÃO/ESPÉCIE OU PIX</span>
+    <span id="textoInstituicaoDinheiro" class="vazio">INSTITUIÇÃO</span>
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
@@ -2514,7 +2514,7 @@ async function editarInstituicao(id) {
   const lista = carregarTransacoes();
   const t = lista.find(x => x.id === id);
   if (!t) return;
-  const nova = await modalPrompt('Instituição/espécie ou pix:', t.instituicao && t.instituicao !== 'desconhecido' ? t.instituicao : '');
+  const nova = await modalPrompt('Instituição:', t.instituicao && t.instituicao !== 'desconhecido' ? t.instituicao : '');
   if (nova === null) return;
   t.instituicao = nova.trim() || 'desconhecido';
   salvarTransacoes(lista);
@@ -2772,7 +2772,7 @@ function renderizarTransacao(t) {
     ? 'Local'
     : (escapeHtml(t.local) || '-');
   const instituicaoTexto = t.instituicao === 'desconhecido'
-    ? 'Instituição/espécie ou pix'
+    ? 'Instituição'
     : (escapeHtml(t.instituicao) || '-');
   // Forma de pagamento sempre aparece, clicavel - mesmo "nao identificado"
   // vira um convite pra tocar e preencher, igual local/instituicao.
@@ -2961,12 +2961,12 @@ let instituicaoDinheiroAtual = '';
 function atualizarInstituicaoDinheiro() {
   const el = document.getElementById('textoInstituicaoDinheiro');
   if (!el) return;
-  el.textContent = instituicaoDinheiroAtual || 'INSTITUIÇÃO/ESPÉCIE OU PIX';
+  el.textContent = instituicaoDinheiroAtual || 'INSTITUIÇÃO';
   el.classList.toggle('vazio', !instituicaoDinheiroAtual);
 }
 
 async function editarInstituicaoDinheiro() {
-  const nova = await modalPrompt('Instituição/espécie ou pix:', instituicaoDinheiroAtual);
+  const nova = await modalPrompt('Instituição:', instituicaoDinheiroAtual);
   if (nova === null) return;
   instituicaoDinheiroAtual = nova.trim();
   atualizarInstituicaoDinheiro();
