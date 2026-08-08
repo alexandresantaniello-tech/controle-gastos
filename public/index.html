@@ -552,6 +552,11 @@
       <button class="secondary perigo" onclick="cancelarAssinaturaComReembolso()" id="btnCancelarAssinatura">Cancelar e receber reembolso</button>
       <div class="status" id="statusCancelamento"></div>
     </div>
+    <div id="blocoCancelarRenovacao">
+      <p class="aviso-backup" id="textoCancelarRenovacao">Cancele quando quiser: você mantém acesso até o fim do período já pago, e simplesmente não cobramos de novo.</p>
+      <button class="secondary" onclick="cancelarRenovacao()" id="btnCancelarRenovacao">Cancelar renovação</button>
+      <div class="status" id="statusCancelarRenovacao"></div>
+    </div>
   </div>
 
   <p class="aviso-backup">Seus dados ficam só neste navegador — se você limpar os dados do app, trocar de celular ou desinstalar, não tem como recuperar sem um backup. Faça isso de vez em quando, principalmente antes de trocar de aparelho.</p>
@@ -3593,6 +3598,11 @@ async function verificarLicencaAoAbrir() {
     if (dados.ativa) {
       document.getElementById('blocoAssinatura').style.display = 'block';
       document.getElementById('blocoReembolso').style.display = dados.podeReembolsar ? 'block' : 'none';
+      if (dados.renovacaoCancelada) {
+        const dataFim = dados.proximoPagamentoEm ? new Date(dados.proximoPagamentoEm).toLocaleDateString('pt-BR') : '';
+        document.getElementById('textoCancelarRenovacao').textContent = `Sua assinatura já está cancelada — acesso liberado até ${dataFim}, sem nova cobrança.`;
+        document.getElementById('btnCancelarRenovacao').style.display = 'none';
+      }
       return; // licenca ok, nao mostra o paywall
     }
   } catch (err) {
@@ -3623,6 +3633,28 @@ async function cancelarAssinaturaComReembolso() {
     if (!resp.ok) throw new Error(dados.erro);
     statusEl.textContent = 'Reembolso confirmado. O valor volta pra sua conta em instantes.';
     setTimeout(() => location.reload(), 3000);
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível processar agora. Tente novamente em instantes.';
+    botao.disabled = false;
+  }
+}
+
+async function cancelarRenovacao() {
+  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
+  const statusEl = document.getElementById('statusCancelarRenovacao');
+  if (!chave) return;
+  if (!confirm('Cancelar a renovação? Você continua com acesso até o fim do período já pago, mas não vamos cobrar de novo depois disso.')) return;
+
+  const botao = document.getElementById('btnCancelarRenovacao');
+  botao.disabled = true;
+  statusEl.textContent = 'Cancelando...';
+  try {
+    const resp = await fetch(`/api/licenca/${chave}/cancelar-renovacao`, { method: 'POST' });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro);
+    const dataFim = dados.acessoAte ? new Date(dados.acessoAte).toLocaleDateString('pt-BR') : 'o fim do período atual';
+    statusEl.textContent = `Renovação cancelada. Seu acesso continua até ${dataFim}.`;
+    botao.style.display = 'none';
   } catch (err) {
     statusEl.textContent = 'Não foi possível processar agora. Tente novamente em instantes.';
     botao.disabled = false;

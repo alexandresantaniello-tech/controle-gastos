@@ -476,7 +476,12 @@ app.get('/api/licenca/:chave', async (req, res) => {
   }
   const dentroDoPrazoDeArrependimento = !!registro.primeiroPagamentoEm &&
     (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
-  res.json({ ativa: registro.ativa, podeReembolsar: dentroDoPrazoDeArrependimento });
+  res.json({
+    ativa: registro.ativa,
+    podeReembolsar: dentroDoPrazoDeArrependimento,
+    renovacaoCancelada: !!registro.renovacaoCancelada,
+    proximoPagamentoEm: registro.proximoPagamentoEm || null,
+  });
 });
 
 // Direito de arrependimento (CDC Art. 49): dentro de 7 dias da primeira
@@ -513,6 +518,22 @@ app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
   }
 });
 
+// Cancelamento "a qualquer momento" (diferente do endpoint acima, que so
+// vale nos primeiros 7 dias com reembolso). Aqui NAO tem reembolso - so
+// impede a proxima cobranca. A pessoa mantem acesso ate o fim do periodo ja
+// pago (processarRenovacoes cuida de suspender sozinho quando esse periodo
+// acabar, sem gerar Pix novo pra quem cancelou).
+app.post('/api/licenca/:chave/cancelar-renovacao', limiteApiIA, async (req, res) => {
+  const registro = await buscarLicenca(req.params.chave);
+  if (!registro) {
+    return res.status(404).json({ erro: 'Chave não encontrada' });
+  }
+  registro.renovacaoCancelada = true;
+  registro.atualizadoEm = new Date().toISOString();
+  await salvarLicenca(req.params.chave, registro);
+  res.json({ cancelada: true, acessoAte: registro.proximoPagamentoEm });
+});
+
 // Roda 1x por dia: gera a cobranca Pix do proximo ciclo pra quem esta perto
 // do vencimento, e suspende quem passou do vencimento sem confirmar
 // pagamento (o webhook so reage a eventos que o Mercado Pago manda - isto
@@ -532,6 +553,8 @@ async function processarRenovacoes() {
       await salvarLicenca(chave, registro);
       continue;
     }
+    if (registro.renovacaoCancelada) continue; // cancelou - so deixa o acesso expirar sozinho, sem gerar Pix novo
+
     if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO && !registro.cobrancaRenovacaoGerada) {
       try {
         await criarCobrancaPix(chave, registro.email);
