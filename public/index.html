@@ -476,6 +476,7 @@
       </div>
       <button onclick="verificarPagamentoPaywall()" id="btnVerificarPagamento" style="margin-top:14px;">Já paguei, verificar</button>
       <button class="secondary" onclick="gerarNovaCobrancaPaywall()" style="margin-top:8px;">Gerar novo Pix</button>
+      <p style="text-align:center; margin-top:12px;"><a href="#" onclick="recuperarAssinaturaComPrompt(event)" style="color:var(--primary); font-size:0.85rem;">Já assinou com outro e-mail? Recuperar acesso</a></p>
       <div class="status" id="statusPaywall2"></div>
     </div>
   </div>
@@ -3536,28 +3537,11 @@ async function assinarSifia() {
 async function recuperarAssinatura(event) {
   event.preventDefault();
   const email = document.getElementById('paywallEmail').value.trim();
-  const statusEl = document.getElementById('statusPaywall');
   if (!email || !email.includes('@')) {
-    statusEl.textContent = 'Digite seu e-mail no campo acima primeiro.';
+    document.getElementById('statusPaywall').textContent = 'Digite seu e-mail no campo acima primeiro.';
     return;
   }
-  statusEl.textContent = 'Procurando sua assinatura...';
-  try {
-    const resp = await fetch('/api/licenca/recuperar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-    const dados = await resp.json();
-    if (!resp.ok) throw new Error(dados.erro || 'Não encontrada');
-
-    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
-    localStorage.setItem(EMAIL_LICENCA_KEY, email);
-    statusEl.textContent = 'Assinatura encontrada!';
-    location.reload();
-  } catch (err) {
-    statusEl.textContent = 'Nenhuma assinatura encontrada com esse e-mail.';
-  }
+  tentarRecuperarPorEmail(email);
 }
 
 async function gerarNovaCobrancaPaywall() {
@@ -3638,13 +3622,51 @@ async function verificarLicencaAoAbrir() {
     // melhor deixar usar do que travar por causa de uma checagem de rede
     return;
   }
-  // chave existe mas nao esta ativa: pula direto pro passo 2 (ja tem Pix
-  // gerado antes, so precisa verificar ou gerar de novo)
+  // chave existe mas nao esta ativa: pula direto pro passo 2. O QR/codigo
+  // de uma cobranca anterior nao fica salvo (so a chave fica no
+  // localStorage) - por isso gera um Pix novo automaticamente aqui, senao
+  // a tela reabre com o quadro do QR vazio.
   document.getElementById('paywallPasso1').style.display = 'none';
   document.getElementById('paywallPasso2').style.display = 'block';
   document.getElementById('paywallOverlay').classList.add('aberto');
+  if (localStorage.getItem(EMAIL_LICENCA_KEY)) {
+    gerarNovaCobrancaPaywall();
+  }
 }
 verificarLicencaAoAbrir();
+
+// Usada tanto pelo link da tela 1 (le o campo de e-mail que ja esta na
+// tela) quanto pelo link da tela 2 (pede o e-mail direto, ja que ali nao
+// tem campo de e-mail visivel).
+async function tentarRecuperarPorEmail(email) {
+  const statusEl = document.getElementById('statusPaywall2').offsetParent
+    ? document.getElementById('statusPaywall2')
+    : document.getElementById('statusPaywall');
+  statusEl.textContent = 'Procurando sua assinatura...';
+  try {
+    const resp = await fetch('/api/licenca/recuperar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro || 'Não encontrada');
+
+    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
+    localStorage.setItem(EMAIL_LICENCA_KEY, email);
+    statusEl.textContent = 'Assinatura encontrada!';
+    location.reload();
+  } catch (err) {
+    statusEl.textContent = 'Nenhuma assinatura encontrada com esse e-mail.';
+  }
+}
+
+async function recuperarAssinaturaComPrompt(event) {
+  event.preventDefault();
+  const email = prompt('Digite o e-mail que você usou para assinar:');
+  if (!email || !email.includes('@')) return;
+  tentarRecuperarPorEmail(email.trim());
+}
 
 async function cancelarAssinaturaComReembolso() {
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
