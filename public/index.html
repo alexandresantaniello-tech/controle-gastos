@@ -464,6 +464,7 @@
       <label class="campo" style="text-align:left;">Seu e-mail</label>
       <input type="email" id="paywallEmail" placeholder="voce@email.com">
       <button onclick="assinarSifia()" id="btnAssinarSifia" style="margin-top:14px;">Gerar cobrança Pix</button>
+      <p style="text-align:center; margin-top:12px;"><a href="#" onclick="recuperarAssinatura(event)" style="color:var(--primary); font-size:0.85rem;">Já é assinante? Recuperar acesso neste aparelho</a></p>
       <div class="status" id="statusPaywall"></div>
     </div>
 
@@ -3529,6 +3530,33 @@ async function assinarSifia() {
     statusEl.textContent = 'Não foi possível gerar a cobrança. Tente novamente.';
   } finally {
     botao.disabled = false;
+  }
+}
+
+async function recuperarAssinatura(event) {
+  event.preventDefault();
+  const email = document.getElementById('paywallEmail').value.trim();
+  const statusEl = document.getElementById('statusPaywall');
+  if (!email || !email.includes('@')) {
+    statusEl.textContent = 'Digite seu e-mail no campo acima primeiro.';
+    return;
+  }
+  statusEl.textContent = 'Procurando sua assinatura...';
+  try {
+    const resp = await fetch('/api/licenca/recuperar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro || 'Não encontrada');
+
+    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
+    localStorage.setItem(EMAIL_LICENCA_KEY, email);
+    statusEl.textContent = 'Assinatura encontrada!';
+    location.reload();
+  } catch (err) {
+    statusEl.textContent = 'Nenhuma assinatura encontrada com esse e-mail.';
   }
 }
 

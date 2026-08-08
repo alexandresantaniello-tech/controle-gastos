@@ -468,6 +468,37 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
 
 const DIAS_DIREITO_ARREPENDIMENTO = 7; // CDC Art. 49
 
+// Recupera a chave de licenca em um aparelho novo (a chave so fica salva no
+// navegador onde a assinatura foi criada - sem isso, trocar de celular pro
+// computador faz a pessoa parecer nao-assinante). Devolve a chave mais
+// recente vinculada a esse e-mail, tenha ela pagamento aprovado ou nao (se
+// nao tiver, o app volta pro passo do QR code sozinho).
+// Nota de seguranca: como o Sifia nao tem sistema de login/senha, isso
+// devolve a chave direto pra quem souber o e-mail - aceitavel porque a
+// chave so libera acesso ao app (nenhuma acao financeira nova), mas nao e
+// tao forte quanto um link magico por e-mail (que exigiria enviar e-mail,
+// infraestrutura que o Sifia ainda nao tem).
+app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
+  const email = (req.body && req.body.email || '').trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ erro: 'E-mail obrigatório' });
+  }
+  const chaves = await todasAsChavesDeLicenca();
+  let encontrada = null;
+  for (const chave of chaves) {
+    const registro = await buscarLicenca(chave);
+    if (registro && registro.email && registro.email.toLowerCase() === email) {
+      if (!encontrada || new Date(registro.atualizadoEm) > new Date(encontrada.atualizadoEm)) {
+        encontrada = { chave, ...registro };
+      }
+    }
+  }
+  if (!encontrada) {
+    return res.status(404).json({ erro: 'Nenhuma assinatura encontrada com esse e-mail.' });
+  }
+  res.json({ chaveDeLicenca: encontrada.chave });
+});
+
 // O app consulta isso periodicamente pra saber se libera os recursos pagos.
 app.get('/api/licenca/:chave', async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
