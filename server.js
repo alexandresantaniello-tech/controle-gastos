@@ -1,8 +1,11 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
 const rateLimit = require('express-rate-limit');
+const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 // Render fica atras de um proxy reverso - sem isso, o rate limit contaria
@@ -11,6 +14,31 @@ const app = express();
 app.set('trust proxy', 1);
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const redis = Redis.fromEnv();
+
+// Persistencia das licencas no Upstash Redis (plano gratuito permanente, sem
+// expiracao). CHAVE_LICENCAS_KEY guarda um SET com todas as chaves
+// existentes, pra dar pra percorrer todas na rotina diaria de renovacao -
+// cada licenca em si fica numa chave separada (licenca:<chave>).
+const CHAVE_LICENCAS_KEY = 'licencas:todas';
+
+function gerarChaveLicenca() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+async function salvarLicenca(chave, registro) {
+  await redis.set(`licenca:${chave}`, registro);
+  await redis.sadd(CHAVE_LICENCAS_KEY, chave);
+}
+
+async function buscarLicenca(chave) {
+  return redis.get(`licenca:${chave}`);
+}
+
+async function todasAsChavesDeLicenca() {
+  return redis.smembers(CHAVE_LICENCAS_KEY);
+}
 
 app.use(express.static('public', {
   setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
@@ -315,6 +343,207 @@ app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res
 <p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>
 </body></html>`);
 });
+
+const VALOR_ASSINATURA = 19.90;
+const DIAS_ANTECEDENCIA_RENOVACAO = 3; // gera o Pix do proximo mes com alguns dias de folga
+
+// Gera uma cobranca Pix avulsa (nao e assinatura do Mercado Pago - o produto
+// de Assinaturas deles nao oferece Pix, so cartao, confirmado testando de
+// verdade). external_reference carrega a chave de licenca pra o webhook
+// saber qual licenca atualizar quando o pagamento for confirmado.
+async function criarCobrancaPix(chave, email) {
+  const payment = new Payment(mpClient);
+  const resposta = await payment.create({
+    body: {
+      transaction_amount: VALOR_ASSINATURA,
+      description: 'Assinatura Sifia',
+      payment_method_id: 'pix',
+      external_reference: chave,
+      payer: { email },
+    },
+  });
+  const dadosPix = resposta.point_of_interaction.transaction_data;
+  return { paymentId: resposta.id, qrCode: dadosPix.qr_code_base64, copiaECola: dadosPix.qr_code };
+}
+
+// Primeira cobranca de uma assinatura nova.
+app.post('/api/assinar', limiteApiIA, async (req, res) => {
+  const email = (req.body && req.body.email || '').trim();
+  if (!email) {
+    return res.status(400).json({ erro: 'E-mail obrigatório' });
+  }
+  try {
+    const chave = gerarChaveLicenca();
+    const pix = await criarCobrancaPix(chave, email);
+
+    await salvarLicenca(chave, {
+      email,
+      ativa: false, // so vira true quando o webhook confirmar o pagamento
+      proximoPagamentoEm: null, // definido no webhook, quando o primeiro pagamento aprovar
+      atualizadoEm: new Date().toISOString(),
+    });
+
+    res.json({ chaveDeLicenca: chave, qrCode: pix.qrCode, copiaECola: pix.copiaECola });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: 'Não foi possível gerar a cobrança. Tente novamente.' });
+  }
+});
+
+// Confirma que o webhook veio mesmo do Mercado Pago (nao de alguem forjando
+// um "pagamento aprovado" falso pra ganhar acesso sem pagar). Formula oficial:
+// HMAC-SHA256 de "id:<data.id>;request-id:<x-request-id>;ts:<ts>;" usando o
+// segredo de assinatura como chave - qualquer campo ausente sai do manifesto.
+function assinaturaWebhookValida(req, paymentId) {
+  const cabecalho = req.headers['x-signature'];
+  const requestId = req.headers['x-request-id'];
+  if (!cabecalho || !process.env.MP_WEBHOOK_SECRET) return false;
+
+  const partes = Object.fromEntries(
+    cabecalho.split(',').map(par => par.trim().split('=').map(s => s.trim()))
+  );
+  const ts = partes.ts;
+  const assinaturaRecebida = partes.v1;
+  if (!ts || !assinaturaRecebida) return false;
+
+  let manifesto = '';
+  if (paymentId) manifesto += `id:${paymentId};`;
+  if (requestId) manifesto += `request-id:${requestId};`;
+  manifesto += `ts:${ts};`;
+
+  const assinaturaCalculada = crypto
+    .createHmac('sha256', process.env.MP_WEBHOOK_SECRET)
+    .update(manifesto)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(Buffer.from(assinaturaCalculada), Buffer.from(assinaturaRecebida));
+}
+
+// Aviso automatico do Mercado Pago a cada evento de pagamento. Reage ja na
+// PRIMEIRA falha (nao espera reenvio nenhum) - decisao deliberada pra
+// proteger o custo de IA por chamada: continuar liberando acesso enquanto o
+// pagamento nao esta confirmado e risco desnecessario.
+app.post('/api/webhook/mercadopago', async (req, res) => {
+  try {
+    const tipo = req.query.type || req.body.type;
+    const paymentId = req.query['data.id'] || (req.body.data && req.body.data.id);
+    if (tipo !== 'payment' || !paymentId) {
+      return res.sendStatus(200); // outros tipos de evento nao nos interessam ainda
+    }
+    if (!assinaturaWebhookValida(req, paymentId)) {
+      console.error('Webhook com assinatura invalida, ignorado');
+      return res.sendStatus(200); // 200 mesmo assim - nao dar pista pra quem esta testando forjar
+    }
+
+    const payment = new Payment(mpClient);
+    const detalhes = await payment.get({ id: paymentId });
+    const chave = detalhes.external_reference;
+    const registro = chave && await buscarLicenca(chave);
+    if (!registro) {
+      return res.sendStatus(200);
+    }
+
+    if (detalhes.status === 'approved') {
+      registro.ativa = true;
+      registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
+      registro.ultimoPaymentId = paymentId; // pra saber o que estornar se ela pedir reembolso
+      if (!registro.primeiroPagamentoEm) {
+        registro.primeiroPagamentoEm = new Date().toISOString(); // marca o inicio da janela de 7 dias do CDC Art. 49
+      }
+      const proximo = new Date();
+      proximo.setMonth(proximo.getMonth() + 1);
+      registro.proximoPagamentoEm = proximo.toISOString();
+    } else {
+      registro.ativa = false;
+    }
+    registro.atualizadoEm = new Date().toISOString();
+    await salvarLicenca(chave, registro);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(200); // sempre 200 pro Mercado Pago nao ficar reenviando o mesmo evento
+  }
+});
+
+const DIAS_DIREITO_ARREPENDIMENTO = 7; // CDC Art. 49
+
+// O app consulta isso periodicamente pra saber se libera os recursos pagos.
+app.get('/api/licenca/:chave', async (req, res) => {
+  const registro = await buscarLicenca(req.params.chave);
+  if (!registro) {
+    return res.status(404).json({ erro: 'Chave não encontrada' });
+  }
+  const dentroDoPrazoDeArrependimento = !!registro.primeiroPagamentoEm &&
+    (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
+  res.json({ ativa: registro.ativa, podeReembolsar: dentroDoPrazoDeArrependimento });
+});
+
+// Direito de arrependimento (CDC Art. 49): dentro de 7 dias da primeira
+// cobrança, a pessoa pode cancelar sem dar motivo e recebe reembolso
+// integral, automático, sem intervencao manual - por lei, incondicional.
+app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
+  const registro = await buscarLicenca(req.params.chave);
+  if (!registro) {
+    return res.status(404).json({ erro: 'Chave não encontrada' });
+  }
+
+  const dentroDoPrazo = !!registro.primeiroPagamentoEm &&
+    (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
+  if (!dentroDoPrazo) {
+    return res.status(403).json({ erro: 'O prazo de 7 dias para reembolso integral já passou.' });
+  }
+  if (!registro.ultimoPaymentId) {
+    return res.status(400).json({ erro: 'Nenhum pagamento encontrado pra estornar.' });
+  }
+
+  try {
+    const paymentRefund = new PaymentRefund(mpClient);
+    await paymentRefund.create({ payment_id: registro.ultimoPaymentId });
+
+    registro.ativa = false;
+    registro.cancelada = true;
+    registro.atualizadoEm = new Date().toISOString();
+    await salvarLicenca(req.params.chave, registro);
+
+    res.json({ reembolsado: true });
+  } catch (err) {
+    console.error('Falha ao estornar', req.params.chave, err);
+    res.status(500).json({ erro: 'Não foi possível processar o reembolso agora. Tente novamente em instantes.' });
+  }
+});
+
+// Roda 1x por dia: gera a cobranca Pix do proximo ciclo pra quem esta perto
+// do vencimento, e suspende quem passou do vencimento sem confirmar
+// pagamento (o webhook so reage a eventos que o Mercado Pago manda - isto
+// aqui cobre o caso de a pessoa simplesmente nao pagar e nenhum evento novo
+// chegar).
+async function processarRenovacoes() {
+  const agora = new Date();
+  const chaves = await todasAsChavesDeLicenca();
+  for (const chave of chaves) {
+    const registro = await buscarLicenca(chave);
+    if (!registro || !registro.ativa || !registro.proximoPagamentoEm) continue;
+    const vencimento = new Date(registro.proximoPagamentoEm);
+    const diasAteVencer = (vencimento - agora) / (1000 * 60 * 60 * 24);
+
+    if (diasAteVencer <= 0) {
+      registro.ativa = false; // venceu e nao teve pagamento aprovado a tempo
+      await salvarLicenca(chave, registro);
+      continue;
+    }
+    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO && !registro.cobrancaRenovacaoGerada) {
+      try {
+        await criarCobrancaPix(chave, registro.email);
+        registro.cobrancaRenovacaoGerada = true;
+        await salvarLicenca(chave, registro);
+      } catch (err) {
+        console.error('Falha ao gerar cobranca de renovacao para', chave, err);
+      }
+    }
+  }
+}
+setInterval(processarRenovacoes, 24 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -252,7 +252,7 @@
   .relatorio-acoes button { flex: 1; min-width: 140px; }
   .relatorio-resumo-linha { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
   .relatorio-resumo-linha:last-child { border-bottom: none; }
-  input[type="text"], input[type="number"], input[type="date"], textarea {
+  input[type="text"], input[type="number"], input[type="date"], input[type="email"], textarea {
     width: 100%;
     background: var(--input);
     border: 1px solid var(--border);
@@ -454,6 +454,32 @@
 </head>
 <body>
 
+<div class="modal-overlay centralizado" id="paywallOverlay" style="z-index:2000;">
+  <div class="modal-caixa" style="max-width:360px; text-align:center;">
+    <img src="/logo-header.png" alt="Sifia" width="64" height="64" style="margin-bottom:8px;">
+    <h2 style="margin:0 0 4px; font-size:1.2rem;">Assine o Sifia</h2>
+    <p style="color:var(--muted-foreground); font-size:0.9rem; margin:0 0 20px;">R$ 19,90/mês via Pix — cancele quando quiser.</p>
+
+    <div id="paywallPasso1">
+      <label class="campo" style="text-align:left;">Seu e-mail</label>
+      <input type="email" id="paywallEmail" placeholder="voce@email.com">
+      <button onclick="assinarSifia()" id="btnAssinarSifia" style="margin-top:14px;">Gerar cobrança Pix</button>
+      <div class="status" id="statusPaywall"></div>
+    </div>
+
+    <div id="paywallPasso2" style="display:none;">
+      <p style="font-size:0.9rem;">Escaneie o QR code ou copie o código abaixo no app do seu banco:</p>
+      <img id="paywallQrCode" style="width:100%; max-width:220px; border-radius:var(--radius-sm); margin:8px 0;">
+      <div class="campo-clicavel" onclick="copiarCodigoPix()" style="cursor:pointer;">
+        <span id="paywallCopiaECola" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+      </div>
+      <button onclick="verificarPagamentoPaywall()" id="btnVerificarPagamento" style="margin-top:14px;">Já paguei, verificar</button>
+      <button class="secondary" onclick="gerarNovaCobrancaPaywall()" style="margin-top:8px;">Gerar novo Pix</button>
+      <div class="status" id="statusPaywall2"></div>
+    </div>
+  </div>
+</div>
+
 <div class="header-logo">
   <img src="/logo-header.png" alt="Sifia" width="96" height="96">
   <span class="nome-app">Sifia</span>
@@ -518,6 +544,16 @@
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
+  <div id="blocoAssinatura" style="display:none; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border);">
+    <label class="campo" style="margin-top:0;">Assinatura</label>
+    <p class="aviso-backup">R$ 19,90/mês, cobrado via Pix.</p>
+    <div id="blocoReembolso" style="display:none;">
+      <p class="aviso-backup">Você está dentro do prazo legal de 7 dias — pode cancelar agora e receber reembolso integral, sem precisar justificar.</p>
+      <button class="secondary perigo" onclick="cancelarAssinaturaComReembolso()" id="btnCancelarAssinatura">Cancelar e receber reembolso</button>
+      <div class="status" id="statusCancelamento"></div>
+    </div>
+  </div>
+
   <p class="aviso-backup">Seus dados ficam só neste navegador — se você limpar os dados do app, trocar de celular ou desinstalar, não tem como recuperar sem um backup. Faça isso de vez em quando, principalmente antes de trocar de aparelho.</p>
   <button onclick="fazerBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Fazer backup</button>
 
@@ -3447,6 +3483,149 @@ function pararGravacaoVoz(ev) {
     // O texto de instrucao so faz sentido enquanto esta segurando - some na
     // hora de soltar, antes mesmo do resultado da IA chegar.
     document.getElementById('statusVoz').textContent = '';
+  }
+}
+
+const CHAVE_LICENCA_KEY = 'controle_gastos_chave_licenca';
+const EMAIL_LICENCA_KEY = 'controle_gastos_email_licenca';
+
+function mostrarPixNoPaywall(dados) {
+  document.getElementById('paywallPasso1').style.display = 'none';
+  document.getElementById('paywallPasso2').style.display = 'block';
+  document.getElementById('paywallQrCode').src = `data:image/png;base64,${dados.qrCode}`;
+  document.getElementById('paywallCopiaECola').textContent = dados.copiaECola;
+  document.getElementById('paywallCopiaECola').dataset.codigo = dados.copiaECola;
+}
+
+async function assinarSifia() {
+  const email = document.getElementById('paywallEmail').value.trim();
+  const statusEl = document.getElementById('statusPaywall');
+  if (!email || !email.includes('@')) {
+    statusEl.textContent = 'Digite um e-mail válido.';
+    return;
+  }
+  const botao = document.getElementById('btnAssinarSifia');
+  botao.disabled = true;
+  statusEl.textContent = 'Gerando cobrança...';
+  try {
+    const resp = await fetch('/api/assinar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro || 'Erro ao gerar cobrança');
+
+    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
+    localStorage.setItem(EMAIL_LICENCA_KEY, email);
+    statusEl.textContent = '';
+    mostrarPixNoPaywall(dados);
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível gerar a cobrança. Tente novamente.';
+  } finally {
+    botao.disabled = false;
+  }
+}
+
+async function gerarNovaCobrancaPaywall() {
+  const email = localStorage.getItem(EMAIL_LICENCA_KEY);
+  if (!email) {
+    // sem e-mail salvo (ex: limparam o navegador) - volta pro passo 1
+    document.getElementById('paywallPasso1').style.display = 'block';
+    document.getElementById('paywallPasso2').style.display = 'none';
+    return;
+  }
+  const statusEl = document.getElementById('statusPaywall2');
+  statusEl.textContent = 'Gerando novo Pix...';
+  try {
+    const resp = await fetch('/api/assinar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro);
+    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
+    mostrarPixNoPaywall(dados);
+    statusEl.textContent = '';
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível gerar um novo Pix. Tente novamente.';
+  }
+}
+
+async function copiarCodigoPix() {
+  const codigo = document.getElementById('paywallCopiaECola').dataset.codigo;
+  if (!codigo) return;
+  await navigator.clipboard.writeText(codigo);
+  document.getElementById('statusPaywall2').textContent = 'Código copiado!';
+}
+
+async function verificarPagamentoPaywall() {
+  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
+  const statusEl = document.getElementById('statusPaywall2');
+  if (!chave) return;
+  statusEl.textContent = 'Verificando...';
+  try {
+    const resp = await fetch(`/api/licenca/${chave}`);
+    const dados = await resp.json();
+    if (dados.ativa) {
+      document.getElementById('paywallOverlay').classList.remove('aberto');
+    } else {
+      statusEl.textContent = 'Pagamento ainda não confirmado. Se já pagou, aguarde alguns instantes e tente de novo.';
+    }
+  } catch (err) {
+    statusEl.textContent = 'Erro ao verificar. Tente novamente.';
+  }
+}
+
+// Roda antes de tudo: sem licenca ativa, o app fica bloqueado atras do
+// paywall. A licenca em si e so a chave (sem login/senha) - guardada no
+// proprio navegador, igual o resto dos dados do Sifia.
+async function verificarLicencaAoAbrir() {
+  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
+  if (!chave) {
+    document.getElementById('paywallOverlay').classList.add('aberto');
+    return;
+  }
+  try {
+    const resp = await fetch(`/api/licenca/${chave}`);
+    const dados = await resp.json();
+    if (dados.ativa) {
+      document.getElementById('blocoAssinatura').style.display = 'block';
+      document.getElementById('blocoReembolso').style.display = dados.podeReembolsar ? 'block' : 'none';
+      return; // licenca ok, nao mostra o paywall
+    }
+  } catch (err) {
+    // se a verificacao falhar (ex: sem internet), nao bloqueia o acesso -
+    // melhor deixar usar do que travar por causa de uma checagem de rede
+    return;
+  }
+  // chave existe mas nao esta ativa: pula direto pro passo 2 (ja tem Pix
+  // gerado antes, so precisa verificar ou gerar de novo)
+  document.getElementById('paywallPasso1').style.display = 'none';
+  document.getElementById('paywallPasso2').style.display = 'block';
+  document.getElementById('paywallOverlay').classList.add('aberto');
+}
+verificarLicencaAoAbrir();
+
+async function cancelarAssinaturaComReembolso() {
+  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
+  const statusEl = document.getElementById('statusCancelamento');
+  if (!chave) return;
+  if (!confirm('Tem certeza que quer cancelar? Você vai receber o reembolso integral e perder acesso ao Sifia imediatamente.')) return;
+
+  const botao = document.getElementById('btnCancelarAssinatura');
+  botao.disabled = true;
+  statusEl.textContent = 'Processando reembolso...';
+  try {
+    const resp = await fetch(`/api/licenca/${chave}/cancelar`, { method: 'POST' });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro);
+    statusEl.textContent = 'Reembolso confirmado. O valor volta pra sua conta em instantes.';
+    setTimeout(() => location.reload(), 3000);
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível processar agora. Tente novamente em instantes.';
+    botao.disabled = false;
   }
 }
 
