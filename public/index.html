@@ -454,7 +454,7 @@
 </head>
 <body>
 
-<div class="modal-overlay centralizado" id="paywallOverlay" style="z-index:2000;">
+<div class="modal-overlay centralizado" id="paywallOverlay" style="z-index:500;">
   <div class="modal-caixa" style="max-width:360px; text-align:center;">
     <img src="/logo-header.png" alt="Sifia" width="64" height="64" style="margin-bottom:8px;">
     <h2 style="margin:0 0 4px; font-size:1.2rem;">Assine o Sifia</h2>
@@ -3663,7 +3663,7 @@ async function tentarRecuperarPorEmail(email) {
 
 async function recuperarAssinaturaComPrompt(event) {
   event.preventDefault();
-  const email = prompt('Digite o e-mail que você usou para assinar:');
+  const email = await modalPrompt('Digite o e-mail que você usou para assinar:', '');
   if (!email || !email.includes('@')) return;
   tentarRecuperarPorEmail(email.trim());
 }
