@@ -454,6 +454,31 @@
 </head>
 <body>
 
+<div class="modal-overlay centralizado" id="confirmarTransacaoOverlay">
+  <div class="modal-caixa" style="max-width:340px;">
+    <h3 style="margin:0 0 14px; font-size:1.05rem; text-align:center;">Confirmar registro</h3>
+    <div class="linha-topo" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
+      <span id="confTipo" onclick="confEditarCampo('tipo')" style="cursor:pointer; font-weight:600;"></span>
+      <span id="confValor" class="valor" onclick="confEditarCampo('valor')" style="cursor:pointer;"></span>
+    </div>
+    <div class="detalhes" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:0 6px; cursor:pointer;">
+      <span id="confData" onclick="confEditarCampo('data')" style="cursor:pointer;"></span>
+      <span>·</span>
+      <span id="confFormaPagamento" onclick="confEditarCampo('formaPagamento')" style="cursor:pointer;"></span>
+      <span>·</span>
+      <span id="confLocal" onclick="confEditarCampo('local')" style="cursor:pointer;"></span>
+      <span>·</span>
+      <span id="confInstituicao" onclick="confEditarCampo('instituicao')" style="cursor:pointer;"></span>
+    </div>
+    <div class="nota" id="confObservacao" onclick="confEditarCampo('observacao')" style="margin-top:10px; cursor:pointer;"></div>
+    <div class="status" id="confAvisoMemoria" style="display:none; color:var(--primary);"></div>
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="secondary" onclick="confCancelar()" style="flex:1; margin-top:0;">Cancelar</button>
+      <button onclick="confConfirmar()" style="flex:1; margin-top:0;">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay centralizado" id="paywallOverlay" style="z-index:500;">
   <div class="modal-caixa" style="max-width:360px; text-align:center;">
     <img src="/logo-header.png" alt="Sifia" width="64" height="64" style="margin-bottom:8px;">
@@ -534,6 +559,7 @@
 </div>
 
 <button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
+<p style="text-align:center; margin:6px 0 0;"><span onclick="colarTextoTransacao()" style="color:var(--primary); font-size:0.78rem; cursor:pointer;">ou cole um texto copiado</span></p>
 <div class="status" id="statusVoz"></div>
 
 <button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
@@ -2142,9 +2168,18 @@ async function registrarTransacoesRecebidas(transacoes) {
         }
       }
     }
-    adicionarTransacao(dados);
+    // So mostra a tela de confirmacao pra lotes pequenos (comprovante unico,
+    // comando de voz, texto colado, ou algumas notificacoes empilhadas) -
+    // um extrato bancario com dezenas de linhas viraria uma maratona de
+    // confirmacao uma por uma, o oposto do que a tela deveria resolver.
+    let dadosFinais = dados;
+    if (transacoes.length <= 5) {
+      dadosFinais = await confirmarTransacaoAntesSalvar(dados);
+      if (!dadosFinais) continue; // usuario cancelou essa transacao especifica
+    }
+    adicionarTransacao(dadosFinais);
     adicionadas++;
-    if (parseData(dados.data)) ultimaComData = dados;
+    if (parseData(dadosFinais.data)) ultimaComData = dadosFinais;
   }
   if (adicionadas > 0) registrarUsoComprovante();
   // Abre direto no dia do registro que acabou de entrar, pra dar certeza
@@ -2438,6 +2473,117 @@ function observacoesFrequentes(excluirId) {
   // Sem limite de quantidade - a lista tem rolagem propria (#modalSugestoes),
   // entao toda categoria ja criada/usada fica sempre disponivel.
   return Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
+}
+
+// "Efeito memoria": se esse local ja apareceu antes com uma observacao
+// preenchida, sugere a mais usada pra esse local especifico - diferente de
+// observacoesFrequentes() (que e uma lista geral, nao por estabelecimento).
+// Ex: toda vez que "Padaria Nova" tiver observacao "Café da manhã", da
+// segunda vez em diante isso vem pre-preenchido sozinho.
+function observacaoMaisComumParaLocal(local) {
+  if (!local || local === 'desconhecido') return '';
+  const contagem = {};
+  carregarTransacoes().forEach(t => {
+    if (t.local !== local || !t.observacao) return;
+    contagem[t.observacao] = (contagem[t.observacao] || 0) + 1;
+  });
+  const opcoes = Object.keys(contagem);
+  if (opcoes.length === 0) return '';
+  return opcoes.sort((a, b) => contagem[b] - contagem[a])[0];
+}
+
+// ---------- Tela de confirmacao antes de salvar (mostra o que a IA
+// extraiu, com efeito memoria na observacao, antes de virar transacao de
+// verdade) ----------
+
+let confirmacaoResolve = null;
+let confirmacaoDados = null;
+
+function confirmarTransacaoAntesSalvar(dados) {
+  return new Promise((resolve) => {
+    confirmacaoResolve = resolve;
+    confirmacaoDados = { ...dados };
+
+    const avisoMemoria = document.getElementById('confAvisoMemoria');
+    const obsMemoria = observacaoMaisComumParaLocal(confirmacaoDados.local);
+    if (!confirmacaoDados.observacao && obsMemoria) {
+      confirmacaoDados.observacao = obsMemoria;
+      avisoMemoria.textContent = 'Observação preenchida automaticamente com base em registros anteriores desse local.';
+      avisoMemoria.style.display = 'block';
+    } else {
+      avisoMemoria.style.display = 'none';
+    }
+
+    renderizarConfirmacao();
+    document.getElementById('confirmarTransacaoOverlay').classList.add('aberto');
+  });
+}
+
+function renderizarConfirmacao() {
+  const d = confirmacaoDados;
+  const tipoEl = document.getElementById('confTipo');
+  tipoEl.textContent = d.tipo === 'entrada' ? 'Entrada' : 'Saída';
+  tipoEl.className = d.tipo === 'entrada' ? 'entrada' : 'saida';
+  document.getElementById('confValor').textContent = formatarMoeda(d.valor);
+  document.getElementById('confData').textContent = d.data || '-';
+  document.getElementById('confFormaPagamento').textContent = ROTULOS_FORMA_PAGAMENTO[formaPagamentoDaTransacao(d)] || 'Forma de pagamento';
+  document.getElementById('confLocal').textContent = (d.local && d.local !== 'desconhecido') ? d.local : 'Local';
+  document.getElementById('confInstituicao').textContent = (d.instituicao && d.instituicao !== 'desconhecido') ? d.instituicao : 'Instituição';
+  document.getElementById('confObservacao').textContent = d.observacao ? d.observacao : 'OBSERVAÇÃO';
+}
+
+async function confEditarCampo(campo) {
+  const d = confirmacaoDados;
+  if (campo === 'tipo') {
+    d.tipo = d.tipo === 'entrada' ? 'saida' : 'entrada';
+  } else if (campo === 'valor') {
+    const novo = await modalPrompt('Valor (ex: 150,50):', String(d.valor || '').replace('.', ','));
+    if (novo === null) return renderizarConfirmacao();
+    const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
+    if (novo.trim() && !isNaN(numero) && numero > 0) d.valor = numero;
+  } else if (campo === 'data') {
+    const parsedAtual = parseData(d.data);
+    const iso = parsedAtual
+      ? `${String(parsedAtual.ano).padStart(4, '0')}-${String(parsedAtual.mes + 1).padStart(2, '0')}-${String(parsedAtual.dia).padStart(2, '0')}`
+      : new Date().toISOString().slice(0, 10);
+    const escolhida = await abrirSeletorData(iso);
+    if (escolhida) {
+      const [ano, mes, dia] = escolhida.split('-');
+      d.data = `${dia}/${mes}/${ano}`;
+    }
+  } else if (campo === 'formaPagamento') {
+    const opcoes = [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']];
+    const nova = await modalSelecionar('Forma de pagamento:', opcoes, formaPagamentoDaTransacao(d));
+    if (nova !== null) d.formaPagamento = nova;
+  } else if (campo === 'local') {
+    const novo = await modalPrompt('Local:', d.local && d.local !== 'desconhecido' ? d.local : '');
+    if (novo !== null) d.local = novo.trim() || 'desconhecido';
+  } else if (campo === 'instituicao') {
+    const nova = await modalPrompt('Instituição:', d.instituicao && d.instituicao !== 'desconhecido' ? d.instituicao : '');
+    if (nova !== null) d.instituicao = nova.trim() || 'desconhecido';
+  } else if (campo === 'observacao') {
+    const nova = await modalPrompt('Observação:', d.observacao || '', observacoesFrequentes());
+    if (nova !== null) d.observacao = nova.trim();
+  }
+  renderizarConfirmacao();
+}
+
+function confConfirmar() {
+  document.getElementById('confirmarTransacaoOverlay').classList.remove('aberto');
+  if (confirmacaoDados.observacao) lembrarObservacao(confirmacaoDados.observacao);
+  const resolve = confirmacaoResolve;
+  const dados = confirmacaoDados;
+  confirmacaoResolve = null;
+  confirmacaoDados = null;
+  resolve(dados);
+}
+
+function confCancelar() {
+  document.getElementById('confirmarTransacaoOverlay').classList.remove('aberto');
+  const resolve = confirmacaoResolve;
+  confirmacaoResolve = null;
+  confirmacaoDados = null;
+  resolve(null);
 }
 
 async function editarObservacao(id) {
@@ -3404,6 +3550,47 @@ function textoInstrucaoVoz() {
   return 'Fale naturalmente: se foi entrada ou saída, o valor, a forma de pagamento, o local e a instituição. A data já é hoje automaticamente, e a observação você pode adicionar depois tocando na transação. Exemplo: "Paguei 35 reais no débito, no mercado, pelo banco X."';
 }
 
+// Motor compartilhado entre voz, texto colado e qualquer outra entrada de
+// texto livre - manda pro mesmo /api/parse-texto que ja interpreta frase
+// falada, so que aceitando qualquer texto (ex: colado de uma confirmacao
+// de Pix copiada do WhatsApp), nao so o que foi dito em voz alta.
+async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido) {
+  try {
+    const resp = await fetch('/api/parse-texto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET_CLIENTE },
+      body: JSON.stringify({ texto }),
+    });
+    const dados = await resp.json();
+    if (dados.erro) throw new Error(dados.erro);
+    const validas = (dados.transacoes || []).filter(t => !t.erro);
+    if (validas.length === 0) {
+      statusEl.textContent = mensagemNaoEntendido || `Não entendemos "${texto}" como uma transação. Tente de novo.`;
+      statusEl.className = 'status error';
+      return false;
+    }
+    // Sem mensagem de sucesso - igual o upload manual, a transacao
+    // aparecendo no dia (abrirRegistroNoDia, dentro de
+    // registrarTransacoesRecebidas) ja e confirmacao visual suficiente.
+    statusEl.textContent = '';
+    await registrarTransacoesRecebidas(validas);
+    return true;
+  } catch (err) {
+    statusEl.textContent = 'Não foi possível processar o texto. Tente de novo.';
+    statusEl.className = 'status error';
+    return false;
+  }
+}
+
+async function colarTextoTransacao() {
+  const statusEl = document.getElementById('statusVoz');
+  const texto = await modalPrompt('Cole aqui o texto (ex: confirmação de Pix copiada do banco):', '');
+  if (!texto || !texto.trim()) return;
+  statusEl.textContent = 'Analisando...';
+  statusEl.className = 'status';
+  await processarTextoTransacao(texto.trim(), statusEl);
+}
+
 let reconhecimentoVozAtual = null;
 let vozCapturouResultado = false;
 
@@ -3433,29 +3620,7 @@ function iniciarGravacaoVoz(ev) {
     const texto = event.results[0][0].transcript;
     btn.disabled = true;
     textoBtn.textContent = 'Analisando...';
-    try {
-      const resp = await fetch('/api/parse-texto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET_CLIENTE },
-        body: JSON.stringify({ texto }),
-      });
-      const dados = await resp.json();
-      if (dados.erro) throw new Error(dados.erro);
-      const validas = (dados.transacoes || []).filter(t => !t.erro);
-      if (validas.length === 0) {
-        statusEl.textContent = `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`;
-        statusEl.className = 'status error';
-      } else {
-        // Sem mensagem de sucesso - igual o upload manual, a transacao
-        // aparecendo no dia (abrirRegistroNoDia, dentro de
-        // registrarTransacoesRecebidas) ja e confirmacao visual suficiente.
-        statusEl.textContent = '';
-        await registrarTransacoesRecebidas(validas);
-      }
-    } catch (err) {
-      statusEl.textContent = 'Não foi possível processar o comando de voz. Tente de novo.';
-      statusEl.className = 'status error';
-    }
+    await processarTextoTransacao(texto, statusEl, `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`);
     btn.disabled = false;
     textoBtn.textContent = 'Registro por Voz';
   };
