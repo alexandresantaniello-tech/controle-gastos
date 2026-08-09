@@ -3672,7 +3672,7 @@ async function cancelarAssinaturaComReembolso() {
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
   const statusEl = document.getElementById('statusCancelamento');
   if (!chave) return;
-  if (!confirm('Tem certeza que quer cancelar? Você vai receber o reembolso integral e perder acesso ao Sifia imediatamente.')) return;
+  if (!(await modalConfirmar('Tem certeza que quer cancelar? Você vai receber o reembolso integral e perder acesso ao Sifia imediatamente.'))) return;
 
   const botao = document.getElementById('btnCancelarAssinatura');
   botao.disabled = true;
@@ -3693,7 +3693,7 @@ async function cancelarRenovacao() {
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
   const statusEl = document.getElementById('statusCancelarRenovacao');
   if (!chave) return;
-  if (!confirm('Cancelar a renovação? Você continua com acesso até o fim do período já pago, mas não vamos cobrar de novo depois disso.')) return;
+  if (!(await modalConfirmar('Cancelar a renovação? Você continua com acesso até o fim do período já pago, mas não vamos cobrar de novo depois disso.'))) return;
 
   const botao = document.getElementById('btnCancelarRenovacao');
   botao.disabled = true;
