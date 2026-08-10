@@ -521,23 +521,24 @@
 
 <div class="summary">
   <div class="box">
-    <div class="label">Entradas</div>
+    <div class="label" id="rotuloEntradas">Entradas</div>
     <div class="value entrada" id="totalEntradas">R$ 0,00</div>
   </div>
   <div class="box">
-    <div class="label">Saídas</div>
+    <div class="label" id="rotuloSaidas">Saídas</div>
     <div class="value saida" id="totalSaidas">R$ 0,00</div>
   </div>
 </div>
 
 <div class="card saldo-card">
   <div class="saldo-linha">
-    <span class="label">Saldo</span>
+    <span class="label" id="rotuloSaldo">Saldo</span>
     <span class="cristal-toggle" id="cristalToggle" onclick="alternarVisibilidadeSaldo()"></span>
   </div>
   <div class="value" id="saldo">R$ 0,00</div>
   <div style="margin-top:8px;">
     <span id="seletorMoeda" onclick="abrirSeletorMoedaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer;">R$ Real</span>
+    <span id="seletorIdioma" onclick="abrirSeletorIdiomaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer; margin-left:6px;">Português</span>
     <span id="taxaCambioInfo" style="font-size:0.75rem; color:var(--muted-foreground); margin-left:6px;"></span>
   </div>
 </div>
@@ -559,7 +560,7 @@
 </div>
 
 <button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
-<p style="text-align:center; margin:6px 0 0;"><span onclick="colarTextoTransacao()" style="color:var(--primary); font-size:0.78rem; cursor:pointer;">ou cole um texto copiado</span></p>
+<p style="text-align:center; margin:6px 0 0;"><span onclick="colarTextoTransacao()" id="rotuloColarTexto" style="color:var(--primary); font-size:0.78rem; cursor:pointer;">ou cole um texto copiado</span></p>
 <div class="status" id="statusVoz"></div>
 
 <button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
@@ -2903,6 +2904,107 @@ async function abrirSeletorMoedaGlobal() {
   mudarMoeda(nova);
 }
 
+// Idioma da interface - mesma logica do seletor de moeda acima: escolha
+// explicita do usuario, guardada no aparelho, troca so a EXIBICAO (texto
+// fixo da tela). Nao muda nenhum dado guardado (valor, categoria, etc.
+// continuam como a IA extraiu). Traducoes ja vem prontas no codigo -
+// nada e gerado nem buscado na hora, troca instantanea igual a moeda.
+const IDIOMA_KEY = 'controle_gastos_idioma_selecionado';
+// Nomes sem bandeira de proposito - varios desses idiomas sao falados em
+// muitos paises (arabe, ingles, frances...), uma bandeira so daria a
+// impressao errada de que pertence a um pais so, igual moeda nao usa
+// bandeira de pais nenhum tambem.
+const NOMES_IDIOMA = {
+  pt: 'Português', es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch',
+  it: 'Italiano', zh: '中文', ja: '日本語', ko: '한국어', ar: 'العربية',
+  hi: 'हिन्दी', ru: 'Русский', nl: 'Nederlands', pl: 'Polski', tr: 'Türkçe',
+  vi: 'Tiếng Việt', th: 'ไทย', id: 'Bahasa Indonesia', tl: 'Filipino', sw: 'Kiswahili',
+  he: 'עברית', el: 'Ελληνικά', sv: 'Svenska', no: 'Norsk', da: 'Dansk',
+  fi: 'Suomi', cs: 'Čeština', ro: 'Română', hu: 'Magyar', uk: 'Українська',
+  bn: 'বাংলা', ur: 'اردو', fa: 'فارسی', ms: 'Bahasa Melayu', pa: 'ਪੰਜਾਬੀ',
+  ta: 'தமிழ்', gu: 'ગુજરાતી', am: 'አማርኛ', ha: 'Hausa',
+};
+const TRADUCOES = {
+  pt: { rotuloEntradas: 'Entradas', rotuloSaidas: 'Saídas', rotuloSaldo: 'Saldo', emptyMsg: 'Nenhuma transação neste mês.', btnFalarTransacaoTexto: 'Registro por Voz', rotuloColarTexto: 'ou cole um texto copiado', seletorIdiomaPergunta: 'Ver o app em qual idioma?' },
+  es: { rotuloEntradas: 'Ingresos', rotuloSaidas: 'Gastos', rotuloSaldo: 'Saldo', emptyMsg: 'Ninguna transacción este mes.', btnFalarTransacaoTexto: 'Registro por Voz', rotuloColarTexto: 'o pega un texto copiado', seletorIdiomaPergunta: '¿En qué idioma quieres ver la aplicación?' },
+  en: { rotuloEntradas: 'Income', rotuloSaidas: 'Expenses', rotuloSaldo: 'Balance', emptyMsg: 'No transactions this month.', btnFalarTransacaoTexto: 'Voice Entry', rotuloColarTexto: 'or paste a copied text', seletorIdiomaPergunta: 'Which language do you want to view the app in?' },
+  fr: { rotuloEntradas: 'Revenus', rotuloSaidas: 'Dépenses', rotuloSaldo: 'Solde', emptyMsg: 'Aucune transaction ce mois-ci.', btnFalarTransacaoTexto: 'Saisie vocale', rotuloColarTexto: 'ou collez un texte copié', seletorIdiomaPergunta: "Dans quelle langue voulez-vous voir l'application ?" },
+  de: { rotuloEntradas: 'Einnahmen', rotuloSaidas: 'Ausgaben', rotuloSaldo: 'Kontostand', emptyMsg: 'Keine Transaktionen in diesem Monat.', btnFalarTransacaoTexto: 'Spracheingabe', rotuloColarTexto: 'oder einen kopierten Text einfügen', seletorIdiomaPergunta: 'In welcher Sprache möchtest du die App sehen?' },
+  it: { rotuloEntradas: 'Entrate', rotuloSaidas: 'Uscite', rotuloSaldo: 'Saldo', emptyMsg: 'Nessuna transazione questo mese.', btnFalarTransacaoTexto: 'Registrazione vocale', rotuloColarTexto: 'oppure incolla un testo copiato', seletorIdiomaPergunta: "In quale lingua vuoi vedere l'app?" },
+  zh: { rotuloEntradas: '收入', rotuloSaidas: '支出', rotuloSaldo: '余额', emptyMsg: '本月没有交易。', btnFalarTransacaoTexto: '语音记录', rotuloColarTexto: '或粘贴复制的文本', seletorIdiomaPergunta: '您想用哪种语言查看应用程序?' },
+  ja: { rotuloEntradas: '収入', rotuloSaidas: '支出', rotuloSaldo: '残高', emptyMsg: '今月の取引はありません。', btnFalarTransacaoTexto: '音声入力', rotuloColarTexto: 'またはコピーしたテキストを貼り付け', seletorIdiomaPergunta: 'アプリをどの言語で表示しますか?' },
+  ko: { rotuloEntradas: '수입', rotuloSaidas: '지출', rotuloSaldo: '잔액', emptyMsg: '이번 달 거래 내역이 없습니다.', btnFalarTransacaoTexto: '음성 등록', rotuloColarTexto: '또는 복사한 텍스트 붙여넣기', seletorIdiomaPergunta: '앱을 어떤 언어로 보시겠습니까?' },
+  ar: { rotuloEntradas: 'الدخل', rotuloSaidas: 'المصروفات', rotuloSaldo: 'الرصيد', emptyMsg: 'لا توجد معاملات هذا الشهر.', btnFalarTransacaoTexto: 'تسجيل صوتي', rotuloColarTexto: 'أو الصق نصًا منسوخًا', seletorIdiomaPergunta: 'بأي لغة تريد عرض التطبيق؟' },
+  hi: { rotuloEntradas: 'आय', rotuloSaidas: 'व्यय', rotuloSaldo: 'शेष राशि', emptyMsg: 'इस महीने कोई लेनदेन नहीं हुआ।', btnFalarTransacaoTexto: 'आवाज़ से दर्ज करें', rotuloColarTexto: 'या कॉपी किया गया टेक्स्ट पेस्ट करें', seletorIdiomaPergunta: 'आप ऐप किस भाषा में देखना चाहते हैं?' },
+  ru: { rotuloEntradas: 'Доходы', rotuloSaidas: 'Расходы', rotuloSaldo: 'Баланс', emptyMsg: 'В этом месяце нет транзакций.', btnFalarTransacaoTexto: 'Голосовая запись', rotuloColarTexto: 'или вставьте скопированный текст', seletorIdiomaPergunta: 'На каком языке вы хотите видеть приложение?' },
+  nl: { rotuloEntradas: 'Inkomsten', rotuloSaidas: 'Uitgaven', rotuloSaldo: 'Saldo', emptyMsg: 'Geen transacties deze maand.', btnFalarTransacaoTexto: 'Spraakregistratie', rotuloColarTexto: 'of plak een gekopieerde tekst', seletorIdiomaPergunta: 'In welke taal wil je de app zien?' },
+  pl: { rotuloEntradas: 'Przychody', rotuloSaidas: 'Wydatki', rotuloSaldo: 'Saldo', emptyMsg: 'Brak transakcji w tym miesiącu.', btnFalarTransacaoTexto: 'Nagrywanie głosowe', rotuloColarTexto: 'lub wklej skopiowany tekst', seletorIdiomaPergunta: 'W jakim języku chcesz zobaczyć aplikację?' },
+  tr: { rotuloEntradas: 'Gelirler', rotuloSaidas: 'Giderler', rotuloSaldo: 'Bakiye', emptyMsg: 'Bu ay işlem yok.', btnFalarTransacaoTexto: 'Sesli Kayıt', rotuloColarTexto: 'veya kopyalanan bir metni yapıştır', seletorIdiomaPergunta: 'Uygulamayı hangi dilde görmek istersiniz?' },
+  vi: { rotuloEntradas: 'Thu nhập', rotuloSaidas: 'Chi tiêu', rotuloSaldo: 'Số dư', emptyMsg: 'Không có giao dịch nào trong tháng này.', btnFalarTransacaoTexto: 'Ghi âm giọng nói', rotuloColarTexto: 'hoặc dán văn bản đã sao chép', seletorIdiomaPergunta: 'Bạn muốn xem ứng dụng bằng ngôn ngữ nào?' },
+  th: { rotuloEntradas: 'รายรับ', rotuloSaidas: 'รายจ่าย', rotuloSaldo: 'ยอดคงเหลือ', emptyMsg: 'ไม่มีธุรกรรมในเดือนนี้', btnFalarTransacaoTexto: 'บันทึกด้วยเสียง', rotuloColarTexto: 'หรือวางข้อความที่คัดลอกไว้', seletorIdiomaPergunta: 'คุณต้องการดูแอปเป็นภาษาใด?' },
+  id: { rotuloEntradas: 'Pemasukan', rotuloSaidas: 'Pengeluaran', rotuloSaldo: 'Saldo', emptyMsg: 'Tidak ada transaksi bulan ini.', btnFalarTransacaoTexto: 'Input Suara', rotuloColarTexto: 'atau tempel teks yang disalin', seletorIdiomaPergunta: 'Anda ingin melihat aplikasi dalam bahasa apa?' },
+  tl: { rotuloEntradas: 'Kita', rotuloSaidas: 'Gastos', rotuloSaldo: 'Balanse', emptyMsg: 'Walang transaksyon ngayong buwan.', btnFalarTransacaoTexto: 'Boses na Pagpasok', rotuloColarTexto: 'o i-paste ang kinopyang teksto', seletorIdiomaPergunta: 'Anong wika ang gusto mong gamitin sa app?' },
+  sw: { rotuloEntradas: 'Mapato', rotuloSaidas: 'Matumizi', rotuloSaldo: 'Salio', emptyMsg: 'Hakuna miamala mwezi huu.', btnFalarTransacaoTexto: 'Ingizo la Sauti', rotuloColarTexto: 'au bandika maandishi yaliyonakiliwa', seletorIdiomaPergunta: 'Ungependa kuona programu kwa lugha gani?' },
+  he: { rotuloEntradas: 'הכנסות', rotuloSaidas: 'הוצאות', rotuloSaldo: 'יתרה', emptyMsg: 'אין עסקאות החודש.', btnFalarTransacaoTexto: 'רישום קולי', rotuloColarTexto: 'או הדבק טקסט מועתק', seletorIdiomaPergunta: 'באיזו שפה תרצה לראות את האפליקציה?' },
+  el: { rotuloEntradas: 'Έσοδα', rotuloSaidas: 'Έξοδα', rotuloSaldo: 'Υπόλοιπο', emptyMsg: 'Καμία συναλλαγή αυτόν τον μήνα.', btnFalarTransacaoTexto: 'Φωνητική Καταχώρηση', rotuloColarTexto: 'ή επικολλήστε αντιγραμμένο κείμενο', seletorIdiomaPergunta: 'Σε ποια γλώσσα θέλετε να δείτε την εφαρμογή;' },
+  sv: { rotuloEntradas: 'Inkomster', rotuloSaidas: 'Utgifter', rotuloSaldo: 'Saldo', emptyMsg: 'Inga transaktioner denna månad.', btnFalarTransacaoTexto: 'Röstinmatning', rotuloColarTexto: 'eller klistra in en kopierad text', seletorIdiomaPergunta: 'Vilket språk vill du se appen på?' },
+  no: { rotuloEntradas: 'Inntekter', rotuloSaidas: 'Utgifter', rotuloSaldo: 'Saldo', emptyMsg: 'Ingen transaksjoner denne måneden.', btnFalarTransacaoTexto: 'Taleregistrering', rotuloColarTexto: 'eller lim inn en kopiert tekst', seletorIdiomaPergunta: 'Hvilket språk vil du se appen på?' },
+  da: { rotuloEntradas: 'Indtægter', rotuloSaidas: 'Udgifter', rotuloSaldo: 'Saldo', emptyMsg: 'Ingen transaktioner denne måned.', btnFalarTransacaoTexto: 'Taleoptagelse', rotuloColarTexto: 'eller indsæt en kopieret tekst', seletorIdiomaPergunta: 'Hvilket sprog vil du se appen på?' },
+  fi: { rotuloEntradas: 'Tulot', rotuloSaidas: 'Menot', rotuloSaldo: 'Saldo', emptyMsg: 'Ei tapahtumia tässä kuussa.', btnFalarTransacaoTexto: 'Äänisyöttö', rotuloColarTexto: 'tai liitä kopioitu teksti', seletorIdiomaPergunta: 'Millä kielellä haluat nähdä sovelluksen?' },
+  cs: { rotuloEntradas: 'Příjmy', rotuloSaidas: 'Výdaje', rotuloSaldo: 'Zůstatek', emptyMsg: 'Tento měsíc žádné transakce.', btnFalarTransacaoTexto: 'Hlasový záznam', rotuloColarTexto: 'nebo vložte zkopírovaný text', seletorIdiomaPergunta: 'V jakém jazyce chcete aplikaci zobrazit?' },
+  ro: { rotuloEntradas: 'Venituri', rotuloSaidas: 'Cheltuieli', rotuloSaldo: 'Sold', emptyMsg: 'Nicio tranzacție luna aceasta.', btnFalarTransacaoTexto: 'Înregistrare vocală', rotuloColarTexto: 'sau lipiți un text copiat', seletorIdiomaPergunta: 'În ce limbă doriți să vedeți aplicația?' },
+  hu: { rotuloEntradas: 'Bevételek', rotuloSaidas: 'Kiadások', rotuloSaldo: 'Egyenleg', emptyMsg: 'Ebben a hónapban nincs tranzakció.', btnFalarTransacaoTexto: 'Hangalapú rögzítés', rotuloColarTexto: 'vagy illesszen be egy másolt szöveget', seletorIdiomaPergunta: 'Milyen nyelven szeretné látni az alkalmazást?' },
+  uk: { rotuloEntradas: 'Доходи', rotuloSaidas: 'Витрати', rotuloSaldo: 'Баланс', emptyMsg: 'Цього місяця немає транзакцій.', btnFalarTransacaoTexto: 'Голосовий запис', rotuloColarTexto: 'або вставте скопійований текст', seletorIdiomaPergunta: 'Якою мовою ви хочете бачити застосунок?' },
+  bn: { rotuloEntradas: 'আয়', rotuloSaidas: 'ব্যয়', rotuloSaldo: 'ব্যালেন্স', emptyMsg: 'এই মাসে কোনো লেনদেন নেই।', btnFalarTransacaoTexto: 'ভয়েস এন্ট্রি', rotuloColarTexto: 'অথবা কপি করা টেক্সট পেস্ট করুন', seletorIdiomaPergunta: 'আপনি কোন ভাষায় অ্যাপটি দেখতে চান?' },
+  ur: { rotuloEntradas: 'آمدنی', rotuloSaidas: 'اخراجات', rotuloSaldo: 'بیلنس', emptyMsg: 'اس مہینے کوئی لین دین نہیں ہوا۔', btnFalarTransacaoTexto: 'صوتی اندراج', rotuloColarTexto: 'یا کاپی شدہ متن پیسٹ کریں', seletorIdiomaPergunta: 'آپ ایپ کس زبان میں دیکھنا چاہتے ہیں؟' },
+  fa: { rotuloEntradas: 'درآمد', rotuloSaidas: 'هزینه‌ها', rotuloSaldo: 'موجودی', emptyMsg: 'این ماه تراکنشی وجود ندارد.', btnFalarTransacaoTexto: 'ثبت صوتی', rotuloColarTexto: 'یا متن کپی‌شده را جای‌گذاری کنید', seletorIdiomaPergunta: 'می‌خواهید برنامه را به چه زبانی ببینید؟' },
+  ms: { rotuloEntradas: 'Pendapatan', rotuloSaidas: 'Perbelanjaan', rotuloSaldo: 'Baki', emptyMsg: 'Tiada transaksi bulan ini.', btnFalarTransacaoTexto: 'Input Suara', rotuloColarTexto: 'atau tampal teks yang disalin', seletorIdiomaPergunta: 'Anda ingin melihat aplikasi dalam bahasa apa?' },
+  pa: { rotuloEntradas: 'ਆਮਦਨ', rotuloSaidas: 'ਖਰਚੇ', rotuloSaldo: 'ਬਕਾਇਆ', emptyMsg: 'ਇਸ ਮਹੀਨੇ ਕੋਈ ਲੈਣ-ਦੇਣ ਨਹੀਂ।', btnFalarTransacaoTexto: 'ਆਵਾਜ਼ ਨਾਲ ਦਰਜ ਕਰੋ', rotuloColarTexto: 'ਜਾਂ ਕਾਪੀ ਕੀਤਾ ਟੈਕਸਟ ਪੇਸਟ ਕਰੋ', seletorIdiomaPergunta: 'ਤੁਸੀਂ ਐਪ ਕਿਸ ਭਾਸ਼ਾ ਵਿੱਚ ਦੇਖਣਾ ਚਾਹੁੰਦੇ ਹੋ?' },
+  ta: { rotuloEntradas: 'வருமானம்', rotuloSaidas: 'செலவுகள்', rotuloSaldo: 'மீதி', emptyMsg: 'இந்த மாதம் பரிவர்த்தனைகள் இல்லை.', btnFalarTransacaoTexto: 'குரல் பதிவு', rotuloColarTexto: 'அல்லது நகலெடுக்கப்பட்ட உரையை ஒட்டவும்', seletorIdiomaPergunta: 'எந்த மொழியில் ஆப்பைப் பார்க்க விரும்புகிறீர்கள்?' },
+  gu: { rotuloEntradas: 'આવક', rotuloSaidas: 'ખર્ચ', rotuloSaldo: 'બેલેન્સ', emptyMsg: 'આ મહિને કોઈ વ્યવહાર નથી.', btnFalarTransacaoTexto: 'વૉઇસ એન્ટ્રી', rotuloColarTexto: 'અથવા કૉપિ કરેલ ટેક્સ્ટ પેસ્ટ કરો', seletorIdiomaPergunta: 'તમે એપ કઈ ભાષામાં જોવા માંગો છો?' },
+  am: { rotuloEntradas: 'ገቢ', rotuloSaidas: 'ወጪ', rotuloSaldo: 'ቀሪ ሂሳብ', emptyMsg: 'በዚህ ወር ምንም ግብይት የለም።', btnFalarTransacaoTexto: 'በድምፅ ማስመዝገቢያ', rotuloColarTexto: 'ወይም የተቀዳ ጽሑፍ ለጥፍ', seletorIdiomaPergunta: 'መተግበሪያውን በየትኛው ቋንቋ ማየት ይፈልጋሉ?' },
+  ha: { rotuloEntradas: 'Kudin shiga', rotuloSaidas: 'Kashe kudi', rotuloSaldo: "Ma'auni", emptyMsg: 'Babu ciniki a wannan wata.', btnFalarTransacaoTexto: 'Shigar da Murya', rotuloColarTexto: 'ko manna rubutu da aka kwafi', seletorIdiomaPergunta: 'Wanne harshe kake son ganin manhajar?' },
+};
+let idiomaSelecionado = localStorage.getItem(IDIOMA_KEY) || 'pt';
+
+// Busca o texto no idioma ativo; se faltar alguma chave num idioma novo
+// no futuro, cai pro portugues em vez de deixar a tela em branco.
+function t(chave) {
+  return (TRADUCOES[idiomaSelecionado] && TRADUCOES[idiomaSelecionado][chave]) || TRADUCOES.pt[chave] || chave;
+}
+
+function listaOpcoesIdioma() {
+  return Object.entries(NOMES_IDIOMA);
+}
+
+function popularSeletorIdioma() {
+  document.getElementById('seletorIdioma').textContent = NOMES_IDIOMA[idiomaSelecionado] || NOMES_IDIOMA.pt;
+}
+
+// Aplica as traducoes nos textos fixos da tela (os que nao passam por
+// renderizar() porque nao dependem dos dados, so existem uma vez no HTML).
+function aplicarTraducoes() {
+  const mapa = ['rotuloEntradas', 'rotuloSaidas', 'rotuloSaldo', 'emptyMsg', 'btnFalarTransacaoTexto', 'rotuloColarTexto'];
+  mapa.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(id);
+  });
+}
+
+function mudarIdioma(novo) {
+  idiomaSelecionado = novo;
+  localStorage.setItem(IDIOMA_KEY, novo);
+  popularSeletorIdioma();
+  aplicarTraducoes();
+  renderizar();
+}
+
+async function abrirSeletorIdiomaGlobal() {
+  const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);
+  if (novo === null) return;
+  mudarIdioma(novo);
+}
+
 function atualizarInfoCambio() {
   const infoEl = document.getElementById('taxaCambioInfo');
   if (!infoEl) return;
@@ -3878,6 +3980,8 @@ async function cancelarRenovacao() {
 
 limparPrefixoLocalAntigo();
 processarComprovanteCompartilhado();
+popularSeletorIdioma();
+aplicarTraducoes();
 renderizar();
 carregarTaxasCambio().then(() => {
   popularSeletorMoeda();
