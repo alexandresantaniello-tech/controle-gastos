@@ -538,7 +538,7 @@
   <div class="value" id="saldo">R$ 0,00</div>
   <div style="margin-top:8px;">
     <span id="seletorMoeda" onclick="abrirSeletorMoedaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer;">R$ Real</span>
-    <span id="seletorIdioma" onclick="abrirSeletorIdiomaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer; margin-left:6px;">Português</span>
+    <span id="seletorIdioma" onclick="abrirSeletorIdiomaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer; margin-left:6px;">🌐 PT</span>
     <span id="taxaCambioInfo" style="font-size:0.75rem; color:var(--muted-foreground); margin-left:6px;"></span>
   </div>
 </div>
@@ -2977,8 +2977,12 @@ function listaOpcoesIdioma() {
   return Object.entries(NOMES_IDIOMA);
 }
 
+// Botao mostra so o codigo (ex: "PT"), nao o nome completo do idioma - nomes
+// como "Bahasa Indonesia" ou "Filipino" estourariam a largura da linha e
+// quebrariam a regra de nunca ter barra de rolagem na tela principal. O
+// nome completo continua aparecendo dentro do modal de escolha.
 function popularSeletorIdioma() {
-  document.getElementById('seletorIdioma').textContent = NOMES_IDIOMA[idiomaSelecionado] || NOMES_IDIOMA.pt;
+  document.getElementById('seletorIdioma').textContent = '🌐 ' + idiomaSelecionado.toUpperCase();
 }
 
 // Aplica as traducoes nos textos fixos da tela (os que nao passam por
