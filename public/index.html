@@ -570,7 +570,6 @@
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto">Manual</span></div>
   <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto">Upload</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
-  <div class="upload-toggle" id="despesasFixasToggle" onclick="alternarDespesasFixas()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg><span class="toggle-texto">Despesas Fixas</span></div>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
@@ -665,36 +664,15 @@
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
+  <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()" style="margin-top:14px;">
+    <span id="textoPeriodoDespesaFixa" class="vazio">É RECORRENTE?</span>
+    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+  </div>
+
   <div style="text-align:center; margin-top:16px;">
     <button onclick="salvarDinheiro()">Salvar lançamento</button>
   </div>
   <div class="status" id="statusDinheiro"></div>
-</div>
-
-<div class="card" id="despesasFixasCard" style="display:none;">
-  <p style="color:var(--muted-foreground); font-size:0.85rem; margin-top:0;">Pra despesas que se repetem (aluguel de carro, prestação de casa, aluguel de equipamento, etc.) - mostra quanto ela equivale por dia, junto com o lançamento.</p>
-
-  <label class="campo">O que é</label>
-  <input type="text" id="descricaoDespesaFixa" placeholder="Ex: Aluguel do carro">
-
-  <label class="campo">Valor</label>
-  <input type="number" id="valorDespesaFixa" step="0.01" min="0" placeholder="0,00">
-
-  <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()" style="margin-top:14px;">
-    <span id="textoPeriodoDespesaFixa" class="vazio">PERÍODO QUE ESSE VALOR COBRE</span>
-    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-  </div>
-
-  <label class="campo">Data</label>
-  <div class="campo-clicavel" id="campoDataDespesaFixa" onclick="abrirCalendarioDespesaFixa()">
-    <span id="textoDataDespesaFixa">-</span>
-    <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-  </div>
-
-  <div style="text-align:center; margin-top:16px;">
-    <button onclick="salvarDespesaFixa()">Salvar despesa fixa</button>
-  </div>
-  <div class="status" id="statusDespesaFixa"></div>
 </div>
 
 <div class="card" id="relatorioCard" style="display:none;">
@@ -1388,7 +1366,6 @@ function fecharTodasSecoes() {
   const secoes = [
     ['relatorioCard', 'relatorioToggle', 'Relatórios'],
     ['dinheiroCard', 'dinheiroToggle', 'Manual'],
-    ['despesasFixasCard', 'despesasFixasToggle', 'Despesas Fixas'],
     ['backupCard', 'backupToggle', 'Backup'],
     ['uploadHistoricoCard', 'uploadHistoricoToggle', 'Upload'],
     ['termosCard', 'termosToggle', 'Termos de Uso'],
@@ -1417,7 +1394,6 @@ let navegandoParaTras = false;
 const SECAO_TOGGLE_FN = {
   relatorioCard: () => alternarRelatorio(),
   dinheiroCard: () => alternarDinheiro(),
-  despesasFixasCard: () => alternarDespesasFixas(),
   backupCard: () => alternarBackup(),
   uploadHistoricoCard: () => alternarUploadHistorico(),
   uploadCard: () => alternarUpload(),
@@ -3346,6 +3322,8 @@ function alternarDinheiro() {
   atualizarFormaPagamentoDinheiro();
   instituicaoDinheiroAtual = '';
   atualizarInstituicaoDinheiro();
+  periodoDespesaFixaAtual = null;
+  atualizarTextoPeriodoDespesaFixa();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   abrirSecaoNoHistorico('dinheiroCard');
 }
@@ -3375,6 +3353,7 @@ function salvarDinheiro() {
     local: localDinheiroAtual || 'desconhecido',
     data: `${dia}/${mes}/${ano}`,
     observacao: observacaoDinheiroAtual,
+    ...(periodoDespesaFixaAtual ? { periodicidade: periodoDespesaFixaAtual } : {}),
   });
 
   document.getElementById('valorDinheiro').value = '';
@@ -3386,130 +3365,50 @@ function salvarDinheiro() {
   atualizarFormaPagamentoDinheiro();
   instituicaoDinheiroAtual = '';
   atualizarInstituicaoDinheiro();
+  periodoDespesaFixaAtual = null;
+  atualizarTextoPeriodoDespesaFixa();
   statusEl.textContent = 'Lançamento adicionado.';
   statusEl.className = 'status';
   setTimeout(alternarDinheiro, 1200);
 }
 
 // ---------- Despesas Fixas: mesma logica de "manual", mas guarda tambem o
-// periodo que o valor cobre (semanal/mensal/personalizado), pra mostrar
-// quanto ela equivale por dia junto do lancamento (t.periodicidade). Sempre
-// tipo "saida" - e literalmente "despesa", nao entrada. ----------
-function alternarDespesasFixas() {
-  const card = document.getElementById('despesasFixasCard');
-  const toggle = document.getElementById('despesasFixasToggle');
-  const abrindo = card.style.display === 'none';
-  fecharTodasSecoes();
-  if (!abrindo) {
-    fecharSecaoNoHistorico();
-    return;
-  }
-  card.style.display = 'block';
-  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
-  document.getElementById('descricaoDespesaFixa').value = '';
-  document.getElementById('valorDespesaFixa').value = '';
-  periodoDespesaFixaAtual = null;
-  atualizarTextoPeriodoDespesaFixa();
-  dataDespesaFixaSelecionadaISO = new Date().toISOString().slice(0, 10);
-  atualizarTextoDataDespesaFixa();
-  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  abrirSecaoNoHistorico('despesasFixasCard');
-}
-
-let periodoDespesaFixaAtual = null; // { tipo: 'semanal'|'mensal'|'personalizado', dias: N }
+// periodo que ela cobre (diario/semanal/mensal), pra mostrar quanto
+// equivale por dia junto do lancamento (t.periodicidade). ----------
+let periodoDespesaFixaAtual = null; // { tipo: 'diario'|'semanal'|'mensal', dias: N }
 
 function rotuloPeriodoDespesaFixa(p) {
   if (!p) return '';
+  if (p.tipo === 'diario') return 'Diário';
   if (p.tipo === 'semanal') return 'Semanal';
-  if (p.tipo === 'mensal') return 'Mensal';
-  return `A cada ${p.dias} dias`;
+  return 'Mensal';
 }
 
 function atualizarTextoPeriodoDespesaFixa() {
   const el = document.getElementById('textoPeriodoDespesaFixa');
   if (periodoDespesaFixaAtual) {
-    el.textContent = rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual);
+    el.textContent = 'Recorrente: ' + rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual);
     el.classList.remove('vazio');
   } else {
-    el.textContent = 'PERÍODO QUE ESSE VALOR COBRE';
+    el.textContent = 'É RECORRENTE?';
     el.classList.add('vazio');
   }
 }
 
 async function editarPeriodoDespesaFixa() {
-  const escolha = await modalSelecionar('Esse valor cobre qual período?', [['7', 'Semanal'], ['30', 'Mensal'], ['personalizado', 'Personalizado (dias)']], '');
+  const recorrente = await modalSelecionar('É recorrente?', [['nao', 'Não'], ['sim', 'Sim']], periodoDespesaFixaAtual ? 'sim' : 'nao');
+  if (recorrente === null) return;
+  if (recorrente === 'nao') {
+    periodoDespesaFixaAtual = null;
+    atualizarTextoPeriodoDespesaFixa();
+    return;
+  }
+  const escolha = await modalSelecionar('Qual período?', [['1', 'Diário'], ['7', 'Semanal'], ['30', 'Mensal']], '');
   if (escolha === null) return;
-  if (escolha === 'personalizado') {
-    const dias = await modalPrompt('Cobre quantos dias?', '');
-    const n = parseInt(dias, 10);
-    if (!n || n <= 0) return;
-    periodoDespesaFixaAtual = { tipo: 'personalizado', dias: n };
-  } else {
-    const dias = parseInt(escolha, 10);
-    periodoDespesaFixaAtual = { tipo: dias === 7 ? 'semanal' : 'mensal', dias };
-  }
+  const dias = parseInt(escolha, 10);
+  const tipo = dias === 1 ? 'diario' : dias === 7 ? 'semanal' : 'mensal';
+  periodoDespesaFixaAtual = { tipo, dias };
   atualizarTextoPeriodoDespesaFixa();
-}
-
-let dataDespesaFixaSelecionadaISO = '';
-
-function atualizarTextoDataDespesaFixa() {
-  const [ano, mes, dia] = dataDespesaFixaSelecionadaISO.split('-');
-  document.getElementById('textoDataDespesaFixa').textContent = dataDespesaFixaSelecionadaISO ? `${dia}/${mes}/${ano}` : 'Selecione a data';
-}
-
-async function abrirCalendarioDespesaFixa() {
-  const escolhida = await abrirSeletorData(dataDespesaFixaSelecionadaISO);
-  if (!escolhida) return;
-  dataDespesaFixaSelecionadaISO = escolhida;
-  atualizarTextoDataDespesaFixa();
-}
-
-function salvarDespesaFixa() {
-  const valor = parseFloat(document.getElementById('valorDespesaFixa').value);
-  const descricao = document.getElementById('descricaoDespesaFixa').value.trim();
-  const statusEl = document.getElementById('statusDespesaFixa');
-
-  if (!valor || valor <= 0) {
-    statusEl.textContent = 'Informe um valor válido.';
-    statusEl.className = 'status error';
-    return;
-  }
-  if (!descricao) {
-    statusEl.textContent = 'Informe o que é essa despesa.';
-    statusEl.className = 'status error';
-    return;
-  }
-  if (!periodoDespesaFixaAtual) {
-    statusEl.textContent = 'Informe o período que esse valor cobre.';
-    statusEl.className = 'status error';
-    return;
-  }
-  if (!dataDespesaFixaSelecionadaISO) {
-    statusEl.textContent = 'Informe a data.';
-    statusEl.className = 'status error';
-    return;
-  }
-  const [ano, mes, dia] = dataDespesaFixaSelecionadaISO.split('-');
-
-  adicionarTransacao({
-    valor,
-    tipo: 'saida',
-    local: descricao,
-    instituicao: 'desconhecido',
-    formaPagamento: 'desconhecido',
-    data: `${dia}/${mes}/${ano}`,
-    observacao: '',
-    periodicidade: periodoDespesaFixaAtual,
-  });
-
-  document.getElementById('descricaoDespesaFixa').value = '';
-  document.getElementById('valorDespesaFixa').value = '';
-  periodoDespesaFixaAtual = null;
-  atualizarTextoPeriodoDespesaFixa();
-  statusEl.textContent = 'Despesa fixa registrada.';
-  statusEl.className = 'status';
-  setTimeout(alternarDespesasFixas, 1200);
 }
 
 // ---------- Backup / restauracao ----------
