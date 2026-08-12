@@ -2182,6 +2182,7 @@ function transacoesVirtuaisDoMes(ano, mes) {
         tipo: r.tipo,
         local: r.descricao,
         formaPagamento: r.formaPagamento || 'desconhecido',
+        instituicao: r.instituicao || 'desconhecido',
         data: `${dd}/${mm}/${ano}`,
         recorrenciaVirtual: true,
         recorrenciaId: r.id,
@@ -3144,7 +3145,7 @@ function renderizarTransacaoVirtual(t) {
         <span class="moeda-badge" onclick="editarPeriodoRecorrenciaExistente(${t.recorrenciaId})">🔁 ${rotuloPeriodo}</span>
       </div>
       <div class="detalhes">
-        <span>${escapeHtml(t.data) || '-'}</span> · <span onclick="editarFormaPagamentoRecorrencia(${t.recorrenciaId})">${ROTULOS_FORMA_PAGAMENTO[t.formaPagamento] || 'Forma de pagamento'}</span> · <span onclick="editarLocalRecorrencia(${t.recorrenciaId})">${escapeHtml(t.local) || '-'}</span> · <span>≈ ${formatarMoeda(t.valor)}/dia</span>
+        <span>${escapeHtml(t.data) || '-'}</span> · <span onclick="editarFormaPagamentoRecorrencia(${t.recorrenciaId})">${ROTULOS_FORMA_PAGAMENTO[t.formaPagamento] || 'Forma de pagamento'}</span> · <span onclick="editarLocalRecorrencia(${t.recorrenciaId})">${escapeHtml(t.local) || '-'}</span> · <span onclick="editarInstituicaoRecorrencia(${t.recorrenciaId})">${t.instituicao === 'desconhecido' ? 'Instituição' : (escapeHtml(t.instituicao) || '-')}</span> · <span>≈ ${formatarMoeda(t.valor)}/dia</span>
       </div>
       <div class="linha-nota">
         <span></span>
@@ -3189,6 +3190,15 @@ async function editarLocalRecorrencia(id) {
   const novo = await modalPrompt('O que é:', rec.descricao, observacoesFrequentes());
   if (novo === null || !novo.trim()) return;
   atualizarRecorrencia(id, { descricao: novo.trim() });
+}
+
+async function editarInstituicaoRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const nova = await modalPrompt('Instituição:', rec.instituicao && rec.instituicao !== 'desconhecido' ? rec.instituicao : '');
+  if (nova === null) return;
+  atualizarRecorrencia(id, { instituicao: nova.trim() || 'desconhecido' });
 }
 
 async function editarFormaPagamentoRecorrencia(id) {
@@ -3528,6 +3538,7 @@ function salvarDinheiro() {
       tipo: tipoDinheiroSelecionado,
       descricao: localDinheiroAtual,
       formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
+      instituicao: instituicaoDinheiroAtual || 'desconhecido',
       periodicidade: periodoDespesaFixaAtual,
       dataInicioISO: dataISO,
     });
