@@ -2116,6 +2116,79 @@ function adicionarTransacao(dados) {
   renderizar();
 }
 
+// ---------- Recorrencias: contas fixas (entrada ou saida) que entram de
+// verdade na soma de cada dia, independente do usuario abrir o app naquele
+// dia, desde a data de inicio ate serem encerradas (sem fim definido por
+// padrao). Guardadas separado das transacoes normais - cada renderizar()
+// gera "transacoes virtuais" (uma por dia ativo dentro do mes exibido) so
+// pra somar e mostrar, sem gravar centenas de linhas individuais. ----------
+const RECORRENCIAS_KEY = 'controle_gastos_recorrencias';
+
+function carregarRecorrencias() {
+  const raw = localStorage.getItem(RECORRENCIAS_KEY);
+  if (!raw) return [];
+  try {
+    const dados = JSON.parse(raw);
+    return Array.isArray(dados) ? dados : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function salvarRecorrencias(lista) {
+  localStorage.setItem(RECORRENCIAS_KEY, JSON.stringify(lista));
+}
+
+function adicionarRecorrencia(dados) {
+  const lista = carregarRecorrencias();
+  lista.unshift({ ...dados, id: Date.now(), ativo: true, dataFimISO: null });
+  salvarRecorrencias(lista);
+  renderizar();
+}
+
+function encerrarRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  rec.ativo = false;
+  rec.dataFimISO = new Date().toISOString().slice(0, 10);
+  salvarRecorrencias(lista);
+  renderizar();
+}
+
+// Gera uma "transacao" por dia em que cada recorrencia estava ativa dentro
+// do mes/ano exibido (mes 0-indexado, igual mesSelecionado/parseData). Nao
+// sao gravadas no localStorage - so existem na hora de montar a tela, pra
+// somar nos totais e aparecer na lista junto das transacoes reais.
+function transacoesVirtuaisDoMes(ano, mes) {
+  const recorrencias = carregarRecorrencias();
+  const virtuais = [];
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+  recorrencias.forEach(r => {
+    if (!r.dataInicioISO || !r.periodicidade || !r.periodicidade.dias) return;
+    const inicio = new Date(r.dataInicioISO + 'T00:00:00');
+    const fim = new Date((r.dataFimISO || hojeISO) + 'T00:00:00');
+    const valorDiario = r.valor / r.periodicidade.dias;
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+      const dataDia = new Date(ano, mes, dia);
+      if (dataDia < inicio || dataDia > fim) continue;
+      const dd = String(dia).padStart(2, '0');
+      const mm = String(mes + 1).padStart(2, '0');
+      virtuais.push({
+        id: `virtual-${r.id}-${ano}-${mes}-${dia}`,
+        valor: valorDiario,
+        tipo: r.tipo,
+        local: r.descricao,
+        data: `${dd}/${mm}/${ano}`,
+        recorrenciaVirtual: true,
+        recorrenciaId: r.id,
+      });
+    }
+  });
+  return virtuais;
+}
+
 // Usada por todo caminho que traz transacoes ja analisadas pela IA (upload
 // manual, compartilhamento Android e Atalho do iOS) - se a IA nao conseguiu
 // reconhecer a data, pergunta na hora em vez de deixar cair silenciosamente
@@ -3053,6 +3126,38 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Card simplificado, so-leitura, pra transacao virtual gerada por uma
+// recorrencia (ver transacoesVirtuaisDoMes acima) - nao e editavel/removivel
+// individualmente porque nao existe como registro proprio, so o link de
+// encerrar a recorrencia inteira.
+function renderizarTransacaoVirtual(t) {
+  const div = document.createElement('div');
+  div.className = 'transacao';
+  div.innerHTML = `
+    <div class="info">
+      <div class="linha-topo">
+        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <span class="valor">${formatarMoeda(t.valor)}</span>
+        <span class="moeda-badge">🔁 RECORRENTE</span>
+      </div>
+      <div class="detalhes">
+        <span>${escapeHtml(t.data) || '-'}</span> · <span>${escapeHtml(t.local) || '-'}</span>
+      </div>
+      <div class="linha-nota">
+        <span></span>
+        <span class="excluir-link" onclick="confirmarEncerrarRecorrencia(${t.recorrenciaId})">ENCERRAR RECORRÊNCIA</span>
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+async function confirmarEncerrarRecorrencia(id) {
+  const ok = await modalConfirmar('Encerrar essa recorrência? Ela para de contar a partir de hoje - o que já foi somado até agora continua igual.');
+  if (!ok) return;
+  encerrarRecorrencia(id);
+}
+
 function renderizarTransacao(t) {
   const div = document.createElement('div');
   div.className = 'transacao';
@@ -3133,6 +3238,10 @@ function renderizar() {
     return d && d.mes === mesSelecionado && d.ano === anoSelecionado;
   });
 
+  // Recorrencias ativas contribuem de verdade pra soma de cada dia, mesmo
+  // sem o usuario ter aberto o app naquele dia - ver transacoesVirtuaisDoMes.
+  doMes.push(...transacoesVirtuaisDoMes(anoSelecionado, mesSelecionado));
+
   doMes.sort((a, b) => parseData(b.data).dia - parseData(a.data).dia);
 
   if (doMes.length === 0) {
@@ -3164,7 +3273,7 @@ function renderizar() {
       container.appendChild(header);
 
       if (aberto) {
-        transacoesDoDia.forEach(t => container.appendChild(renderizarTransacao(t)));
+        transacoesDoDia.forEach(t => container.appendChild(t.recorrenciaVirtual ? renderizarTransacaoVirtual(t) : renderizarTransacao(t)));
       }
 
       // So uma vez, logo apos o primeiro dia da lista - avisa que da pra
@@ -3339,22 +3448,39 @@ function salvarDinheiro() {
     return;
   }
   if (!dataISO) {
-    statusEl.textContent = 'Informe a data.';
+    statusEl.textContent = periodoDespesaFixaAtual ? 'Informe a data de início.' : 'Informe a data.';
+    statusEl.className = 'status error';
+    return;
+  }
+  if (periodoDespesaFixaAtual && !localDinheiroAtual) {
+    statusEl.textContent = 'Preencha o Local com uma descrição (ex: Aluguel do carro) pra identificar a recorrência.';
     statusEl.className = 'status error';
     return;
   }
   const [ano, mes, dia] = dataISO.split('-');
 
-  adicionarTransacao({
-    valor,
-    tipo: tipoDinheiroSelecionado,
-    instituicao: instituicaoDinheiroAtual || 'desconhecido',
-    formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
-    local: localDinheiroAtual || 'desconhecido',
-    data: `${dia}/${mes}/${ano}`,
-    observacao: observacaoDinheiroAtual,
-    ...(periodoDespesaFixaAtual ? { periodicidade: periodoDespesaFixaAtual } : {}),
-  });
+  // Recorrente: nao gera uma transacao unica de hoje - vira uma regra que
+  // gera a soma diaria sozinha (ver transacoesVirtuaisDoMes), a partir da
+  // data escolhida aqui como inicio, sem fim ate ser encerrada.
+  if (periodoDespesaFixaAtual) {
+    adicionarRecorrencia({
+      valor,
+      tipo: tipoDinheiroSelecionado,
+      descricao: localDinheiroAtual,
+      periodicidade: periodoDespesaFixaAtual,
+      dataInicioISO: dataISO,
+    });
+  } else {
+    adicionarTransacao({
+      valor,
+      tipo: tipoDinheiroSelecionado,
+      instituicao: instituicaoDinheiroAtual || 'desconhecido',
+      formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
+      local: localDinheiroAtual || 'desconhecido',
+      data: `${dia}/${mes}/${ano}`,
+      observacao: observacaoDinheiroAtual,
+    });
+  }
 
   document.getElementById('valorDinheiro').value = '';
   observacaoDinheiroAtual = '';
@@ -3365,10 +3491,10 @@ function salvarDinheiro() {
   atualizarFormaPagamentoDinheiro();
   instituicaoDinheiroAtual = '';
   atualizarInstituicaoDinheiro();
+  statusEl.textContent = periodoDespesaFixaAtual ? 'Recorrência registrada.' : 'Lançamento adicionado.';
+  statusEl.className = 'status';
   periodoDespesaFixaAtual = null;
   atualizarTextoPeriodoDespesaFixa();
-  statusEl.textContent = 'Lançamento adicionado.';
-  statusEl.className = 'status';
   setTimeout(alternarDinheiro, 1200);
 }
 
