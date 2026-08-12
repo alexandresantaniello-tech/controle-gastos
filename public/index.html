@@ -2183,6 +2183,8 @@ function transacoesVirtuaisDoMes(ano, mes) {
         local: r.descricao,
         formaPagamento: r.formaPagamento || 'desconhecido',
         instituicao: r.instituicao || 'desconhecido',
+        observacao: r.observacao || '',
+        moedaExibicao: r.moedaExibicao,
         data: `${dd}/${mm}/${ano}`,
         recorrenciaVirtual: true,
         recorrenciaId: r.id,
