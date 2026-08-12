@@ -2177,6 +2177,8 @@ function transacoesVirtuaisDoMes(ano, mes) {
       virtuais.push({
         id: `virtual-${r.id}-${ano}-${mes}-${dia}`,
         valor: valorDiario,
+        valorPeriodico: r.valor,
+        periodicidade: r.periodicidade,
         tipo: r.tipo,
         local: r.descricao,
         data: `${dd}/${mm}/${ano}`,
@@ -3132,15 +3134,16 @@ function escapeHtml(str) {
 function renderizarTransacaoVirtual(t) {
   const div = document.createElement('div');
   div.className = 'transacao';
+  const rotuloPeriodo = rotuloPeriodoDespesaFixa(t.periodicidade);
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
-        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-        <span class="valor">${formatarMoeda(t.valor)}</span>
-        <span class="moeda-badge">🔁 RECORRENTE</span>
+        <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" onclick="editarTipoRecorrencia(${t.recorrenciaId})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
+        <span class="valor" onclick="editarValorRecorrencia(${t.recorrenciaId})">${formatarMoeda(t.valorPeriodico)}</span>
+        <span class="moeda-badge" onclick="editarPeriodoRecorrenciaExistente(${t.recorrenciaId})">🔁 ${rotuloPeriodo}</span>
       </div>
       <div class="detalhes">
-        <span>${escapeHtml(t.data) || '-'}</span> · <span>${escapeHtml(t.local) || '-'}</span>
+        <span>${escapeHtml(t.data) || '-'}</span> · <span onclick="editarLocalRecorrencia(${t.recorrenciaId})">${escapeHtml(t.local) || '-'}</span> · <span>≈ ${formatarMoeda(t.valor)}/dia</span>
       </div>
       <div class="linha-nota">
         <span></span>
@@ -3149,6 +3152,53 @@ function renderizarTransacaoVirtual(t) {
     </div>
   `;
   return div;
+}
+
+function atualizarRecorrencia(id, mudancas) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  Object.assign(rec, mudancas);
+  salvarRecorrencias(lista);
+  renderizar();
+}
+
+async function editarTipoRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  atualizarRecorrencia(id, { tipo: rec.tipo === 'entrada' ? 'saida' : 'entrada' });
+}
+
+async function editarValorRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const novo = await modalPrompt('Valor (ex: 625,00):', String(rec.valor).replace('.', ','));
+  if (novo === null) return;
+  const valor = parseFloat(String(novo).replace(',', '.'));
+  if (!valor || valor <= 0) return;
+  atualizarRecorrencia(id, { valor });
+}
+
+async function editarLocalRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const novo = await modalPrompt('O que é:', rec.descricao, observacoesFrequentes());
+  if (novo === null || !novo.trim()) return;
+  atualizarRecorrencia(id, { descricao: novo.trim() });
+}
+
+async function editarPeriodoRecorrenciaExistente(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const escolha = await modalSelecionar('Qual período esse valor cobre?', [['1', 'Diário'], ['7', 'Semanal'], ['30', 'Mensal']], String(rec.periodicidade.dias));
+  if (escolha === null) return;
+  const dias = parseInt(escolha, 10);
+  const tipo = dias === 1 ? 'diario' : dias === 7 ? 'semanal' : 'mensal';
+  atualizarRecorrencia(id, { periodicidade: { tipo, dias } });
 }
 
 async function confirmarEncerrarRecorrencia(id) {
