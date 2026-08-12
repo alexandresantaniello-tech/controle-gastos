@@ -3129,26 +3129,46 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// Card simplificado, so-leitura, pra transacao virtual gerada por uma
-// recorrencia (ver transacoesVirtuaisDoMes acima) - nao e editavel/removivel
-// individualmente porque nao existe como registro proprio, so o link de
-// encerrar a recorrencia inteira.
+// Card da recorrencia: mesma estrutura EXATA do card de transacao normal
+// (renderizarTransacao) - mesmos campos, mesma ordem, mesmo jeito de editar
+// cada um. A unica diferenca de proposito e o link do canto inferior
+// direito (ENCERRAR RECORRENCIA em vez de EXCLUIR, ja que nao existe um
+// registro unico pra excluir - e uma regra que gera varios dias). Periodo
+// (diario/semanal/mensal) e a unica informacao a mais que a recorrencia tem
+// e a transacao normal nao tem, entao entra como mais um segmento clicavel
+// na linha de detalhes, no mesmo estilo dos outros.
 function renderizarTransacaoVirtual(t) {
   const div = document.createElement('div');
   div.className = 'transacao';
-  const rotuloPeriodo = rotuloPeriodoDespesaFixa(t.periodicidade);
+  const notaHtml = t.observacao
+    ? `<div class="nota" onclick="editarObservacaoRecorrencia(${t.recorrenciaId})">${ICONE_NOTA} ${escapeHtml(t.observacao)}</div>`
+    : `<div class="nota nota-vazia" onclick="editarObservacaoRecorrencia(${t.recorrenciaId})">OBSERVAÇÃO</div>`;
+  const valorHtml = formatarMoeda(t.valorPeriodico, t.moedaExibicao);
+  const moedaTagHtml = t.moedaExibicao
+    ? `<span class="moeda-badge" onclick="editarMoedaRecorrencia(${t.recorrenciaId})">${SIMBOLOS_MOEDA[t.moedaExibicao] || t.moedaExibicao} ${t.moedaExibicao}</span>`
+    : `<span class="moeda-badge" onclick="editarMoedaRecorrencia(${t.recorrenciaId})">MOEDA</span>`;
+  const localTexto = t.local === 'desconhecido' ? 'Local' : (escapeHtml(t.local) || '-');
+  const instituicaoTexto = t.instituicao === 'desconhecido' ? 'Instituição' : (escapeHtml(t.instituicao) || '-');
+  const formaPagamentoTexto = t.formaPagamento !== 'desconhecido' ? ROTULOS_FORMA_PAGAMENTO[t.formaPagamento] : 'Forma de pagamento';
+  const segmentosDetalhes = [
+    `<span onclick="editarDataRecorrencia(${t.recorrenciaId})">${escapeHtml(t.data) || '-'}</span>`,
+    `<span onclick="editarFormaPagamentoRecorrencia(${t.recorrenciaId})">${formaPagamentoTexto}</span>`,
+    `<span onclick="editarLocalRecorrencia(${t.recorrenciaId})">${localTexto}</span>`,
+    `<span onclick="editarInstituicaoRecorrencia(${t.recorrenciaId})">${instituicaoTexto}</span>`,
+    `<span onclick="editarPeriodoRecorrenciaExistente(${t.recorrenciaId})">${rotuloPeriodoDespesaFixa(t.periodicidade)}</span>`,
+  ];
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
         <span class="${t.tipo === 'entrada' ? 'entrada' : 'saida'}" onclick="editarTipoRecorrencia(${t.recorrenciaId})">${t.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span>
-        <span class="valor" onclick="editarValorRecorrencia(${t.recorrenciaId})">${formatarMoeda(t.valorPeriodico)}</span>
-        <span class="moeda-badge" onclick="editarPeriodoRecorrenciaExistente(${t.recorrenciaId})">🔁 ${rotuloPeriodo}</span>
+        <span class="valor" onclick="editarValorRecorrencia(${t.recorrenciaId})">${valorHtml}</span>
+        ${moedaTagHtml}
       </div>
       <div class="detalhes">
-        <span>${escapeHtml(t.data) || '-'}</span> · <span onclick="editarFormaPagamentoRecorrencia(${t.recorrenciaId})">${ROTULOS_FORMA_PAGAMENTO[t.formaPagamento] || 'Forma de pagamento'}</span> · <span onclick="editarLocalRecorrencia(${t.recorrenciaId})">${escapeHtml(t.local) || '-'}</span> · <span onclick="editarInstituicaoRecorrencia(${t.recorrenciaId})">${t.instituicao === 'desconhecido' ? 'Instituição' : (escapeHtml(t.instituicao) || '-')}</span> · <span>≈ ${formatarMoeda(t.valor)}/dia</span>
+        ${segmentosDetalhes.join(' · ')}
       </div>
       <div class="linha-nota">
-        <span></span>
+        ${notaHtml}
         <span class="excluir-link" onclick="confirmarEncerrarRecorrencia(${t.recorrenciaId})">ENCERRAR RECORRÊNCIA</span>
       </div>
     </div>
@@ -3220,6 +3240,48 @@ async function editarPeriodoRecorrenciaExistente(id) {
   const dias = parseInt(escolha, 10);
   const tipo = dias === 1 ? 'diario' : dias === 7 ? 'semanal' : 'mensal';
   atualizarRecorrencia(id, { periodicidade: { tipo, dias } });
+}
+
+async function editarObservacaoRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const nova = await modalPrompt('Observação:', rec.observacao || '', observacoesFrequentes());
+  if (nova === null) return;
+  atualizarRecorrencia(id, { observacao: nova.trim() });
+}
+
+async function editarDataRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  const escolhida = await abrirSeletorData(rec.dataInicioISO);
+  if (!escolhida) return;
+  atualizarRecorrencia(id, { dataInicioISO: escolhida });
+}
+
+async function editarMoedaRecorrencia(id) {
+  const lista = carregarRecorrencias();
+  const rec = lista.find(r => r.id === id);
+  if (!rec) return;
+  if (!taxasCambio) {
+    await modalAlerta('Câmbio ainda não carregou. Tenta de novo em alguns segundos.');
+    return;
+  }
+  const valorAtual = rec.moedaExibicao || 'BRL';
+  const codigo = await modalSelecionar('Ver essa recorrência em qual moeda?', listaOpcoesMoeda(), valorAtual);
+  if (codigo === null) return;
+  if (codigo === 'BRL') {
+    const copia = { ...rec };
+    delete copia.moedaExibicao;
+    const lista2 = carregarRecorrencias();
+    const idx = lista2.findIndex(r => r.id === id);
+    lista2[idx] = copia;
+    salvarRecorrencias(lista2);
+    renderizar();
+  } else {
+    atualizarRecorrencia(id, { moedaExibicao: codigo });
+  }
 }
 
 async function confirmarEncerrarRecorrencia(id) {
@@ -3539,6 +3601,7 @@ function salvarDinheiro() {
       descricao: localDinheiroAtual,
       formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
       instituicao: instituicaoDinheiroAtual || 'desconhecido',
+      observacao: observacaoDinheiroAtual,
       periodicidade: periodoDespesaFixaAtual,
       dataInicioISO: dataISO,
     });
