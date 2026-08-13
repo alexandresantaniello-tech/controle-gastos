@@ -2144,12 +2144,21 @@ function adicionarRecorrencia(dados) {
   renderizar();
 }
 
+// new Date().toISOString() usa horario UTC - no Brasil (UTC-3), isso faz o
+// "hoje" virar o dia seguinte a partir das ~21h no horario local, horas
+// antes da meia-noite de verdade. Usa os componentes locais da data em vez
+// disso, pra "hoje" só virar quando realmente vira meia-noite aqui.
+function hojeLocalISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function encerrarRecorrencia(id) {
   const lista = carregarRecorrencias();
   const rec = lista.find(r => r.id === id);
   if (!rec) return;
   rec.ativo = false;
-  rec.dataFimISO = new Date().toISOString().slice(0, 10);
+  rec.dataFimISO = hojeLocalISO();
   salvarRecorrencias(lista);
   renderizar();
 }
@@ -2161,7 +2170,7 @@ function encerrarRecorrencia(id) {
 function transacoesVirtuaisDoMes(ano, mes) {
   const recorrencias = carregarRecorrencias();
   const virtuais = [];
-  const hojeISO = new Date().toISOString().slice(0, 10);
+  const hojeISO = hojeLocalISO();
   const diasNoMes = new Date(ano, mes + 1, 0).getDate();
   recorrencias.forEach(r => {
     if (!r.dataInicioISO || !r.periodicidade || !r.periodicidade.dias) return;
