@@ -2314,7 +2314,7 @@ function abrirRegistroNoDia(t) {
 // ---------- Modal customizado (substitui confirm/prompt/alert nativos, que
 // nao dava pra estilizar e mostravam a URL do site num popup feio) ----------
 
-function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false, comSelect = false, opcoesSelect = null, sugestoes = null }) {
+function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = 'OK', textoCancelar = 'Cancelar', somenteOk = false, comSelect = false, opcoesSelect = null, sugestoes = null, numerico = false }) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('modalOverlay');
     const msgEl = document.getElementById('modalMensagem');
@@ -2326,6 +2326,10 @@ function abrirModal({ mensagem, comInput = false, valorInicial = '', textoOk = '
     msgEl.textContent = mensagem;
     inputEl.style.display = comInput ? 'block' : 'none';
     inputEl.value = valorInicial;
+    // inputEl e reaproveitado entre chamadas - sempre define os dois modos
+    // (nunca so um), senao um valor numerico "vaza" pro proximo campo de
+    // texto comum que abrir depois.
+    inputEl.inputMode = numerico ? 'decimal' : 'text';
     listaEl.style.display = comSelect ? 'block' : 'none';
     sugestoesEl.innerHTML = '';
     sugestoesEl.style.display = (comInput && sugestoes) ? 'flex' : 'none';
@@ -2455,8 +2459,8 @@ function modalSelecionar(mensagem, opcoesSelect, valorInicial = '') {
 function modalConfirmar(mensagem) {
   return abrirModal({ mensagem });
 }
-function modalPrompt(mensagem, valorInicial = '', sugestoes = null) {
-  return abrirModal({ mensagem, comInput: true, valorInicial, sugestoes });
+function modalPrompt(mensagem, valorInicial = '', sugestoes = null, numerico = false) {
+  return abrirModal({ mensagem, comInput: true, valorInicial, sugestoes, numerico });
 }
 function modalAlerta(mensagem) {
   return abrirModal({ mensagem, somenteOk: true });
@@ -2635,7 +2639,8 @@ function renderizarConfirmacao() {
   tipoEl.className = d.tipo === 'entrada' ? 'entrada' : 'saida';
   document.getElementById('confValor').textContent = formatarMoeda(d.valor);
   document.getElementById('confData').textContent = d.data || '-';
-  document.getElementById('confFormaPagamento').textContent = ROTULOS_FORMA_PAGAMENTO[formaPagamentoDaTransacao(d)] || 'Forma de pagamento';
+  const formaPagamentoAtual = formaPagamentoDaTransacao(d);
+  document.getElementById('confFormaPagamento').textContent = formaPagamentoAtual !== 'desconhecido' ? `via ${ROTULOS_FORMA_PAGAMENTO[formaPagamentoAtual]}` : 'Forma de pagamento';
   document.getElementById('confLocal').textContent = (d.local && d.local !== 'desconhecido') ? d.local : 'Local';
   document.getElementById('confInstituicao').textContent = (d.instituicao && d.instituicao !== 'desconhecido') ? d.instituicao : 'Instituição';
   document.getElementById('confObservacao').textContent = d.observacao ? d.observacao : 'OBSERVAÇÃO';
@@ -2646,7 +2651,7 @@ async function confEditarCampo(campo) {
   if (campo === 'tipo') {
     d.tipo = d.tipo === 'entrada' ? 'saida' : 'entrada';
   } else if (campo === 'valor') {
-    const novo = await modalPrompt('Valor (ex: 150,50):', String(d.valor || '').replace('.', ','));
+    const novo = await modalPrompt('Valor (ex: 150,50):', String(d.valor || '').replace('.', ','), null, true);
     if (novo === null) return renderizarConfirmacao();
     const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
     if (novo.trim() && !isNaN(numero) && numero > 0) d.valor = numero;
@@ -2773,7 +2778,7 @@ async function editarValor(id) {
   const t = lista.find(x => x.id === id);
   if (!t) return;
   const rotuloMoeda = (t.moedaExibicao || moedaSelecionada) === 'BRL' ? '' : ' em reais - o valor guardado é sempre em BRL, mesmo vendo em outra moeda';
-  const novo = await modalPrompt(`Valor${rotuloMoeda} (ex: 150,50):`, String(t.valor || '').replace('.', ','));
+  const novo = await modalPrompt(`Valor${rotuloMoeda} (ex: 150,50):`, String(t.valor || '').replace('.', ','), null, true);
   if (novo === null) return;
   const numero = Number(novo.trim().replace(/\./g, '').replace(',', '.'));
   if (!novo.trim() || isNaN(numero) || numero <= 0) {
@@ -3223,7 +3228,7 @@ async function editarValorRecorrencia(id) {
   const lista = carregarRecorrencias();
   const rec = lista.find(r => r.id === id);
   if (!rec) return;
-  const novo = await modalPrompt('Valor (ex: 625,00):', String(rec.valor).replace('.', ','));
+  const novo = await modalPrompt('Valor (ex: 625,00):', String(rec.valor).replace('.', ','), null, true);
   if (novo === null) return;
   const valor = parseFloat(String(novo).replace(',', '.'));
   if (!valor || valor <= 0) return;
