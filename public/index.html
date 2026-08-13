@@ -455,26 +455,43 @@
 <body>
 
 <div class="modal-overlay centralizado" id="confirmarTransacaoOverlay">
-  <div class="modal-caixa" style="max-width:340px;">
-    <h3 style="margin:0 0 14px; font-size:1.05rem; text-align:center;">Confirmar registro</h3>
-    <div class="linha-topo" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer;">
-      <span id="confTipo" onclick="confEditarCampo('tipo')" style="cursor:pointer; font-weight:600;"></span>
-      <span id="confValor" class="valor" onclick="confEditarCampo('valor')" style="cursor:pointer;"></span>
+  <div class="modal-caixa" style="max-width:380px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+      <span style="font-family:var(--font-mono); font-size:0.68rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--primary);">Antes de salvar</span>
+      <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--muted-foreground); border:1px solid var(--border); border-radius:20px; padding:2px 9px;">✎ Tudo editável</span>
     </div>
-    <div class="detalhes" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:0 6px; cursor:pointer;">
-      <span id="confData" onclick="confEditarCampo('data')" style="cursor:pointer;"></span>
-      <span>·</span>
-      <span id="confFormaPagamento" onclick="confEditarCampo('formaPagamento')" style="cursor:pointer;"></span>
-      <span>·</span>
-      <span id="confLocal" onclick="confEditarCampo('local')" style="cursor:pointer;"></span>
-      <span>·</span>
-      <span id="confInstituicao" onclick="confEditarCampo('instituicao')" style="cursor:pointer;"></span>
+    <h3 style="margin:0 0 14px; font-size:1.1rem;">Revise o registro</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="campo-clicavel" onclick="confEditarCampo('tipo')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Tipo</span>
+        <span id="confTipo" style="font-weight:600;"></span>
+      </div>
+      <div class="campo-clicavel" onclick="confEditarCampo('valor')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Valor</span>
+        <span id="confValor" style="font-weight:600;"></span>
+      </div>
+      <div class="campo-clicavel" onclick="confEditarCampo('data')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Data</span>
+        <span id="confData"></span>
+      </div>
+      <div class="campo-clicavel" onclick="confEditarCampo('formaPagamento')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Pagamento</span>
+        <span id="confFormaPagamento"></span>
+      </div>
+      <div class="campo-clicavel" onclick="confEditarCampo('local')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Local</span>
+        <span id="confLocal"></span>
+      </div>
+      <div class="campo-clicavel" onclick="confEditarCampo('instituicao')" style="margin-top:0; flex-direction:column; align-items:flex-start; gap:2px;">
+        <span style="font-size:0.72rem; color:var(--muted-foreground);">Instituição</span>
+        <span id="confInstituicao"></span>
+      </div>
     </div>
     <div class="nota" id="confObservacao" onclick="confEditarCampo('observacao')" style="margin-top:10px; cursor:pointer;"></div>
     <div class="status" id="confAvisoMemoria" style="display:none; color:var(--primary);"></div>
     <div style="display:flex; gap:10px; margin-top:16px;">
       <button class="secondary" onclick="confCancelar()" style="flex:1; margin-top:0;">Cancelar</button>
-      <button onclick="confConfirmar()" style="flex:1; margin-top:0;">✓ Confirmar</button>
+      <button onclick="confConfirmar()" style="flex:1; margin-top:0;">✓ Confirmar registro</button>
     </div>
   </div>
 </div>
