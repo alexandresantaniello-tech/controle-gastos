@@ -621,8 +621,9 @@
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico">
-    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe seu histórico bancário</label>
-    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Geralmente as instituições financeiras só permitem baixar até 365 dias a partir de hoje — peça o período que mais faz sentido pra você. Envie o PDF aqui. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
+    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe até 4 bancos</label>
+    <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Envie até os últimos 3 meses de cada instituição — dá pra repetir com até 4 bancos diferentes. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
+    <p class="aviso-backup" id="avisoBancosRestantes"></p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
     <input type="password" id="senhaHistorico" placeholder="Senha do PDF (não sai do celular)">
     <button onclick="importarHistorico()" id="btnImportarHistorico">Importar histórico</button>
@@ -1644,6 +1645,36 @@ function fingerprintArquivo(arquivo) {
   return `${arquivo.name}-${arquivo.size}`;
 }
 
+// Presente de boas-vindas: ate 4 bancos diferentes, 3 meses cada (decisao
+// 2026-08-13, substitui o "1 banco sem limite" anterior). Guarda o
+// fingerprint de cada arquivo que terminou de importar com sucesso - o
+// LIMITE e por banco distinto, nao por tentativa (reprocessar o mesmo
+// arquivo por causa de paginas com falha nao conta como um banco novo).
+const HISTORICO_BANCOS_CONCLUIDOS_KEY = 'controle_gastos_historico_bancos_concluidos';
+const LIMITE_BANCOS_BOAS_VINDAS = 4;
+
+function lerBancosConcluidos() {
+  const raw = localStorage.getItem(HISTORICO_BANCOS_CONCLUIDOS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function marcarBancoConcluido(fingerprint) {
+  const bancos = lerBancosConcluidos();
+  if (!bancos.includes(fingerprint)) {
+    bancos.push(fingerprint);
+    localStorage.setItem(HISTORICO_BANCOS_CONCLUIDOS_KEY, JSON.stringify(bancos));
+  }
+}
+
+function atualizarAvisoBancosRestantes() {
+  const el = document.getElementById('avisoBancosRestantes');
+  if (!el) return;
+  const restantes = LIMITE_BANCOS_BOAS_VINDAS - lerBancosConcluidos().length;
+  el.textContent = restantes > 0
+    ? `Você ainda pode importar ${restantes} banco${restantes === 1 ? '' : 's'} dentro do presente de boas-vindas.`
+    : 'Você já usou o presente de boas-vindas nos 4 bancos disponíveis.';
+}
+
 function atualizarDataMaisRecenteHistorico(data) {
   if (!data) return;
   const atual = localStorage.getItem(HISTORICO_DATA_RECENTE_KEY);
@@ -1752,6 +1783,19 @@ async function importarHistorico() {
   garantirProgressoDoArquivoCerto(arquivoInput.files[0]);
   const paginasFeitas = lerPaginasFeitas();
   const retomando = paginasFeitas.size > 0;
+
+  // So bloqueia banco NOVO (nao uma retomada de importacao que ja tinha
+  // comecado) depois de atingir o limite - retomar um banco em andamento
+  // sempre pode terminar, mesmo que o limite tenha sido atingido por outro
+  // banco nesse meio tempo.
+  const fingerprintAtual = fingerprintArquivo(arquivoInput.files[0]);
+  const bancosConcluidos = lerBancosConcluidos();
+  if (!retomando && !bancosConcluidos.includes(fingerprintAtual) && bancosConcluidos.length >= LIMITE_BANCOS_BOAS_VINDAS) {
+    statusEl.textContent = 'Você já usou o presente de boas-vindas nos 4 bancos disponíveis.';
+    statusEl.className = 'status error';
+    return;
+  }
+
   const mensagemConfirmacao = retomando
     ? `Detectamos uma importação anterior incompleta (${paginasFeitas.size} página(s) já processada(s) com sucesso). Vamos continuar de onde parou, sem duplicar nada - envie o mesmo arquivo PDF de antes. Continuar?`
     : 'Isso vai processar todo o extrato. Pode levar alguns minutos (de propósito, pra ler tudo com calma e certeza). Continuar?';
@@ -1807,6 +1851,8 @@ async function importarHistorico() {
   if (!resultado) return;
 
   if (resultado.paginasFalhas.length === 0) {
+    marcarBancoConcluido(fingerprintArquivo(historicoUltimoArquivo));
+    atualizarAvisoBancosRestantes();
     limparPaginasFeitas();
   }
   mostrarResultadoHistorico(resultado, statusEl);
@@ -1852,8 +1898,8 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
   let totalTransacoes = 0;
   let paginasForaDoPrazo = 0;
   const paginasFalhas = [];
-  const umAnoAtras = new Date();
-  umAnoAtras.setFullYear(umAnoAtras.getFullYear() - 1);
+  const tresMesesAtras = new Date();
+  tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
   const epocaDestaImportacao = importacaoEpoca;
 
   for (let idx = 0; idx < paginas.length; idx++) {
@@ -1869,8 +1915,8 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
     try {
       // Antes de gastar chamada de IA na pagina, olha as datas do proprio
       // texto do PDF (extracao local, sem custo) - se a data mais recente
-      // encontrada na pagina ja passou de 1 ano, pula a pagina inteira.
-      // Limita o "presente de boas-vindas" a 1 ano mesmo que o banco deixe
+      // encontrada na pagina ja passou de 3 meses, pula a pagina inteira.
+      // Limita o "presente de boas-vindas" a 3 meses mesmo que o banco deixe
       // exportar um periodo maior.
       const pagina = await pdf.getPage(i);
       const conteudoTexto = await pagina.getTextContent();
@@ -1878,7 +1924,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       pagina.cleanup();
       const dataRecentePagina = dataMaisRecenteNoTexto(texto);
       atualizarDataMaisRecenteHistorico(dataRecentePagina);
-      if (dataRecentePagina && dataRecentePagina < umAnoAtras) {
+      if (dataRecentePagina && dataRecentePagina < tresMesesAtras) {
         paginasForaDoPrazo += 1;
         salvarPaginaFeita(i);
         continue;
@@ -1890,7 +1936,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         formData.append('receipt', blob, `pagina-${i}.jpg`);
         formData.append('tipo', 'extrato');
         // Data de referencia dessa pagina (ja calculada acima, sem custo, so
-        // pro corte de 1 ano) - manda pra IA usar como ancora quando tiver
+        // pro corte de 3 meses) - manda pra IA usar como ancora quando tiver
         // duvida do ano de alguma transacao, em vez de desistir e responder
         // "desconhecido". O cliente ja sabe mais sobre essa pagina do que
         // pedir pra IA adivinhar sozinha linha por linha.
@@ -1936,14 +1982,14 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
             throw new Error('Página não cobriu até a data mais recente esperada - tratando como falha pra reprocessar.');
           }
         }
-        // Descarta transacao com data fora da janela de 1 ano (ex: a IA
+        // Descarta transacao com data fora da janela de 3 meses (ex: a IA
         // alucinando um ano tipo 2020 numa pagina de continuacao sem
         // cabecalho de mes visivel) - defesa extra alem da instrucao no
         // prompt, ja que Pix nem existia antes de 16/11/2020.
         return brutas.filter(t => {
           const d = parseData(t.data);
           const dataTransacao = new Date(d.ano, d.mes, d.dia);
-          return dataTransacao >= umAnoAtras && dataTransacao <= new Date();
+          return dataTransacao >= tresMesesAtras && dataTransacao <= new Date();
         });
       };
 
@@ -1997,7 +2043,7 @@ function mostrarResultadoHistorico(resultado, statusEl) {
   historicoPaginasFalhas = paginasFalhas;
   statusEl.className = 'status';
   let html = `Importação concluída: ${totalTransacoes} transações adicionadas.`;
-  if (paginasForaDoPrazo > 0) html += ` ${paginasForaDoPrazo} página(s) fora do período de 1 ano foram ignoradas.`;
+  if (paginasForaDoPrazo > 0) html += ` ${paginasForaDoPrazo} página(s) fora do período de 3 meses foram ignoradas.`;
   const dataRecenteISO = localStorage.getItem(HISTORICO_DATA_RECENTE_KEY);
   if (dataRecenteISO && paginasFalhas.length === 0) {
     const d = new Date(dataRecenteISO);
@@ -2022,6 +2068,8 @@ async function reprocessarPaginasFalhas() {
   if (travaDeTela) travaDeTela.release();
   if (!resultado) return;
   if (resultado.paginasFalhas.length === 0) {
+    marcarBancoConcluido(fingerprintArquivo(historicoUltimoArquivo));
+    atualizarAvisoBancosRestantes();
     limparPaginasFeitas();
   }
   mostrarResultadoHistorico(resultado, statusEl);
@@ -3738,6 +3786,7 @@ function alternarUploadHistorico() {
   }
   card.style.display = 'block';
   toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  atualizarAvisoBancosRestantes();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   abrirSecaoNoHistorico('uploadHistoricoCard');
 }
