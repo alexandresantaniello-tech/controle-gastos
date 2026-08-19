@@ -715,8 +715,31 @@
     <button class="nav" onclick="mudarMesPlanejamento(1)">›</button>
   </div>
   <div id="listaPlanejamento"></div>
-  <div style="text-align:center; margin-top:16px;">
-    <button onclick="iniciarNovoItemPlanejamento()">+ Adicionar item</button>
+  <div style="text-align:center; margin-top:16px;" id="botaoNovoItemPlanejamentoWrap">
+    <button onclick="mostrarFormNovoItemPlanejamento()">+ Adicionar item</button>
+  </div>
+
+  <div id="formNovoItemPlanejamento" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+    <label class="campo">Nome</label>
+    <input type="text" id="nomeNovoItemPlanejamento" placeholder="Ex: Conta de luz">
+
+    <div class="campo-clicavel" id="campoDiaNovoItem" onclick="editarDiaNovoItemPlanejamento()" style="margin-top:14px;">
+      <span id="textoDiaNovoItem" class="vazio">DIA DO VENCIMENTO</span>
+      <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
+
+    <label class="campo" style="margin-top:14px;">Valor (deixe em branco se ainda não souber)</label>
+    <input type="number" id="valorNovoItemPlanejamento" step="0.01" min="0" placeholder="0,00">
+
+    <div class="campo-clicavel" id="campoRecorrenteNovoItem" onclick="editarRecorrenciaNovoItemPlanejamento()" style="margin-top:14px;">
+      <span id="textoRecorrenteNovoItem" class="vazio">É RECORRENTE?</span>
+      <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+    </div>
+
+    <div style="text-align:center; margin-top:16px; display:flex; gap:10px; justify-content:center;">
+      <button class="secondary" onclick="cancelarNovoItemPlanejamento()">Cancelar</button>
+      <button onclick="salvarNovoItemPlanejamento()">Salvar item</button>
+    </div>
   </div>
   <div class="status" id="statusPlanejamento"></div>
 </div>
@@ -1538,11 +1561,20 @@ function alternarRelatorio() {
 // ---------- Planejamento mensal: bloquinho de papel digital - contas e
 // gastos avulsos que a pessoa sabe que vao acontecer no mes (ex: "conta de
 // luz dia 5"), mas que ainda nao viraram transacao de verdade. Despesas
-// fixas (recorrencias) ja entram sozinhas na soma de cada dia, por isso so
-// aparecem aqui como referencia, sem checkbox - marcar como pago existe so
-// pros itens avulsos, e lanca a transacao de verdade na hora (fica valendo
-// pro relatorio tambem, nao so uma marcacao isolada). ----------
+// fixas (recorrencias do Manual) ja entram sozinhas na soma de cada dia,
+// por isso so aparecem aqui como referencia, sem acao necessaria.
+//
+// Item avulso vira um registro de verdade so quando criado. Item recorrente
+// (ex: prestacao do microondas em 8x, ou aluguel sem data pra parar) fica
+// como uma REGRA (PLANEJAMENTO_RECORRENCIAS_KEY) e cada mes gera uma
+// ocorrencia virtual na hora de exibir (mesmo espirito de
+// transacoesVirtuaisDoMes) - so vira um registro de verdade quando a pessoa
+// marca aquele mes especifico como pago, exatamente igual ao fluxo do item
+// avulso. Por isso os dois tipos de "marcar como pago" caem na mesma logica
+// de sempre: cria a transacao business-as-usual, so muda de onde o item
+// (ou a regra) veio. ----------
 const PLANEJAMENTO_KEY = 'controle_gastos_planejamento';
+const PLANEJAMENTO_RECORRENCIAS_KEY = 'controle_gastos_planejamento_recorrencias';
 let ancoraPlanejamento = new Date();
 
 function carregarPlanejamento() {
@@ -1560,10 +1592,63 @@ function salvarPlanejamento(lista) {
   localStorage.setItem(PLANEJAMENTO_KEY, JSON.stringify(lista));
 }
 
+function carregarPlanejamentoRecorrencias() {
+  const raw = localStorage.getItem(PLANEJAMENTO_RECORRENCIAS_KEY);
+  if (!raw) return [];
+  try {
+    const dados = JSON.parse(raw);
+    return Array.isArray(dados) ? dados : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function salvarPlanejamentoRecorrencias(lista) {
+  localStorage.setItem(PLANEJAMENTO_RECORRENCIAS_KEY, JSON.stringify(lista));
+}
+
+function mesesEntre(anoA, mesA, anoB, mesB) {
+  return (anoB - anoA) * 12 + (mesB - mesA);
+}
+
+function regraPlanejamentoAtivaNoMes(regra, ano, mes) {
+  const diff = mesesEntre(regra.anoInicio, regra.mesInicio, ano, mes);
+  if (diff < 0) return false;
+  if (regra.vezes != null && diff >= regra.vezes) return false;
+  if (regra.encerradaApartirDe) {
+    const diffEncerrada = mesesEntre(regra.encerradaApartirDe.ano, regra.encerradaApartirDe.mes, ano, mes);
+    if (diffEncerrada >= 0) return false;
+  }
+  return true;
+}
+
+// So gera a ocorrencia virtual se aquele mes ainda nao tiver sido
+// materializado (ver marcarItemPlanejamentoComoPago) - senao o mes pago
+// apareceria duplicado: uma vez como item real, outra como virtual.
+function ocorrenciasRecorrenciaPlanejamentoNoMes(ano, mes) {
+  const materializados = new Set(
+    carregarPlanejamento().filter(i => i.ano === ano && i.mes === mes && i.recorrenciaId).map(i => i.recorrenciaId)
+  );
+  return carregarPlanejamentoRecorrencias()
+    .filter(r => regraPlanejamentoAtivaNoMes(r, ano, mes) && !materializados.has(r.id))
+    .map(r => ({
+      id: `planrec-${r.id}-${ano}-${mes}`,
+      descricao: r.descricao,
+      dia: r.dia,
+      valor: r.valorPadrao || null,
+      tipo: 'saida',
+      pago: false,
+      recorrenciaVirtual: true,
+      recorrenciaId: r.id,
+      ano,
+      mes,
+    }));
+}
+
 function itensPlanejamentoDoMes(ano, mes) {
-  return carregarPlanejamento()
-    .filter(item => item.ano === ano && item.mes === mes)
-    .sort((a, b) => a.dia - b.dia);
+  const avulsos = carregarPlanejamento().filter(item => item.ano === ano && item.mes === mes);
+  const virtuais = ocorrenciasRecorrenciaPlanejamentoNoMes(ano, mes);
+  return [...avulsos, ...virtuais].sort((a, b) => a.dia - b.dia);
 }
 
 function despesasFixasAtivasNoMes(ano, mes) {
@@ -1578,74 +1663,214 @@ function despesasFixasAtivasNoMes(ano, mes) {
   });
 }
 
-async function iniciarNovoItemPlanejamento() {
-  const descricao = await modalPrompt('O que precisa ser pago?', '', observacoesFrequentes());
-  if (descricao === null || !descricao.trim()) return;
+// ---------- Formulario "+ Adicionar item": campos na propria tela (igual
+// ao Manual), sem popup encadeado. ----------
+let diaNovoItemISO = null;
+let recorrenciaNovoItemAtiva = false;
+let recorrenciaNovoItemVezes = null; // null = sem parar; N = numero de meses
 
+function mostrarFormNovoItemPlanejamento() {
+  document.getElementById('nomeNovoItemPlanejamento').value = '';
+  document.getElementById('valorNovoItemPlanejamento').value = '';
+  diaNovoItemISO = null;
+  recorrenciaNovoItemAtiva = false;
+  recorrenciaNovoItemVezes = null;
+  atualizarTextoDiaNovoItem();
+  atualizarTextoRecorrenteNovoItem();
+  document.getElementById('formNovoItemPlanejamento').style.display = 'block';
+  document.getElementById('botaoNovoItemPlanejamentoWrap').style.display = 'none';
+  document.getElementById('formNovoItemPlanejamento').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelarNovoItemPlanejamento() {
+  document.getElementById('formNovoItemPlanejamento').style.display = 'none';
+  document.getElementById('botaoNovoItemPlanejamentoWrap').style.display = 'block';
+}
+
+function atualizarTextoDiaNovoItem() {
+  const el = document.getElementById('textoDiaNovoItem');
+  if (diaNovoItemISO) {
+    const [ano, mes, dia] = diaNovoItemISO.split('-');
+    el.textContent = `${dia}/${mes}/${ano}`;
+    el.classList.remove('vazio');
+  } else {
+    el.textContent = 'DIA DO VENCIMENTO';
+    el.classList.add('vazio');
+  }
+}
+
+async function editarDiaNovoItemPlanejamento() {
   const ano = ancoraPlanejamento.getFullYear();
   const mes = ancoraPlanejamento.getMonth();
-  const padrao = `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
-  const dataISO = await abrirSeletorData(padrao);
-  if (!dataISO) return;
+  const padrao = diaNovoItemISO || `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+  const escolhida = await abrirSeletorData(padrao);
+  if (!escolhida) return;
+  diaNovoItemISO = escolhida;
+  atualizarTextoDiaNovoItem();
+}
 
-  const valorTexto = await modalPrompt('Valor (deixe em branco se ainda não souber):', '', null, true);
+function atualizarTextoRecorrenteNovoItem() {
+  const el = document.getElementById('textoRecorrenteNovoItem');
+  if (!recorrenciaNovoItemAtiva) {
+    el.textContent = 'É RECORRENTE?';
+    el.classList.add('vazio');
+    return;
+  }
+  el.classList.remove('vazio');
+  el.textContent = recorrenciaNovoItemVezes ? `Recorrente: ${recorrenciaNovoItemVezes}x` : 'Recorrente: todo mês, sem parar';
+}
+
+async function editarRecorrenciaNovoItemPlanejamento() {
+  const recorrente = await modalSelecionar('É recorrente?', [['nao', 'Não'], ['sim', 'Sim']], recorrenciaNovoItemAtiva ? 'sim' : 'nao');
+  if (recorrente === null) return;
+  if (recorrente === 'nao') {
+    recorrenciaNovoItemAtiva = false;
+    recorrenciaNovoItemVezes = null;
+    atualizarTextoRecorrenteNovoItem();
+    return;
+  }
+  const vezesTexto = await modalPrompt('Por quantos meses? Deixe em branco pra repetir sem parar (ex: aluguel) ou informe um número (ex: 8, pra uma parcela em 8x).', recorrenciaNovoItemVezes || '', null, true);
+  if (vezesTexto === null) return;
+  recorrenciaNovoItemAtiva = true;
+  recorrenciaNovoItemVezes = vezesTexto.trim() ? parseInt(vezesTexto, 10) || null : null;
+  atualizarTextoRecorrenteNovoItem();
+}
+
+function salvarNovoItemPlanejamento() {
+  const statusEl = document.getElementById('statusPlanejamento');
+  const nome = document.getElementById('nomeNovoItemPlanejamento').value.trim();
+  const valorTexto = document.getElementById('valorNovoItemPlanejamento').value;
   const valor = valorTexto && parseFloat(valorTexto) > 0 ? parseFloat(valorTexto) : null;
 
-  const [anoISO, mesISO, diaISO] = dataISO.split('-').map(Number);
-  const lista = carregarPlanejamento();
-  lista.unshift({
-    id: Date.now(),
-    descricao: descricao.trim(),
-    dia: diaISO,
-    mes: mesISO - 1,
-    ano: anoISO,
-    valor,
-    tipo: 'saida',
-    pago: false,
-    transacaoId: null,
-  });
-  salvarPlanejamento(lista);
+  if (!nome) {
+    statusEl.textContent = 'Informe o nome.';
+    statusEl.className = 'status error';
+    return;
+  }
+  if (!diaNovoItemISO) {
+    statusEl.textContent = 'Informe o dia do vencimento.';
+    statusEl.className = 'status error';
+    return;
+  }
+
+  const [anoISO, mesISO, diaISO] = diaNovoItemISO.split('-').map(Number);
+
+  if (recorrenciaNovoItemAtiva) {
+    const regras = carregarPlanejamentoRecorrencias();
+    regras.unshift({
+      id: Date.now(),
+      descricao: nome,
+      dia: diaISO,
+      valorPadrao: valor,
+      vezes: recorrenciaNovoItemVezes,
+      anoInicio: anoISO,
+      mesInicio: mesISO - 1,
+      encerradaApartirDe: null,
+    });
+    salvarPlanejamentoRecorrencias(regras);
+  } else {
+    const lista = carregarPlanejamento();
+    lista.unshift({
+      id: String(Date.now()),
+      descricao: nome,
+      dia: diaISO,
+      mes: mesISO - 1,
+      ano: anoISO,
+      valor,
+      tipo: 'saida',
+      pago: false,
+      transacaoId: null,
+    });
+    salvarPlanejamento(lista);
+  }
+
+  statusEl.textContent = '';
   ancoraPlanejamento = new Date(anoISO, mesISO - 1, 1);
+  cancelarNovoItemPlanejamento();
   renderizarPlanejamento();
 }
 
 async function marcarItemPlanejamentoComoPago(id) {
-  const lista = carregarPlanejamento();
-  const item = lista.find(i => i.id === id);
-  if (!item || item.pago) return;
+  const ehVirtual = String(id).startsWith('planrec-');
+  let descricao, valor, criarItemPago;
 
-  let valor = item.valor;
+  if (ehVirtual) {
+    const [, regraId, anoStr, mesStr] = String(id).split('-');
+    const regra = carregarPlanejamentoRecorrencias().find(r => String(r.id) === regraId);
+    if (!regra) return;
+    descricao = regra.descricao;
+    valor = regra.valorPadrao;
+    criarItemPago = (valorFinal, transacaoId) => ({
+      id: String(Date.now()),
+      descricao,
+      dia: regra.dia,
+      mes: Number(mesStr),
+      ano: Number(anoStr),
+      valor: valorFinal,
+      tipo: 'saida',
+      pago: true,
+      transacaoId,
+      recorrenciaId: regra.id,
+    });
+  } else {
+    const lista = carregarPlanejamento();
+    const item = lista.find(i => String(i.id) === String(id));
+    if (!item || item.pago) return;
+    descricao = item.descricao;
+    valor = item.valor;
+    criarItemPago = null;
+  }
+
   if (!valor) {
-    const valorTexto = await modalPrompt(`Quanto foi "${item.descricao}"?`, '', null, true);
+    const valorTexto = await modalPrompt(`Quanto foi "${descricao}"?`, '', null, true);
     valor = valorTexto ? parseFloat(valorTexto) : NaN;
     if (!valor || valor <= 0) return;
   }
 
-  if (!(await modalConfirmar(`Marcar "${item.descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída de hoje. Confirma?`))) return;
+  if (!(await modalConfirmar(`Marcar "${descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída de hoje. Confirma?`))) return;
 
   const dataHojeISO = hojeLocalISO();
   const [anoHoje, mesHoje, diaHoje] = dataHojeISO.split('-');
   adicionarTransacao({
     valor,
-    tipo: item.tipo,
+    tipo: 'saida',
     instituicao: 'desconhecido',
     formaPagamento: 'desconhecido',
-    local: item.descricao,
+    local: descricao,
     data: `${diaHoje}/${mesHoje}/${anoHoje}`,
-    observacao: item.descricao,
+    observacao: descricao,
   });
-  lembrarObservacao(item.descricao);
-  const novaLista = carregarTransacoes();
+  lembrarObservacao(descricao);
+  const novaTransacao = carregarTransacoes()[0];
 
-  item.pago = true;
-  item.valor = valor;
-  item.transacaoId = novaLista[0].id;
-  salvarPlanejamento(lista);
+  if (ehVirtual) {
+    const lista = carregarPlanejamento();
+    lista.unshift(criarItemPago(valor, novaTransacao.id));
+    salvarPlanejamento(lista);
+  } else {
+    const lista = carregarPlanejamento();
+    const item = lista.find(i => String(i.id) === String(id));
+    item.pago = true;
+    item.valor = valor;
+    item.transacaoId = novaTransacao.id;
+    salvarPlanejamento(lista);
+  }
   renderizarPlanejamento();
 }
 
-function removerItemPlanejamento(id) {
-  const lista = carregarPlanejamento().filter(i => i.id !== id);
+async function removerItemPlanejamento(id) {
+  if (String(id).startsWith('planrec-')) {
+    const [, regraId, anoStr, mesStr] = String(id).split('-');
+    if (!(await modalConfirmar('Encerrar essa recorrência? Ela não vai mais aparecer nos próximos meses (os meses já pagos continuam registrados).'))) return;
+    const regras = carregarPlanejamentoRecorrencias();
+    const regra = regras.find(r => String(r.id) === regraId);
+    if (!regra) return;
+    regra.encerradaApartirDe = { ano: Number(anoStr), mes: Number(mesStr) };
+    salvarPlanejamentoRecorrencias(regras);
+    renderizarPlanejamento();
+    return;
+  }
+  const lista = carregarPlanejamento().filter(i => String(i.id) !== String(id));
   salvarPlanejamento(lista);
   renderizarPlanejamento();
 }
@@ -1659,6 +1884,7 @@ function renderizarPlanejamento() {
   const ano = ancoraPlanejamento.getFullYear();
   const mes = ancoraPlanejamento.getMonth();
   document.getElementById('tituloPlanejamento').textContent = `${NOMES_MESES[mes]} de ${ano}`;
+  cancelarNovoItemPlanejamento();
 
   const fixas = despesasFixasAtivasNoMes(ano, mes);
   const itens = itensPlanejamentoDoMes(ano, mes);
@@ -1688,15 +1914,16 @@ function renderizarPlanejamento() {
       const atrasado = !item.pago && ehMesAtual && item.dia < diaHoje;
       const corDia = atrasado ? ' style="color:var(--saida);"' : '';
       const valorTexto = item.valor ? formatarMoeda(item.valor) : 'valor não informado';
+      const tagRecorrente = item.recorrenciaId ? ' <span style="font-size:0.75em; color:var(--muted-foreground);">(recorrente)</span>' : '';
       const acoes = item.pago
         ? ''
         : `<span style="display:flex; gap:8px; flex-shrink:0;">
-            <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago(${item.id})">Marcar como pago</button>
-            <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento(${item.id})">×</button>
+            <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">Marcar como pago</button>
+            <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button>
           </span>`;
       html += `
       <div class="relatorio-resumo-linha" style="align-items:center; gap:10px;">
-        <span${corDia}>Dia ${item.dia} — ${escapeHtml(item.descricao)}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorTexto}</span></span>
+        <span${corDia}>Dia ${item.dia} — ${escapeHtml(item.descricao)}${tagRecorrente}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorTexto}</span></span>
         ${acoes}
       </div>`;
     });
