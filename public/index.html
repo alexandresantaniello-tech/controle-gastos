@@ -1805,8 +1805,20 @@ function resolverAlvoPlanejamento(id) {
   }
   const lista = carregarPlanejamento();
   const item = lista.find(i => String(i.id) === String(id));
-  if (!item || item.pago) return null;
+  if (!item) return null;
   return { registro: item, campoValor: 'valor', salvar: () => salvarPlanejamento(lista) };
+}
+
+// Se o item ja foi pago, existe uma transacao de verdade por tras
+// (item.transacaoId) - editar nome/valor aqui tem que atualizar ela tambem,
+// senao a transacao (que e o que realmente conta no relatorio) ficaria
+// desatualizada em relacao ao que aparece no Planejamento.
+function transacaoLigadaAoItemPlanejamento(item) {
+  if (!item.pago || item.transacaoId == null) return null;
+  const transacoes = carregarTransacoes();
+  const transacao = transacoes.find(t => t.id === item.transacaoId);
+  if (!transacao) return null;
+  return { transacao, salvar: () => salvarTransacoes(transacoes) };
 }
 
 async function editarDescricaoItemPlanejamento(id) {
@@ -1816,6 +1828,14 @@ async function editarDescricaoItemPlanejamento(id) {
   if (novo === null || !novo.trim()) return;
   alvo.registro.descricao = novo.trim();
   alvo.salvar();
+
+  const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+  if (ligada) {
+    ligada.transacao.local = novo.trim();
+    ligada.transacao.observacao = novo.trim();
+    ligada.salvar();
+    renderizar();
+  }
   renderizarPlanejamento();
 }
 
@@ -1825,8 +1845,42 @@ async function editarValorItemPlanejamento(id) {
   const atual = alvo.registro[alvo.campoValor];
   const novo = await modalPrompt('Valor (deixe em branco se ainda não souber):', atual ? String(atual).replace('.', ',') : '', null, true);
   if (novo === null) return;
-  alvo.registro[alvo.campoValor] = novo.trim() ? parseFloat(novo.replace(',', '.')) : null;
+  const valorNovo = novo.trim() ? parseFloat(novo.replace(',', '.')) : null;
+  alvo.registro[alvo.campoValor] = valorNovo;
   alvo.salvar();
+
+  const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+  if (ligada && valorNovo) {
+    ligada.transacao.valor = valorNovo;
+    ligada.salvar();
+    renderizar();
+  }
+  renderizarPlanejamento();
+}
+
+async function editarItemPlanejamento(id) {
+  const alvo = resolverAlvoPlanejamento(id);
+  if (!alvo) return;
+  const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+  const opcoes = [['nome', 'Nome'], ['valor', 'Valor']];
+  if (ligada) opcoes.push(['forma', 'Forma de pagamento']);
+  const escolha = await modalSelecionar('O que quer editar?', opcoes, '');
+  if (escolha === null) return;
+  if (escolha === 'nome') return editarDescricaoItemPlanejamento(id);
+  if (escolha === 'valor') return editarValorItemPlanejamento(id);
+  if (escolha === 'forma') return editarFormaPagamentoItemPlanejamento(id);
+}
+
+async function editarFormaPagamentoItemPlanejamento(id) {
+  const alvo = resolverAlvoPlanejamento(id);
+  if (!alvo) return;
+  const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+  if (!ligada) return;
+  const nova = await modalSelecionar('Como você pagou?', [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']], ligada.transacao.formaPagamento || '');
+  if (nova === null) return;
+  ligada.transacao.formaPagamento = nova;
+  ligada.salvar();
+  renderizar();
   renderizarPlanejamento();
 }
 
@@ -1949,6 +2003,7 @@ function renderizarPlanejamento() {
 
   if (itens.length > 0) {
     html += `<p class="dica-observacao" style="margin-top:14px;">A vencer este mês:</p>`;
+    const transacoes = carregarTransacoes();
     itens.forEach(item => {
       const atrasado = !item.pago && ehMesAtual && item.dia < diaHoje;
       const corDia = atrasado ? ' style="color:var(--saida);"' : '';
@@ -1956,17 +2011,22 @@ function renderizarPlanejamento() {
       const tagRecorrente = item.recorrenciaId ? ' <span style="font-size:0.75em; color:var(--muted-foreground);">(recorrente)</span>' : '';
       const acoes = `<span style="display:flex; gap:8px; flex-shrink:0;">
             ${item.pago ? '' : `<button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">Marcar como pago</button>`}
+            <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="editarItemPlanejamento('${item.id}')"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
             <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button>
           </span>`;
-      const descricaoHtml = item.pago
-        ? escapeHtml(item.descricao)
-        : `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
-      const valorHtml = item.pago
-        ? valorTexto
-        : `<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer; text-decoration:underline dotted;">${valorTexto}</span>`;
+      const descricaoHtml = `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
+      const valorHtml = `<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer; text-decoration:underline dotted;">${valorTexto}</span>`;
+      let formaPagamentoHtml = '';
+      if (item.pago && item.transacaoId != null) {
+        const transacao = transacoes.find(t => t.id === item.transacaoId);
+        const formaPagamentoTexto = transacao && transacao.formaPagamento && transacao.formaPagamento !== 'desconhecido'
+          ? ROTULOS_FORMA_PAGAMENTO[transacao.formaPagamento]
+          : 'Forma de pagamento';
+        formaPagamentoHtml = ` · <span onclick="editarFormaPagamentoItemPlanejamento('${item.id}')" style="cursor:pointer; text-decoration:underline dotted;">${formaPagamentoTexto}</span>`;
+      }
       html += `
       <div class="relatorio-resumo-linha" style="align-items:center; gap:10px;">
-        <span${corDia}>Dia ${item.dia} — ${descricaoHtml}${tagRecorrente}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorHtml}</span></span>
+        <span${corDia}>Dia ${item.dia} — ${descricaoHtml}${tagRecorrente}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorHtml}${formaPagamentoHtml}</span></span>
         ${acoes}
       </div>`;
     });
