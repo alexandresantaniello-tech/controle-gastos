@@ -621,7 +621,7 @@
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico">
-    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Presente de boas-vindas: importe até 4 bancos</label>
+    <label class="campo"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Benefício de boas-vindas: importe até 4 bancos</label>
     <p class="aviso-backup">No app do seu banco, procure a opção de exportar/baixar extrato em PDF. Envie até os últimos 3 meses de cada instituição — dá pra repetir com até 4 bancos diferentes. Se o arquivo tiver senha, ela é usada só no seu aparelho para abrir o arquivo — nunca é enviada pra gente.</p>
     <p class="aviso-backup" id="avisoBancosRestantes"></p>
     <input type="file" id="arquivoHistorico" accept="application/pdf">
@@ -779,7 +779,7 @@
 
 <div class="card" id="privacidadeCard" style="display:none;">
   <div class="politica-texto">
-    <p><em>Última atualização: julho de 2026.</em></p>
+    <p><em>Última atualização: 14 de agosto de 2026.</em></p>
 
     <h3>O que é o Sifia</h3>
     <ul>
@@ -793,14 +793,24 @@
 
     <h3>Quais dados tratamos, e como</h3>
     <ul>
-      <li><strong>Imagem do comprovante/print/foto que você envia:</strong> é transmitida de forma transitória a um serviço de inteligência artificial em nuvem, com servidores localizados nos Estados Unidos, exclusivamente para extrair valor, tipo, categoria, instituição, local e data da transação. Assim que a resposta é recebida, a imagem é descartada — não fica salva em nenhum banco de dados, disco ou backup nosso, nem por um período temporário. Diferente de apps de mensagem que guardam mídia por um tempo até a entrega, aqui não existe esse intervalo: a imagem nunca é persistida.</li>
-      <li><strong>Dados extraídos da transação (valor, categoria, data, observações):</strong> ficam salvos exclusivamente no armazenamento local do seu próprio navegador (localStorage) — um espaço de armazenamento que existe apenas no seu aparelho, não em nossos servidores. Nunca trafegam de volta pra nós depois de extraídos.</li>
-      <li><strong>Cadastro, login ou e-mail do usuário:</strong> não pedimos nenhum desses dados para usar o Sifia. Não existe conta de usuário.</li>
+      <li><strong>Imagem do comprovante/print/foto que você envia:</strong> processada exclusivamente para extrair tipo, valor, data, forma de pagamento, local, instituição, categoria e, quando informada, observação. O Sifia processa esse conteúdo em memória durante a requisição e não o persiste em banco de dados, disco ou backup próprio. Os prazos de retenção do provedor de inteligência artificial que faz essa leitura estão descritos em detalhe na seção "Processamento por inteligência artificial", logo abaixo.</li>
+      <li><strong>Dados extraídos da transação (tipo, valor, data, forma de pagamento, local, instituição, categoria, observação):</strong> ficam salvos exclusivamente no armazenamento local do seu próprio navegador (localStorage) — um espaço de armazenamento que existe apenas no seu aparelho, não em nossos servidores. Depois de extraídos, esses dados não são enviados automaticamente aos servidores do Sifia.</li>
+      <li><strong>Áudio do comando de voz:</strong> quando você usa o botão de voz, a gravação e a transcrição do áudio para texto são feitas pelo navegador ou sistema operacional do seu aparelho — a API de reconhecimento de voz do Android/Chrome, ou o recurso de ditado do Atalho no iOS — não pelo Sifia. Esse processo pode enviar o áudio a servidores do fabricante do navegador ou sistema operacional: Google no Android/Chrome (<a href="https://www.google.com/chrome/privacy/whitepaper.html#speech" target="_blank" rel="noopener">política de reconhecimento de voz do Chrome</a>) ou Apple no iOS (<a href="https://www.apple.com/legal/privacy/data/en/ask-siri-dictation/" target="_blank" rel="noopener">política de Siri e Ditado</a>). O Sifia nunca recebe nem processa o áudio: só recebe o texto já transcrito, que segue então o mesmo processamento por IA descrito na seção abaixo.</li>
+      <li><strong>Licença e assinatura:</strong> para validar sua assinatura paga, tratamos o e-mail informado na compra e o status da licença (ativa, cancelada, dentro do prazo de reembolso). A cobrança em si é processada pelo Mercado Pago, conforme a <a href="https://www.mercadopago.com.br/privacidade" target="_blank" rel="noopener">política de privacidade</a> dele. Esses dados são usados só para cobrança, liberação de acesso e administração da assinatura — não fazem parte do seu histórico financeiro e não têm relação com as transações que você registra no app. O Sifia não cria um perfil financeiro centralizado nem exige senha de conta; mantém apenas os dados necessários à validação e administração da assinatura.</li>
       <li><strong>Conexão bancária:</strong> não acessamos, não conectamos e não temos qualquer integração com sua conta ou instituição financeira (diferente de apps baseados em Open Finance).</li>
-      <li><strong>Rastreamento e publicidade:</strong> não usamos cookies de rastreamento, pixels de terceiros, nem vendemos, alugamos ou compartilhamos qualquer dado com anunciantes ou outras empresas.</li>
-      <li><strong>Metadados técnicos de acesso:</strong> como qualquer aplicação web, a infraestrutura de hospedagem em nuvem que executa o Sifia pode registrar automaticamente informações técnicas de cada requisição (como endereço IP e horário de acesso) por um período limitado, para fins de segurança e operação do serviço — isso é padrão de qualquer provedor de hospedagem e não é usado por nós para identificar, perfilar ou rastrear o comportamento de usuários.</li>
+      <li><strong>Rastreamento e publicidade:</strong> não vendemos nem alugamos dados e não os compartilhamos com anunciantes. Os compartilhamentos necessários ao funcionamento do serviço podem envolver processamento por IA, cobrança, hospedagem e reconhecimento de voz, conforme o recurso utilizado e as descrições desta política.</li>
+      <li><strong>Metadados técnicos de acesso:</strong> a Render, infraestrutura de hospedagem em nuvem que executa o Sifia, pode registrar automaticamente informações técnicas de cada requisição (como endereço IP e horário de acesso) por até 30 dias, dependendo do plano de hospedagem contratado, conforme a <a href="https://render.com/docs/logging" target="_blank" rel="noopener">política de retenção de logs</a> própria dela — não é usado por nós para identificar, perfilar ou rastrear o comportamento de usuários.</li>
       <li><strong>Arquivo de backup:</strong> o botão de Backup gera um arquivo que é salvo no local que você escolher no seu próprio aparelho (download, ou compartilhado por você) — esse arquivo nunca passa pelos nossos servidores nem fica com a gente; a responsabilidade de guardá-lo com segurança é sua.</li>
       <li><strong>Senha de arquivo de extrato bancário (importação de histórico):</strong> se o PDF que você envia nessa função tiver senha, ela é usada exclusivamente pelo seu próprio navegador para abrir o arquivo localmente — nunca é enviada, transmitida ou armazenada pelo Sifia em nenhum momento. Só as imagens das páginas já abertas (sem senha nenhuma) são processadas pela IA, do mesmo jeito que qualquer outro comprovante.</li>
+      <li><strong>Registro manual de dinheiro em espécie:</strong> feito inteiramente no formulário manual do próprio aparelho, sem envio a nenhum serviço de inteligência artificial e sem passar pelo nosso servidor. Importante: essa garantia vale para o formulário manual especificamente — se você descrever um pagamento em espécie por voz ou texto (ex: "paguei 30 reais em dinheiro"), é a frase, não a imagem, que segue o mesmo processamento por IA descrito abaixo, porque nesse caso é o comando de voz/texto que precisa ser interpretado.</li>
+    </ul>
+
+    <h3>Processamento por inteligência artificial</h3>
+    <ul>
+      <li>O Sifia processa a imagem do comprovante — ou a frase já transcrita, no caso do registro por voz ou texto — em memória durante a requisição, sem armazenar esse conteúdo em banco de dados, disco ou backup próprio. Para realizar a leitura, o conteúdo completo é enviado a um provedor comercial de inteligência artificial: atualmente, a Anthropic (<a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">política de privacidade</a>, <a href="https://privacy.anthropic.com/en/articles/7996868-is-my-data-used-for-model-training" target="_blank" rel="noopener">política sobre uso de dados para treinamento</a> e <a href="https://platform.claude.com/docs/en/manage-claude/api-and-data-retention" target="_blank" rel="noopener">política de retenção de dados da API comercial</a>).</li>
+      <li>Conforme a política vigente, verificada em 14/08/2026: entradas e saídas da API comercial são normalmente excluídas em até 30 dias. Quando uma interação é sinalizada pelos sistemas automáticos de segurança do provedor, suas entradas e saídas podem ser retidas por até 2 anos, e as pontuações dessa classificação de segurança, por até 7 anos. Pode haver retenção adicional quando exigida por lei.</li>
+      <li>Os dados enviados não são utilizados para treinar modelos de inteligência artificial por padrão, e o Sifia não autoriza voluntariamente nenhum uso adicional desses dados. Permanecem aplicáveis as demais exceções previstas nas políticas oficiais do provedor (incluindo hipóteses contratuais e de segurança) e na legislação.</li>
+      <li>A equipe do Sifia não realiza revisão humana das imagens ou textos enviados em nenhuma circunstância normal de uso. Eventuais procedimentos de segurança do provedor (por exemplo, revisão de conteúdo sinalizado como abuso) seguem as políticas próprias dele, independentes do Sifia.</li>
     </ul>
 
     <h3>Base legal do tratamento (LGPD, Art. 7º)</h3>
@@ -810,14 +820,7 @@
 
     <h3>Transferência internacional de dados</h3>
     <ul>
-      <li>Como o processamento por inteligência artificial descrito acima ocorre em servidores fora do Brasil, isso configura uma transferência internacional de dados nos termos da LGPD. Ela é limitada estritamente ao conteúdo da imagem enviada, dura apenas o tempo do processamento, e não resulta em nenhuma cópia retida pelo prestador do serviço além do necessário para responder à solicitação.</li>
-    </ul>
-
-    <h3>O que o Sifia nunca faz com as imagens</h3>
-    <ul>
-      <li>Não usamos as imagens enviadas para treinar sistemas de inteligência artificial, nossos ou de terceiros.</li>
-      <li>Não usamos as imagens para nenhuma finalidade além de extrair os dados da transação que você pediu para registrar.</li>
-      <li>Não fazemos revisão humana das imagens em nenhuma circunstância normal de uso.</li>
+      <li>Como o processamento por inteligência artificial descrito acima ocorre em servidores fora do Brasil, isso configura uma transferência internacional de dados nos termos da LGPD. Os prazos de retenção e as exceções aplicáveis a essa transferência são exatamente os descritos na seção "Processamento por inteligência artificial", acima.</li>
     </ul>
 
     <h3>Dados financeiros e cuidado redobrado</h3>
@@ -1622,7 +1625,7 @@ async function enviarComprovante(formData, tentativa) {
   }
 }
 
-// ---------- Importar histórico (presente de boas-vindas - sem limite de quantas vezes usar) ----------
+// ---------- Importar histórico (benefício de boas-vindas - sem limite de quantas vezes usar) ----------
 
 // Guarda quais paginas ja foram processadas com sucesso, mesmo entre
 // fechamentos do app - se o cliente fechar o app no meio (ou o app travar),
@@ -1645,7 +1648,7 @@ function fingerprintArquivo(arquivo) {
   return `${arquivo.name}-${arquivo.size}`;
 }
 
-// Presente de boas-vindas: ate 4 bancos diferentes, 3 meses cada (decisao
+// Beneficio de boas-vindas: ate 4 bancos diferentes, 3 meses cada (decisao
 // 2026-08-13, substitui o "1 banco sem limite" anterior). Guarda o
 // fingerprint de cada arquivo que terminou de importar com sucesso - o
 // LIMITE e por banco distinto, nao por tentativa (reprocessar o mesmo
@@ -1671,8 +1674,8 @@ function atualizarAvisoBancosRestantes() {
   if (!el) return;
   const restantes = LIMITE_BANCOS_BOAS_VINDAS - lerBancosConcluidos().length;
   el.textContent = restantes > 0
-    ? `Você ainda pode importar ${restantes} banco${restantes === 1 ? '' : 's'} dentro do presente de boas-vindas.`
-    : 'Você já usou o presente de boas-vindas nos 4 bancos disponíveis.';
+    ? `Você ainda pode importar ${restantes} banco${restantes === 1 ? '' : 's'} dentro do benefício de boas-vindas.`
+    : 'Você já usou o benefício de boas-vindas nos 4 bancos disponíveis.';
 }
 
 function atualizarDataMaisRecenteHistorico(data) {
@@ -1791,7 +1794,7 @@ async function importarHistorico() {
   const fingerprintAtual = fingerprintArquivo(arquivoInput.files[0]);
   const bancosConcluidos = lerBancosConcluidos();
   if (!retomando && !bancosConcluidos.includes(fingerprintAtual) && bancosConcluidos.length >= LIMITE_BANCOS_BOAS_VINDAS) {
-    statusEl.textContent = 'Você já usou o presente de boas-vindas nos 4 bancos disponíveis.';
+    statusEl.textContent = 'Você já usou o benefício de boas-vindas nos 4 bancos disponíveis.';
     statusEl.className = 'status error';
     return;
   }
@@ -1916,7 +1919,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
       // Antes de gastar chamada de IA na pagina, olha as datas do proprio
       // texto do PDF (extracao local, sem custo) - se a data mais recente
       // encontrada na pagina ja passou de 3 meses, pula a pagina inteira.
-      // Limita o "presente de boas-vindas" a 3 meses mesmo que o banco deixe
+      // Limita o "benefício de boas-vindas" a 3 meses mesmo que o banco deixe
       // exportar um periodo maior.
       const pagina = await pdf.getPage(i);
       const conteudoTexto = await pagina.getTextContent();
