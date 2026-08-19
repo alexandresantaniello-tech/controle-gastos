@@ -1910,8 +1910,19 @@ async function removerItemPlanejamento(id) {
     renderizarPlanejamento();
     return;
   }
-  const lista = carregarPlanejamento().filter(i => String(i.id) !== String(id));
-  salvarPlanejamento(lista);
+  const lista = carregarPlanejamento();
+  const item = lista.find(i => String(i.id) === String(id));
+  if (!item) return;
+
+  if (item.pago) {
+    if (!(await modalConfirmar(`Excluir "${item.descricao}" também vai apagar a transação de ${formatarMoeda(item.valor)} lançada no dia ${item.dia}. Confirma?`))) return;
+    if (item.transacaoId != null) {
+      salvarTransacoes(carregarTransacoes().filter(t => t.id !== item.transacaoId));
+    }
+  }
+
+  salvarPlanejamento(lista.filter(i => String(i.id) !== String(id)));
+  renderizar();
   renderizarPlanejamento();
 }
 
@@ -1940,10 +1951,8 @@ function renderizarPlanejamento() {
       const corDia = atrasado ? ' style="color:var(--saida);"' : '';
       const valorTexto = item.valor ? formatarMoeda(item.valor) : 'valor não informado';
       const tagRecorrente = item.recorrenciaId ? ' <span style="font-size:0.75em; color:var(--muted-foreground);">(recorrente)</span>' : '';
-      const acoes = item.pago
-        ? ''
-        : `<span style="display:flex; gap:8px; flex-shrink:0;">
-            <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">Marcar como pago</button>
+      const acoes = `<span style="display:flex; gap:8px; flex-shrink:0;">
+            ${item.pago ? '' : `<button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">Marcar como pago</button>`}
             <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button>
           </span>`;
       const descricaoHtml = item.pago
