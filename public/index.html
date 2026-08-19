@@ -2052,6 +2052,26 @@ function renderizarPlanejamento() {
   let html = '';
 
   if (itens.length > 0) {
+    const totalGeral = itens.reduce((s, i) => s + (i.valor || 0), 0);
+    const totalPago = itens.filter(i => i.pago).reduce((s, i) => s + (i.valor || 0), 0);
+    const totalPendente = totalGeral - totalPago;
+    const temSemValor = itens.some(i => !i.valor);
+    html += `
+    <div class="relatorio-resumo-linha">
+      <span>Total do mês</span>
+      <strong>${formatarMoeda(totalGeral)}</strong>
+    </div>
+    <div class="relatorio-resumo-linha">
+      <span>Já pago</span>
+      <strong class="entrada">${formatarMoeda(totalPago)}</strong>
+    </div>
+    <div class="relatorio-resumo-linha">
+      <span>Falta pagar</span>
+      <strong class="saida">${formatarMoeda(totalPendente)}</strong>
+    </div>`;
+    if (temSemValor) {
+      html += `<p class="dica-observacao" style="margin-top:6px;">* não inclui itens sem valor informado ainda</p>`;
+    }
     html += `<p class="dica-observacao" style="margin-top:14px;">A vencer este mês:</p>`;
     const transacoes = carregarTransacoes();
     itens.forEach(item => {
