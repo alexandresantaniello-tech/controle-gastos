@@ -1242,8 +1242,8 @@ function agruparPorObservacao(transacoes) {
     if (t.observacao && !t.recorrenciaVirtual) grupos[chave].editavel = true;
   });
   const lista = Object.values(grupos);
-  const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => b.total - a.total);
-  const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => b.total - a.total);
+  const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'));
+  const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'));
 
   const semObservacaoOrdenadas = [...semObservacao].sort((a, b) => {
     const da = parseData(a.data), db = parseData(b.data);
