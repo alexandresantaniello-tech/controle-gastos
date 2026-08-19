@@ -1662,18 +1662,6 @@ function itensPlanejamentoDoMes(ano, mes) {
   return [...avulsos, ...virtuais].sort((a, b) => a.dia - b.dia);
 }
 
-function despesasFixasAtivasNoMes(ano, mes) {
-  const inicioMes = new Date(ano, mes, 1);
-  const fimMes = new Date(ano, mes + 1, 0);
-  const hojeISO = hojeLocalISO();
-  return carregarRecorrencias().filter(r => {
-    if (!r.dataInicioISO) return false;
-    const inicio = new Date(r.dataInicioISO + 'T00:00:00');
-    const fim = new Date((r.dataFimISO || hojeISO) + 'T00:00:00');
-    return inicio <= fimMes && fim >= inicioMes;
-  });
-}
-
 // ---------- Formulario "+ Adicionar item": campos na propria tela (igual
 // ao Manual), sem popup encadeado. ----------
 let diaNovoItemISO = null;
@@ -1937,27 +1925,12 @@ function renderizarPlanejamento() {
   document.getElementById('tituloPlanejamento').textContent = `${NOMES_MESES[mes]} de ${ano}`;
   cancelarNovoItemPlanejamento();
 
-  const fixas = despesasFixasAtivasNoMes(ano, mes);
   const itens = itensPlanejamentoDoMes(ano, mes);
   const hojeISO = hojeLocalISO();
   const [anoHoje, mesHoje, diaHoje] = hojeISO.split('-').map(Number);
   const ehMesAtual = ano === anoHoje && mes === (mesHoje - 1);
 
   let html = '';
-
-  if (fixas.length > 0) {
-    html += `<p class="dica-observacao">Fixas já incluídas automaticamente:</p>`;
-    fixas.forEach(r => {
-      const sinal = r.tipo === 'entrada' ? '+' : '-';
-      const classeCor = r.tipo === 'entrada' ? 'entrada' : 'saida';
-      const rotuloPeriodo = rotuloPeriodoDespesaFixa(r.periodicidade).toLowerCase();
-      html += `
-      <div class="relatorio-resumo-linha">
-        <span onclick="editarLocalRecorrencia(${r.id})" style="cursor:pointer;">${escapeHtml(r.descricao)}</span>
-        <strong class="${classeCor}" onclick="editarValorRecorrencia(${r.id})" style="cursor:pointer;">${sinal}${formatarMoeda(r.valor)}/${rotuloPeriodo}</strong>
-      </div>`;
-    });
-  }
 
   if (itens.length > 0) {
     html += `<p class="dica-observacao" style="margin-top:14px;">A vencer este mês:</p>`;
@@ -1986,7 +1959,7 @@ function renderizarPlanejamento() {
     });
   }
 
-  if (fixas.length === 0 && itens.length === 0) {
+  if (itens.length === 0) {
     html = `<p class="dica-observacao">Nada planejado ainda pra esse mês. Toque em "+ Adicionar item" pra começar.</p>`;
   }
 
@@ -3795,7 +3768,6 @@ function atualizarRecorrencia(id, mudancas) {
   Object.assign(rec, mudancas);
   salvarRecorrencias(lista);
   renderizar();
-  if (document.getElementById('planejamentoCard').style.display !== 'none') renderizarPlanejamento();
 }
 
 async function editarTipoRecorrencia(id) {
