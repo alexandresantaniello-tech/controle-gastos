@@ -1790,6 +1790,46 @@ function salvarNovoItemPlanejamento() {
   renderizarPlanejamento();
 }
 
+// Acha o registro por tras de um id de item do Planejamento, seja ele um
+// item avulso de verdade (carregarPlanejamento) ou uma regra de recorrencia
+// (carregarPlanejamentoRecorrencias, identificada pelo prefixo "planrec-").
+// Editar um item recorrente edita a REGRA - vale pra esse mes e pros
+// seguintes, exatamente como ja funciona hoje pra despesas fixas do Manual.
+function resolverAlvoPlanejamento(id) {
+  if (String(id).startsWith('planrec-')) {
+    const [, regraId] = String(id).split('-');
+    const regras = carregarPlanejamentoRecorrencias();
+    const regra = regras.find(r => String(r.id) === regraId);
+    if (!regra) return null;
+    return { registro: regra, campoValor: 'valorPadrao', salvar: () => salvarPlanejamentoRecorrencias(regras) };
+  }
+  const lista = carregarPlanejamento();
+  const item = lista.find(i => String(i.id) === String(id));
+  if (!item || item.pago) return null;
+  return { registro: item, campoValor: 'valor', salvar: () => salvarPlanejamento(lista) };
+}
+
+async function editarDescricaoItemPlanejamento(id) {
+  const alvo = resolverAlvoPlanejamento(id);
+  if (!alvo) return;
+  const novo = await modalPrompt('Nome:', alvo.registro.descricao, observacoesFrequentes());
+  if (novo === null || !novo.trim()) return;
+  alvo.registro.descricao = novo.trim();
+  alvo.salvar();
+  renderizarPlanejamento();
+}
+
+async function editarValorItemPlanejamento(id) {
+  const alvo = resolverAlvoPlanejamento(id);
+  if (!alvo) return;
+  const atual = alvo.registro[alvo.campoValor];
+  const novo = await modalPrompt('Valor (deixe em branco se ainda não souber):', atual ? String(atual).replace('.', ',') : '', null, true);
+  if (novo === null) return;
+  alvo.registro[alvo.campoValor] = novo.trim() ? parseFloat(novo.replace(',', '.')) : null;
+  alvo.salvar();
+  renderizarPlanejamento();
+}
+
 async function marcarItemPlanejamentoComoPago(id) {
   const ehVirtual = String(id).startsWith('planrec-');
   let descricao, valor, criarItemPago;
@@ -1902,8 +1942,8 @@ function renderizarPlanejamento() {
       const rotuloPeriodo = rotuloPeriodoDespesaFixa(r.periodicidade).toLowerCase();
       html += `
       <div class="relatorio-resumo-linha">
-        <span>${escapeHtml(r.descricao)}</span>
-        <strong class="${classeCor}">${sinal}${formatarMoeda(r.valor)}/${rotuloPeriodo}</strong>
+        <span onclick="editarLocalRecorrencia(${r.id})" style="cursor:pointer;">${escapeHtml(r.descricao)}</span>
+        <strong class="${classeCor}" onclick="editarValorRecorrencia(${r.id})" style="cursor:pointer;">${sinal}${formatarMoeda(r.valor)}/${rotuloPeriodo}</strong>
       </div>`;
     });
   }
@@ -1921,9 +1961,15 @@ function renderizarPlanejamento() {
             <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">Marcar como pago</button>
             <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button>
           </span>`;
+      const descricaoHtml = item.pago
+        ? escapeHtml(item.descricao)
+        : `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
+      const valorHtml = item.pago
+        ? valorTexto
+        : `<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer; text-decoration:underline dotted;">${valorTexto}</span>`;
       html += `
       <div class="relatorio-resumo-linha" style="align-items:center; gap:10px;">
-        <span${corDia}>Dia ${item.dia} — ${escapeHtml(item.descricao)}${tagRecorrente}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorTexto}</span></span>
+        <span${corDia}>Dia ${item.dia} — ${descricaoHtml}${tagRecorrente}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorHtml}</span></span>
         ${acoes}
       </div>`;
     });
@@ -3738,6 +3784,7 @@ function atualizarRecorrencia(id, mudancas) {
   Object.assign(rec, mudancas);
   salvarRecorrencias(lista);
   renderizar();
+  if (document.getElementById('planejamentoCard').style.display !== 'none') renderizarPlanejamento();
 }
 
 async function editarTipoRecorrencia(id) {
