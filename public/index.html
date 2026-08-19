@@ -1867,6 +1867,9 @@ async function marcarItemPlanejamentoComoPago(id) {
     if (!valor || valor <= 0) return;
   }
 
+  const formaPagamento = await modalSelecionar('Como você pagou?', [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']], '');
+  if (formaPagamento === null) return;
+
   if (!(await modalConfirmar(`Marcar "${descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída de hoje. Confirma?`))) return;
 
   const dataHojeISO = hojeLocalISO();
@@ -1875,7 +1878,7 @@ async function marcarItemPlanejamentoComoPago(id) {
     valor,
     tipo: 'saida',
     instituicao: 'desconhecido',
-    formaPagamento: 'desconhecido',
+    formaPagamento,
     local: descricao,
     data: `${diaHoje}/${mesHoje}/${anoHoje}`,
     observacao: descricao,
