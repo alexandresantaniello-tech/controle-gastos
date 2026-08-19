@@ -1131,9 +1131,31 @@ function selecionarTipoPeriodo(tipo) {
   renderizarRelatorio();
 }
 
+// As recorrencias (despesas fixas) sao geradas como "transacoes virtuais"
+// (ver transacoesVirtuaisDoMes) so na hora de renderizar - nao ficam
+// gravadas no localStorage. O Relatorio precisa gera-las tambem, senao a
+// recorrencia contribui pro saldo da tela inicial mas some do Relatorio
+// (bug real encontrado em producao, 2026-08-19). Percorre mes a mes dentro
+// do intervalo pedido, porque o periodo do relatorio pode abranger varios
+// meses (trimestre/semestre/ano).
+function transacoesVirtuaisNoIntervalo(inicio, fim) {
+  const virtuais = [];
+  let ano = inicio.getFullYear();
+  let mes = inicio.getMonth();
+  const anoFim = fim.getFullYear();
+  const mesFim = fim.getMonth();
+  while (ano < anoFim || (ano === anoFim && mes <= mesFim)) {
+    virtuais.push(...transacoesVirtuaisDoMes(ano, mes));
+    mes++;
+    if (mes > 11) { mes = 0; ano++; }
+  }
+  return virtuais;
+}
+
 function transacoesDoPeriodo() {
   const { inicio, fim } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
-  return carregarTransacoes().filter(t => {
+  const todas = [...carregarTransacoes(), ...transacoesVirtuaisNoIntervalo(inicio, fim)];
+  return todas.filter(t => {
     const d = dataDaTransacao(t);
     if (!d) return false;
     return d >= inicio && d <= fim;
@@ -1145,15 +1167,30 @@ function transacoesDoPeriodo() {
 // saidas (maior pro menor). Quem nao tem observacao continua exatamente
 // como era antes: lista individual, cronologica, sem somar nada - o
 // usuario so ganha o resumo depois que ele mesmo classifica a transacao.
+// Excecao: recorrencia virtual sem observacao agrupa pelo proprio nome
+// (local) em vez de virar uma linha por dia - sem isso, "Aluguel do carro"
+// apareceria 19 vezes separadas num relatorio de agosto até o dia 19.
+function chaveAgrupamentoTransacao(t) {
+  if (t.observacao) return t.observacao;
+  if (t.recorrenciaVirtual) return t.local;
+  return null;
+}
+
 function agruparPorObservacao(transacoes) {
-  const comObservacao = transacoes.filter(t => t.observacao);
-  const semObservacao = transacoes.filter(t => !t.observacao);
+  const comObservacao = transacoes.filter(t => chaveAgrupamentoTransacao(t));
+  const semObservacao = transacoes.filter(t => !chaveAgrupamentoTransacao(t));
 
   const grupos = {};
   comObservacao.forEach(t => {
-    const chave = `${t.tipo}|${t.observacao}`;
-    if (!grupos[chave]) grupos[chave] = { descricao: t.observacao, tipo: t.tipo, total: 0 };
+    const descricao = chaveAgrupamentoTransacao(t);
+    const chave = `${t.tipo}|${descricao}`;
+    if (!grupos[chave]) grupos[chave] = { descricao, tipo: t.tipo, total: 0, editavel: false };
     grupos[chave].total += Number(t.valor || 0);
+    // O grupo so pode ser renomeado em lote (renomearObservacaoEmGrupo) se
+    // tiver pelo menos uma transacao real com observacao de verdade - grupo
+    // 100% formado por recorrencia virtual nao tem o que renomear (nao fica
+    // gravado no localStorage).
+    if (t.observacao && !t.recorrenciaVirtual) grupos[chave].editavel = true;
   });
   const lista = Object.values(grupos);
   const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => b.total - a.total);
@@ -1179,8 +1216,9 @@ function linhasAgrupadasHtml(transacoes) {
   const linhasGrupos = grupos.map(g => {
     const classeCor = g.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = g.tipo === 'entrada' ? '+' : '-';
+    const clique = g.editavel ? `onclick="renomearObservacaoEmGrupo('${encodeURIComponent(g.descricao)}')" style="cursor:pointer;"` : '';
     return `
-    <div class="relatorio-resumo-linha" style="cursor:pointer;" onclick="renomearObservacaoEmGrupo('${encodeURIComponent(g.descricao)}')">
+    <div class="relatorio-resumo-linha" ${clique}>
       <span>${escapeHtml(g.descricao)}</span>
       <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
     </div>`;
@@ -1254,7 +1292,7 @@ function renderizarRelatorio() {
   const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
   const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
 
-  const temSemObservacao = saidas.some(t => !t.observacao);
+  const temSemObservacao = saidas.some(t => !chaveAgrupamentoTransacao(t));
 
   document.getElementById('resumoRelatorio').innerHTML = `
     <div class="relatorio-resumo-linha"><span>Transações</span><strong>${transacoes.length}</strong></div>
