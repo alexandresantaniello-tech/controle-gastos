@@ -585,6 +585,7 @@
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto">Manual</span></div>
   <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto">Upload</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
+  <div class="upload-toggle" id="planejamentoToggle" onclick="alternarPlanejamento()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg><span class="toggle-texto">Planejamento</span></div>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
@@ -705,6 +706,19 @@
   </div>
   <button class="secondary perigo" id="btnApagarPeriodo" style="margin-top:12px; display:none;" onclick="apagarTransacoesDoPeriodo()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span id="btnApagarPeriodoTexto">Apagar transações</span></button>
   <div class="status" id="statusRelatorio"></div>
+</div>
+
+<div class="card" id="planejamentoCard" style="display:none;">
+  <div class="mes-nav">
+    <button class="nav" onclick="mudarMesPlanejamento(-1)">‹</button>
+    <div class="titulo" id="tituloPlanejamento">-</div>
+    <button class="nav" onclick="mudarMesPlanejamento(1)">›</button>
+  </div>
+  <div id="listaPlanejamento"></div>
+  <div style="text-align:center; margin-top:16px;">
+    <button onclick="iniciarNovoItemPlanejamento()">+ Adicionar item</button>
+  </div>
+  <div class="status" id="statusPlanejamento"></div>
 </div>
 
 <div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg><span class="toggle-texto">Política de Privacidade</span></div>
@@ -1427,6 +1441,7 @@ function fecharTodasSecoes() {
     ['uploadHistoricoCard', 'uploadHistoricoToggle', 'Upload'],
     ['termosCard', 'termosToggle', 'Termos de Uso'],
     ['privacidadeCard', 'privacidadeToggle', 'Política de Privacidade'],
+    ['planejamentoCard', 'planejamentoToggle', 'Planejamento'],
   ];
   secoes.forEach(([cardId, toggleId, rotulo]) => {
     document.getElementById(cardId).style.display = 'none';
@@ -1457,6 +1472,7 @@ const SECAO_TOGGLE_FN = {
   termosCard: () => alternarTermos(),
   privacidadeCard: () => alternarPrivacidade(),
   listaMes: () => alternarListaMes(),
+  planejamentoCard: () => alternarPlanejamento(),
 };
 
 function abrirSecaoNoHistorico(secaoId) {
@@ -1517,6 +1533,197 @@ function alternarRelatorio() {
   renderizarRelatorio();
   document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
   abrirSecaoNoHistorico('relatorioCard');
+}
+
+// ---------- Planejamento mensal: bloquinho de papel digital - contas e
+// gastos avulsos que a pessoa sabe que vao acontecer no mes (ex: "conta de
+// luz dia 5"), mas que ainda nao viraram transacao de verdade. Despesas
+// fixas (recorrencias) ja entram sozinhas na soma de cada dia, por isso so
+// aparecem aqui como referencia, sem checkbox - marcar como pago existe so
+// pros itens avulsos, e lanca a transacao de verdade na hora (fica valendo
+// pro relatorio tambem, nao so uma marcacao isolada). ----------
+const PLANEJAMENTO_KEY = 'controle_gastos_planejamento';
+let ancoraPlanejamento = new Date();
+
+function carregarPlanejamento() {
+  const raw = localStorage.getItem(PLANEJAMENTO_KEY);
+  if (!raw) return [];
+  try {
+    const dados = JSON.parse(raw);
+    return Array.isArray(dados) ? dados : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function salvarPlanejamento(lista) {
+  localStorage.setItem(PLANEJAMENTO_KEY, JSON.stringify(lista));
+}
+
+function itensPlanejamentoDoMes(ano, mes) {
+  return carregarPlanejamento()
+    .filter(item => item.ano === ano && item.mes === mes)
+    .sort((a, b) => a.dia - b.dia);
+}
+
+function despesasFixasAtivasNoMes(ano, mes) {
+  const inicioMes = new Date(ano, mes, 1);
+  const fimMes = new Date(ano, mes + 1, 0);
+  const hojeISO = hojeLocalISO();
+  return carregarRecorrencias().filter(r => {
+    if (!r.dataInicioISO) return false;
+    const inicio = new Date(r.dataInicioISO + 'T00:00:00');
+    const fim = new Date((r.dataFimISO || hojeISO) + 'T00:00:00');
+    return inicio <= fimMes && fim >= inicioMes;
+  });
+}
+
+async function iniciarNovoItemPlanejamento() {
+  const descricao = await modalPrompt('O que precisa ser pago?', '', observacoesFrequentes());
+  if (descricao === null || !descricao.trim()) return;
+
+  const ano = ancoraPlanejamento.getFullYear();
+  const mes = ancoraPlanejamento.getMonth();
+  const padrao = `${ano}-${String(mes + 1).padStart(2, '0')}-01`;
+  const dataISO = await abrirSeletorData(padrao);
+  if (!dataISO) return;
+
+  const valorTexto = await modalPrompt('Valor (deixe em branco se ainda não souber):', '', null, true);
+  const valor = valorTexto && parseFloat(valorTexto) > 0 ? parseFloat(valorTexto) : null;
+
+  const [anoISO, mesISO, diaISO] = dataISO.split('-').map(Number);
+  const lista = carregarPlanejamento();
+  lista.unshift({
+    id: Date.now(),
+    descricao: descricao.trim(),
+    dia: diaISO,
+    mes: mesISO - 1,
+    ano: anoISO,
+    valor,
+    tipo: 'saida',
+    pago: false,
+    transacaoId: null,
+  });
+  salvarPlanejamento(lista);
+  ancoraPlanejamento = new Date(anoISO, mesISO - 1, 1);
+  renderizarPlanejamento();
+}
+
+async function marcarItemPlanejamentoComoPago(id) {
+  const lista = carregarPlanejamento();
+  const item = lista.find(i => i.id === id);
+  if (!item || item.pago) return;
+
+  let valor = item.valor;
+  if (!valor) {
+    const valorTexto = await modalPrompt(`Quanto foi "${item.descricao}"?`, '', null, true);
+    valor = valorTexto ? parseFloat(valorTexto) : NaN;
+    if (!valor || valor <= 0) return;
+  }
+
+  if (!(await modalConfirmar(`Marcar "${item.descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída de hoje. Confirma?`))) return;
+
+  const dataHojeISO = hojeLocalISO();
+  const [anoHoje, mesHoje, diaHoje] = dataHojeISO.split('-');
+  adicionarTransacao({
+    valor,
+    tipo: item.tipo,
+    instituicao: 'desconhecido',
+    formaPagamento: 'desconhecido',
+    local: item.descricao,
+    data: `${diaHoje}/${mesHoje}/${anoHoje}`,
+    observacao: item.descricao,
+  });
+  lembrarObservacao(item.descricao);
+  const novaLista = carregarTransacoes();
+
+  item.pago = true;
+  item.valor = valor;
+  item.transacaoId = novaLista[0].id;
+  salvarPlanejamento(lista);
+  renderizarPlanejamento();
+}
+
+function removerItemPlanejamento(id) {
+  const lista = carregarPlanejamento().filter(i => i.id !== id);
+  salvarPlanejamento(lista);
+  renderizarPlanejamento();
+}
+
+function mudarMesPlanejamento(delta) {
+  ancoraPlanejamento = new Date(ancoraPlanejamento.getFullYear(), ancoraPlanejamento.getMonth() + delta, 1);
+  renderizarPlanejamento();
+}
+
+function renderizarPlanejamento() {
+  const ano = ancoraPlanejamento.getFullYear();
+  const mes = ancoraPlanejamento.getMonth();
+  document.getElementById('tituloPlanejamento').textContent = `${NOMES_MESES[mes]} de ${ano}`;
+
+  const fixas = despesasFixasAtivasNoMes(ano, mes);
+  const itens = itensPlanejamentoDoMes(ano, mes);
+  const hojeISO = hojeLocalISO();
+  const [anoHoje, mesHoje, diaHoje] = hojeISO.split('-').map(Number);
+  const ehMesAtual = ano === anoHoje && mes === (mesHoje - 1);
+
+  let html = '';
+
+  if (fixas.length > 0) {
+    html += `<p class="dica-observacao">Fixas já incluídas automaticamente:</p>`;
+    fixas.forEach(r => {
+      const sinal = r.tipo === 'entrada' ? '+' : '-';
+      const classeCor = r.tipo === 'entrada' ? 'entrada' : 'saida';
+      const rotuloPeriodo = rotuloPeriodoDespesaFixa(r.periodicidade).toLowerCase();
+      html += `
+      <div class="relatorio-resumo-linha">
+        <span>${escapeHtml(r.descricao)}</span>
+        <strong class="${classeCor}">${sinal}${formatarMoeda(r.valor)}/${rotuloPeriodo}</strong>
+      </div>`;
+    });
+  }
+
+  if (itens.length > 0) {
+    html += `<p class="dica-observacao" style="margin-top:14px;">A vencer este mês:</p>`;
+    itens.forEach(item => {
+      const atrasado = !item.pago && ehMesAtual && item.dia < diaHoje;
+      const corDia = atrasado ? ' style="color:var(--saida);"' : '';
+      const valorTexto = item.valor ? formatarMoeda(item.valor) : 'valor não informado';
+      const acoes = item.pago
+        ? ''
+        : `<span style="display:flex; gap:8px; flex-shrink:0;">
+            <button class="secondary" style="padding:6px 10px; font-size:0.8rem;" onclick="marcarItemPlanejamentoComoPago(${item.id})">Marcar como pago</button>
+            <button class="secondary perigo" style="padding:6px 10px; font-size:0.8rem;" onclick="removerItemPlanejamento(${item.id})">×</button>
+          </span>`;
+      html += `
+      <div class="relatorio-resumo-linha" style="align-items:center; gap:10px;">
+        <span${corDia}>Dia ${item.dia} — ${escapeHtml(item.descricao)}${item.pago ? ' ✓' : ''}<br><span style="font-size:0.8em; color:var(--muted-foreground);">${valorTexto}</span></span>
+        ${acoes}
+      </div>`;
+    });
+  }
+
+  if (fixas.length === 0 && itens.length === 0) {
+    html = `<p class="dica-observacao">Nada planejado ainda pra esse mês. Toque em "+ Adicionar item" pra começar.</p>`;
+  }
+
+  document.getElementById('listaPlanejamento').innerHTML = html;
+}
+
+function alternarPlanejamento() {
+  const card = document.getElementById('planejamentoCard');
+  const toggle = document.getElementById('planejamentoToggle');
+  const abrindo = card.style.display === 'none';
+  fecharTodasSecoes();
+  if (!abrindo) {
+    fecharSecaoNoHistorico();
+    return;
+  }
+  card.style.display = 'block';
+  toggle.querySelector('.toggle-texto').textContent = '– Fechar';
+  ancoraPlanejamento = new Date();
+  renderizarPlanejamento();
+  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  abrirSecaoNoHistorico('planejamentoCard');
 }
 
 function alternarUpload() {
