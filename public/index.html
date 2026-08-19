@@ -1951,17 +1951,40 @@ async function marcarItemPlanejamentoComoPago(id) {
   const formaPagamento = await modalSelecionar('Como você pagou?', [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']], '');
   if (formaPagamento === null) return;
 
-  if (!(await modalConfirmar(`Marcar "${descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída de hoje. Confirma?`))) return;
+  // Por padrao lanca com a data de hoje (quando de fato foi confirmado),
+  // mas se o vencimento e diferente de hoje, oferece escolher o dia do
+  // vencimento ou outra data - nem sempre faz sentido contar o gasto no dia
+  // em que a pessoa lembrou de confirmar, e nao no dia em que a conta venceu.
+  const hojeISOAtual = hojeLocalISO();
+  const dataVencimentoISO = `${anoVencimento}-${String(mesVencimento + 1).padStart(2, '0')}-${String(diaVencimento).padStart(2, '0')}`;
+  let dataEscolhidaISO = hojeISOAtual;
+  if (dataVencimentoISO !== hojeISOAtual) {
+    const escolhaData = await modalSelecionar('Qual data usar no lançamento?', [
+      ['hoje', 'Hoje'],
+      ['vencimento', `Dia do vencimento (${diaVencimento})`],
+      ['outra', 'Escolher outra data'],
+    ], 'hoje');
+    if (escolhaData === null) return;
+    if (escolhaData === 'vencimento') {
+      dataEscolhidaISO = dataVencimentoISO;
+    } else if (escolhaData === 'outra') {
+      const escolhida = await abrirSeletorData(hojeISOAtual);
+      if (!escolhida) return;
+      dataEscolhidaISO = escolhida;
+    }
+  }
+  const [anoLancamento, mesLancamento, diaLancamento] = dataEscolhidaISO.split('-');
+  const dataLancamentoBR = `${diaLancamento}/${mesLancamento}/${anoLancamento}`;
 
-  const dataHojeISO = hojeLocalISO();
-  const [anoHoje, mesHoje, diaHoje] = dataHojeISO.split('-');
+  if (!(await modalConfirmar(`Marcar "${descricao}" como pago vai lançar ${formatarMoeda(valor)} como saída do dia ${dataLancamentoBR}. Confirma?`))) return;
+
   adicionarTransacao({
     valor,
     tipo: 'saida',
     instituicao: 'desconhecido',
     formaPagamento,
     local: descricao,
-    data: `${diaHoje}/${mesHoje}/${anoHoje}`,
+    data: dataLancamentoBR,
     observacao: descricao,
   });
   lembrarObservacao(descricao);
