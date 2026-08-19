@@ -274,12 +274,11 @@
   .tipo-toggle button.ativo-entrada { border-color: var(--entrada); }
   .tipo-toggle button.ativo-saida { border-color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
-  .toggles-linha { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }
+  .toggles-linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }
   .toggles-linha .upload-toggle {
     font-size: 0.78rem;
     gap: 5px;
     margin-bottom: 0;
-    flex: 1 1 calc(33.333% - 7px);
     justify-content: center;
     text-align: center;
     padding: 9px 6px;
@@ -595,9 +594,9 @@
 <div class="toggles-linha" id="togglesLinha">
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto">Relatórios</span></div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto">Manual</span></div>
+  <div class="upload-toggle" id="planejamentoToggle" onclick="alternarPlanejamento()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg><span class="toggle-texto">Planejamento</span></div>
   <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto">Upload</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>
-  <div class="upload-toggle" id="planejamentoToggle" onclick="alternarPlanejamento()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg><span class="toggle-texto">Planejamento</span></div>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
