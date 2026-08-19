@@ -748,9 +748,14 @@
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
     </div>
 
+    <div class="campo-clicavel" id="campoFormaPagamentoNovoItem" onclick="editarFormaPagamentoNovoItemPlanejamento()" style="margin-top:14px; display:none;">
+      <span id="textoFormaPagamentoNovoItem" class="vazio">FORMA DE PAGAMENTO</span>
+      <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+    </div>
+
     <div style="text-align:center; margin-top:16px; display:flex; gap:10px; justify-content:center;">
       <button class="secondary" onclick="cancelarNovoItemPlanejamento()">Cancelar</button>
-      <button onclick="salvarNovoItemPlanejamento()">Salvar item</button>
+      <button onclick="salvarNovoItemPlanejamento()" id="botaoSalvarItemPlanejamento">Salvar item</button>
     </div>
   </div>
   <div class="status" id="statusPlanejamento"></div>
@@ -1668,23 +1673,85 @@ function itensPlanejamentoDoMes(ano, mes) {
 let diaNovoItemISO = null;
 let recorrenciaNovoItemAtiva = false;
 let recorrenciaNovoItemVezes = null; // null = sem parar; N = numero de meses
+let itemEditandoId = null; // null = criando um item novo; senao, id do item/regra sendo editado
+let formaPagamentoNovoItemAtual = '';
 
-function mostrarFormNovoItemPlanejamento() {
-  document.getElementById('nomeNovoItemPlanejamento').value = '';
-  document.getElementById('valorNovoItemPlanejamento').value = '';
-  diaNovoItemISO = null;
-  recorrenciaNovoItemAtiva = false;
-  recorrenciaNovoItemVezes = null;
+// Sem id: abre o formulario vazio pra criar um item novo. Com id: reaproveita
+// o mesmo formulario pra editar um item/regra existente, ja preenchido -
+// evita ter uma tela de criacao e um menu de edicao separados e
+// inconsistentes entre si.
+function mostrarFormNovoItemPlanejamento(idParaEditar) {
+  itemEditandoId = idParaEditar || null;
+  const statusEl = document.getElementById('statusPlanejamento');
+  statusEl.textContent = '';
+
+  if (itemEditandoId) {
+    const alvo = resolverAlvoPlanejamento(itemEditandoId);
+    if (!alvo) return;
+    const ehRegra = alvo.campoValor === 'valorPadrao';
+    document.getElementById('nomeNovoItemPlanejamento').value = alvo.registro.descricao;
+    document.getElementById('valorNovoItemPlanejamento').value = alvo.registro[alvo.campoValor] || '';
+
+    if (ehRegra) {
+      const ano = ancoraPlanejamento.getFullYear();
+      const mes = ancoraPlanejamento.getMonth();
+      diaNovoItemISO = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(alvo.registro.dia).padStart(2, '0')}`;
+      recorrenciaNovoItemAtiva = true;
+      recorrenciaNovoItemVezes = alvo.registro.vezes || null;
+    } else {
+      diaNovoItemISO = `${alvo.registro.ano}-${String(alvo.registro.mes + 1).padStart(2, '0')}-${String(alvo.registro.dia).padStart(2, '0')}`;
+      recorrenciaNovoItemAtiva = false;
+      recorrenciaNovoItemVezes = null;
+    }
+    document.getElementById('campoRecorrenteNovoItem').style.display = ehRegra ? 'flex' : 'none';
+
+    const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+    formaPagamentoNovoItemAtual = ligada ? (ligada.transacao.formaPagamento || '') : '';
+    document.getElementById('campoFormaPagamentoNovoItem').style.display = ligada ? 'flex' : 'none';
+
+    document.getElementById('botaoSalvarItemPlanejamento').textContent = 'Salvar alterações';
+  } else {
+    document.getElementById('nomeNovoItemPlanejamento').value = '';
+    document.getElementById('valorNovoItemPlanejamento').value = '';
+    diaNovoItemISO = null;
+    recorrenciaNovoItemAtiva = false;
+    recorrenciaNovoItemVezes = null;
+    formaPagamentoNovoItemAtual = '';
+    document.getElementById('campoRecorrenteNovoItem').style.display = 'flex';
+    document.getElementById('campoFormaPagamentoNovoItem').style.display = 'none';
+    document.getElementById('botaoSalvarItemPlanejamento').textContent = 'Salvar item';
+  }
+
   atualizarTextoDiaNovoItem();
   atualizarTextoRecorrenteNovoItem();
+  atualizarTextoFormaPagamentoNovoItem();
   document.getElementById('formNovoItemPlanejamento').style.display = 'block';
   document.getElementById('botaoNovoItemPlanejamentoWrap').style.display = 'none';
   document.getElementById('formNovoItemPlanejamento').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelarNovoItemPlanejamento() {
+  itemEditandoId = null;
   document.getElementById('formNovoItemPlanejamento').style.display = 'none';
   document.getElementById('botaoNovoItemPlanejamentoWrap').style.display = 'block';
+}
+
+function atualizarTextoFormaPagamentoNovoItem() {
+  const el = document.getElementById('textoFormaPagamentoNovoItem');
+  if (formaPagamentoNovoItemAtual && formaPagamentoNovoItemAtual !== 'desconhecido') {
+    el.textContent = ROTULOS_FORMA_PAGAMENTO[formaPagamentoNovoItemAtual];
+    el.classList.remove('vazio');
+  } else {
+    el.textContent = 'FORMA DE PAGAMENTO';
+    el.classList.add('vazio');
+  }
+}
+
+async function editarFormaPagamentoNovoItemPlanejamento() {
+  const nova = await modalSelecionar('Como você pagou?', [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']], formaPagamentoNovoItemAtual);
+  if (nova === null) return;
+  formaPagamentoNovoItemAtual = nova;
+  atualizarTextoFormaPagamentoNovoItem();
 }
 
 function atualizarTextoDiaNovoItem() {
@@ -1755,7 +1822,39 @@ function salvarNovoItemPlanejamento() {
 
   const [anoISO, mesISO, diaISO] = diaNovoItemISO.split('-').map(Number);
 
-  if (recorrenciaNovoItemAtiva) {
+  if (itemEditandoId) {
+    const alvo = resolverAlvoPlanejamento(itemEditandoId);
+    if (!alvo) return;
+    const ehRegra = alvo.campoValor === 'valorPadrao';
+    // Nao suporta trocar o "tipo" do item no meio da edicao (regra vira
+    // avulso ou vice-versa) - e uma estrutura de dados diferente por baixo.
+    if (ehRegra && !recorrenciaNovoItemAtiva) {
+      statusEl.textContent = 'Pra parar de repetir, use o "×" na lista em vez de tirar a recorrência aqui.';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    alvo.registro.descricao = nome;
+    alvo.registro[alvo.campoValor] = valor;
+    alvo.registro.dia = diaISO;
+    if (ehRegra) {
+      alvo.registro.vezes = recorrenciaNovoItemVezes;
+    } else {
+      alvo.registro.mes = mesISO - 1;
+      alvo.registro.ano = anoISO;
+    }
+    alvo.salvar();
+
+    const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
+    if (ligada) {
+      ligada.transacao.local = nome;
+      ligada.transacao.observacao = nome;
+      if (valor) ligada.transacao.valor = valor;
+      if (formaPagamentoNovoItemAtual) ligada.transacao.formaPagamento = formaPagamentoNovoItemAtual;
+      ligada.salvar();
+      renderizar();
+    }
+  } else if (recorrenciaNovoItemAtiva) {
     const regras = carregarPlanejamentoRecorrencias();
     regras.unshift({
       id: Date.now(),
@@ -1858,17 +1957,11 @@ async function editarValorItemPlanejamento(id) {
   renderizarPlanejamento();
 }
 
-async function editarItemPlanejamento(id) {
-  const alvo = resolverAlvoPlanejamento(id);
-  if (!alvo) return;
-  const ligada = transacaoLigadaAoItemPlanejamento(alvo.registro);
-  const opcoes = [['nome', 'Nome'], ['valor', 'Valor']];
-  if (ligada) opcoes.push(['forma', 'Forma de pagamento']);
-  const escolha = await modalSelecionar('O que quer editar?', opcoes, '');
-  if (escolha === null) return;
-  if (escolha === 'nome') return editarDescricaoItemPlanejamento(id);
-  if (escolha === 'valor') return editarValorItemPlanejamento(id);
-  if (escolha === 'forma') return editarFormaPagamentoItemPlanejamento(id);
+// O lapis abre o mesmo formulario do "+ Adicionar item", ja preenchido -
+// edita tudo de uma vez (nome, dia, valor, recorrencia, forma de pagamento)
+// em vez de um menu perguntando campo por campo.
+function editarItemPlanejamento(id) {
+  mostrarFormNovoItemPlanejamento(id);
 }
 
 async function editarFormaPagamentoItemPlanejamento(id) {
