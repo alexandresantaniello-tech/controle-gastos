@@ -1884,9 +1884,19 @@ async function editarFormaPagamentoItemPlanejamento(id) {
   renderizarPlanejamento();
 }
 
+// Quantos dias se passaram desde o vencimento (0 se ainda nao venceu ou
+// vence hoje) - usado pra perguntar sobre juros/multa antes de lancar.
+function diasDeAtraso(ano, mes, dia) {
+  const vencimento = new Date(ano, mes, dia);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const diff = Math.round((hoje - vencimento) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+
 async function marcarItemPlanejamentoComoPago(id) {
   const ehVirtual = String(id).startsWith('planrec-');
-  let descricao, valor, criarItemPago;
+  let descricao, valor, diaVencimento, mesVencimento, anoVencimento, criarItemPago;
 
   if (ehVirtual) {
     const [, regraId, anoStr, mesStr] = String(id).split('-');
@@ -1894,6 +1904,9 @@ async function marcarItemPlanejamentoComoPago(id) {
     if (!regra) return;
     descricao = regra.descricao;
     valor = regra.valorPadrao;
+    diaVencimento = regra.dia;
+    mesVencimento = Number(mesStr);
+    anoVencimento = Number(anoStr);
     criarItemPago = (valorFinal, transacaoId) => ({
       id: String(Date.now()),
       descricao,
@@ -1912,6 +1925,9 @@ async function marcarItemPlanejamentoComoPago(id) {
     if (!item || item.pago) return;
     descricao = item.descricao;
     valor = item.valor;
+    diaVencimento = item.dia;
+    mesVencimento = item.mes;
+    anoVencimento = item.ano;
     criarItemPago = null;
   }
 
@@ -1919,6 +1935,17 @@ async function marcarItemPlanejamentoComoPago(id) {
     const valorTexto = await modalPrompt(`Quanto foi "${descricao}"?`, '', null, true);
     valor = valorTexto ? parseFloat(valorTexto) : NaN;
     if (!valor || valor <= 0) return;
+  } else {
+    // Ja tinha um valor previsto - se venceu ha dias, pode ter juros/multa
+    // por cima; pergunta antes de lancar em vez de assumir o valor original.
+    const atraso = diasDeAtraso(anoVencimento, mesVencimento, diaVencimento);
+    if (atraso > 0) {
+      const diaLabel = atraso === 1 ? '1 dia' : `${atraso} dias`;
+      const novoTexto = await modalPrompt(`Essa conta venceu há ${diaLabel} (dia ${diaVencimento}). Tem juros ou multa? Se sim, informe o valor com juros - ou deixe como está pra manter ${formatarMoeda(valor)}:`, String(valor).replace('.', ','), null, true);
+      if (novoTexto === null) return;
+      const novoValor = novoTexto.trim() ? parseFloat(novoTexto.replace(',', '.')) : valor;
+      if (novoValor && novoValor > 0) valor = novoValor;
+    }
   }
 
   const formaPagamento = await modalSelecionar('Como você pagou?', [['pix', 'Pix'], ['debito', 'Débito'], ['credito', 'Crédito'], ['especie', 'Espécie']], '');
