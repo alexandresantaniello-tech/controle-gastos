@@ -3983,6 +3983,12 @@ function renderizarTransacaoVirtual(t) {
     `<span onclick="editarInstituicaoRecorrencia(${t.recorrenciaId})">${instituicaoTexto}</span>`,
     `<span onclick="editarPeriodoRecorrenciaExistente(${t.recorrenciaId})">${rotuloPeriodoDespesaFixa(t.periodicidade)}</span>`,
   ];
+  // Mostra quanto a despesa fixa equivale por dia, como contexto - o valor
+  // principal exibido continua sendo o periodico (t.valorPeriodico). t.valor
+  // ja e o equivalente diario (ver transacoesVirtuaisDoMes).
+  if (t.periodicidade && t.periodicidade.dias) {
+    segmentosDetalhes.push(`<span>≈ ${formatarMoeda(t.valor)}/dia</span>`);
+  }
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
@@ -4148,11 +4154,6 @@ function renderizarTransacao(t) {
     `<span onclick="editarLocal(${t.id})">${localTexto}</span>`,
     `<span onclick="editarInstituicao(${t.id})">${instituicaoTexto}</span>`,
   ].filter(Boolean);
-  // Despesa fixa (ver Despesas Fixas): mostra o equivalente por dia como
-  // contexto, sem mudar o valor real registrado.
-  if (t.periodicidade && t.periodicidade.dias) {
-    segmentosDetalhes.push(`<span>≈ ${formatarMoeda(t.valor / t.periodicidade.dias)}/dia</span>`);
-  }
   div.innerHTML = `
     <div class="info">
       <div class="linha-topo">
