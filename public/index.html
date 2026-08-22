@@ -4003,7 +4003,10 @@ function renderizarTransacaoVirtual(t) {
       <div class="linha-nota">
         ${notaHtml}
         ${t.recorrenciaAtiva === false
-          ? `<span style="font-size:0.78rem; font-weight:500; color:var(--muted-foreground);">RECORRÊNCIA ENCERRADA</span>`
+          ? `<span style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+              <span style="font-size:0.78rem; font-weight:500; color:var(--muted-foreground);">RECORRÊNCIA ENCERRADA</span>
+              <span class="excluir-link" onclick="confirmarExcluirRecorrencia(${t.recorrenciaId})">EXCLUIR</span>
+            </span>`
           : `<span class="excluir-link" onclick="confirmarEncerrarRecorrencia(${t.recorrenciaId})">ENCERRAR RECORRÊNCIA</span>`}
       </div>
     </div>
@@ -4123,6 +4126,18 @@ async function confirmarEncerrarRecorrencia(id) {
   const ok = await modalConfirmar('Encerrar essa recorrência? Ela para de contar a partir de hoje - o que já foi somado até agora continua igual.');
   if (!ok) return;
   encerrarRecorrencia(id);
+}
+
+// So oferecido pra recorrencia ja encerrada (ver renderizarTransacaoVirtual)
+// - diferente de "encerrar", isso apaga a regra de vez, o que some com TODO
+// o historico dela (os dias ja contados tambem deixam de aparecer), por
+// isso o aviso explicito antes de confirmar.
+async function confirmarExcluirRecorrencia(id) {
+  const ok = await modalConfirmar('Excluir essa recorrência de vez? Isso apaga todo o histórico dela, não só os dias futuros. Não dá pra desfazer.');
+  if (!ok) return;
+  const lista = carregarRecorrencias().filter(r => r.id !== id);
+  salvarRecorrencias(lista);
+  renderizar();
 }
 
 function renderizarTransacao(t) {
