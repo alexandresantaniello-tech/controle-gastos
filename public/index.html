@@ -4443,6 +4443,10 @@ function salvarDinheiro() {
       observacao: observacaoDinheiroAtual,
     });
   }
+  // Diferente do lancamento via IA, o Manual nunca abria a lista do dia
+  // sozinho - a pessoa salvava e nao via nada mudar na tela, e nem achava
+  // o botao de "encerrar recorrencia" (que fica dentro desse card escondido).
+  abrirRegistroNoDia({ data: `${dia}/${mes}/${ano}` });
 
   document.getElementById('valorDinheiro').value = '';
   observacaoDinheiroAtual = '';
