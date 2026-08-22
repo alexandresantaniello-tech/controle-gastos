@@ -3007,6 +3007,7 @@ function transacoesVirtuaisDoMes(ano, mes) {
         data: `${dd}/${mm}/${ano}`,
         recorrenciaVirtual: true,
         recorrenciaId: r.id,
+        recorrenciaAtiva: r.ativo,
       });
     }
   });
@@ -4001,7 +4002,9 @@ function renderizarTransacaoVirtual(t) {
       </div>
       <div class="linha-nota">
         ${notaHtml}
-        <span class="excluir-link" onclick="confirmarEncerrarRecorrencia(${t.recorrenciaId})">ENCERRAR RECORRÊNCIA</span>
+        ${t.recorrenciaAtiva === false
+          ? `<span style="font-size:0.78rem; font-weight:500; color:var(--muted-foreground);">RECORRÊNCIA ENCERRADA</span>`
+          : `<span class="excluir-link" onclick="confirmarEncerrarRecorrencia(${t.recorrenciaId})">ENCERRAR RECORRÊNCIA</span>`}
       </div>
     </div>
   `;
