@@ -468,35 +468,89 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
 
 const DIAS_DIREITO_ARREPENDIMENTO = 7; // CDC Art. 49
 
-// Recupera a chave de licenca em um aparelho novo (a chave so fica salva no
-// navegador onde a assinatura foi criada - sem isso, trocar de celular pro
-// computador faz a pessoa parecer nao-assinante). Devolve a chave mais
-// recente vinculada a esse e-mail, tenha ela pagamento aprovado ou nao (se
-// nao tiver, o app volta pro passo do QR code sozinho).
-// Nota de seguranca: como o Sifia nao tem sistema de login/senha, isso
-// devolve a chave direto pra quem souber o e-mail - aceitavel porque a
-// chave so libera acesso ao app (nenhuma acao financeira nova), mas nao e
-// tao forte quanto um link magico por e-mail (que exigiria enviar e-mail,
-// infraestrutura que o Sifia ainda nao tem).
-app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
-  const email = (req.body && req.body.email || '').trim().toLowerCase();
-  if (!email) {
-    return res.status(400).json({ erro: 'E-mail obrigatório' });
-  }
+// Recuperacao segura em aparelho novo: conhecer apenas o e-mail nao libera mais
+// a chave. Primeiro enviamos um codigo de uso unico pelo Resend; somente depois
+// de provar acesso a caixa de e-mail a chave de licenca e devolvida.
+const RECUPERACAO_TTL_SEGUNDOS = 10 * 60;
+const RECUPERACAO_MAX_TENTATIVAS = 5;
+
+function normalizarEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function hashCodigoRecuperacao(email, codigo) {
+  return crypto.createHash('sha256').update(email + ':' + codigo).digest('hex');
+}
+
+async function encontrarLicencaMaisRecentePorEmail(email) {
   const chaves = await todasAsChavesDeLicenca();
   let encontrada = null;
   for (const chave of chaves) {
     const registro = await buscarLicenca(chave);
-    if (registro && registro.email && registro.email.toLowerCase() === email) {
-      if (!encontrada || new Date(registro.atualizadoEm) > new Date(encontrada.atualizadoEm)) {
-        encontrada = { chave, ...registro };
-      }
+    if (registro && normalizarEmail(registro.email) === email) {
+      if (!encontrada || new Date(registro.atualizadoEm || 0) > new Date(encontrada.atualizadoEm || 0)) encontrada = { chave, ...registro };
     }
   }
-  if (!encontrada) {
-    return res.status(404).json({ erro: 'Nenhuma assinatura encontrada com esse e-mail.' });
+  return encontrada;
+}
+
+async function enviarCodigoRecuperacao(email, codigo) {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
+  const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
+  const resposta = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: remetente,
+      to: [email],
+      subject: 'Seu código de acesso ao Sifia',
+      text: 'Seu código de acesso ao Sifia é ' + codigo + '. Ele expira em 10 minutos. Se você não pediu este código, ignore este e-mail.',
+      html: '<div style="font-family:Arial,sans-serif;color:#0b172a"><h2>Sifia</h2><p>Seu código de acesso é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">' + codigo + '</p><p>Ele expira em 10 minutos.</p><p>Se você não pediu este código, ignore este e-mail.</p></div>',
+    }),
+  });
+  if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
+}
+
+app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
+  const email = normalizarEmail(req.body && req.body.email);
+  if (!email || !email.includes('@')) return res.status(400).json({ erro: 'E-mail inválido' });
+  try {
+    const encontrada = await encontrarLicencaMaisRecentePorEmail(email);
+    if (!encontrada) return res.json({ codigoEnviado: true });
+    const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const token = crypto.randomBytes(24).toString('hex');
+    await redis.set('recuperacao:' + token, { email, chave: encontrada.chave, codigoHash: hashCodigoRecuperacao(email, codigo), tentativas: 0 }, { ex: RECUPERACAO_TTL_SEGUNDOS });
+    await enviarCodigoRecuperacao(email, codigo);
+    res.json({ codigoEnviado: true, token });
+  } catch (err) {
+    console.error('Falha ao iniciar recuperação', err);
+    res.status(500).json({ erro: 'Não foi possível enviar o código agora. Tente novamente em instantes.' });
   }
-  res.json({ chaveDeLicenca: encontrada.chave });
+});
+
+app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => {
+  const token = String(req.body && req.body.token || '').trim();
+  const codigo = String(req.body && req.body.codigo || '').trim();
+  if (!token || !/^\d{6}$/.test(codigo)) return res.status(400).json({ erro: 'Código inválido.' });
+  const redisKey = 'recuperacao:' + token;
+  const tentativa = await redis.get(redisKey);
+  if (!tentativa) return res.status(400).json({ erro: 'Código expirado. Solicite um novo.' });
+  if ((tentativa.tentativas || 0) >= RECUPERACAO_MAX_TENTATIVAS) {
+    await redis.del(redisKey);
+    return res.status(429).json({ erro: 'Muitas tentativas. Solicite um novo código.' });
+  }
+  const recebido = Buffer.from(hashCodigoRecuperacao(tentativa.email, codigo), 'hex');
+  const esperado = Buffer.from(tentativa.codigoHash, 'hex');
+  const valido = recebido.length === esperado.length && crypto.timingSafeEqual(recebido, esperado);
+  if (!valido) {
+    tentativa.tentativas = (tentativa.tentativas || 0) + 1;
+    await redis.set(redisKey, tentativa, { ex: RECUPERACAO_TTL_SEGUNDOS });
+    return res.status(400).json({ erro: 'Código incorreto.' });
+  }
+  await redis.del(redisKey);
+  const registro = await buscarLicenca(tentativa.chave);
+  if (!registro) return res.status(404).json({ erro: 'Assinatura não encontrada.' });
+  res.json({ chaveDeLicenca: tentativa.chave, ativa: !!registro.ativa });
 });
 
 // O app consulta isso periodicamente pra saber se libera os recursos pagos.

@@ -5134,25 +5134,26 @@ verificarLicencaAoAbrir();
 // tela) quanto pelo link da tela 2 (pede o e-mail direto, ja que ali nao
 // tem campo de e-mail visivel).
 async function tentarRecuperarPorEmail(email) {
-  const statusEl = document.getElementById('statusPaywall2').offsetParent
-    ? document.getElementById('statusPaywall2')
-    : document.getElementById('statusPaywall');
-  statusEl.textContent = 'Procurando sua assinatura...';
+  const statusEl = document.getElementById('statusPaywall2').offsetParent ? document.getElementById('statusPaywall2') : document.getElementById('statusPaywall');
+  statusEl.textContent = 'Enviando código para seu e-mail...';
   try {
-    const resp = await fetch('/api/licenca/recuperar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
+    const resp = await fetch('/api/licenca/recuperar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
     const dados = await resp.json();
-    if (!resp.ok) throw new Error(dados.erro || 'Não encontrada');
-
-    localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
+    if (!resp.ok) throw new Error(dados.erro || 'Não foi possível enviar o código.');
+    statusEl.textContent = 'Se existir uma assinatura com esse e-mail, enviamos um código de 6 dígitos.';
+    if (!dados.token) return;
+    const codigo = await modalPrompt('Digite o código de 6 dígitos enviado para seu e-mail:', '');
+    if (!codigo) return;
+    statusEl.textContent = 'Confirmando código...';
+    const confirmar = await fetch('/api/licenca/confirmar-recuperacao', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: dados.token, codigo: codigo.trim() }) });
+    const confirmacao = await confirmar.json();
+    if (!confirmar.ok) throw new Error(confirmacao.erro || 'Código inválido.');
+    localStorage.setItem(CHAVE_LICENCA_KEY, confirmacao.chaveDeLicenca);
     localStorage.setItem(EMAIL_LICENCA_KEY, email);
-    statusEl.textContent = 'Assinatura encontrada!';
+    statusEl.textContent = 'E-mail confirmado. Assinatura recuperada!';
     location.reload();
   } catch (err) {
-    statusEl.textContent = 'Nenhuma assinatura encontrada com esse e-mail.';
+    statusEl.textContent = err.message || 'Não foi possível recuperar a assinatura agora.';
   }
 }
 
