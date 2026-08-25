@@ -2287,11 +2287,10 @@ const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
 const TEXTO_PADRAO_DROPZONE = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Escolha o arquivo';
 
-// Temporariamente visivel em qualquer aparelho so pra visualizacao/teste -
-// depois volta a ser so-iOS (ver iPhone|iPad|iPod no user agent).
 {
   const dicaIphone = document.getElementById('dicaIphone');
-  if (dicaIphone) dicaIphone.style.display = 'block';
+  const ehIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (dicaIphone && ehIOS) dicaIphone.style.display = 'block';
 }
 
 dropZone.addEventListener('click', () => fileInput.click());
@@ -4591,7 +4590,7 @@ function fazerBackup() {
     transacoes: carregarTransacoes(),
   };
   const json = JSON.stringify(dados, null, 2);
-  const nomeArquivo = `clara-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const nomeArquivo = `sifia-backup-${new Date().toISOString().slice(0, 10)}.json`;
   const statusEl = document.getElementById('statusBackup');
 
   statusEl.textContent = 'Preparando backup...';
