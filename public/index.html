@@ -275,12 +275,14 @@
   .tipo-toggle button.ativo-entrada { border-color: var(--entrada); }
   .tipo-toggle button.ativo-saida { border-color: var(--saida); }
   .tipo-toggle button.ativo { background: var(--accent); border-color: var(--primary); color: var(--primary); }
-  .toggles-linha { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }
+  .toggles-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }
   .toggles-linha .upload-toggle {
     font-size: 0.74rem;
     gap: 4px;
     margin-bottom: 0;
-    flex: 0 1 98px;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
     justify-content: center;
     text-align: center;
     padding: 9px 4px;
@@ -604,9 +606,7 @@
 
 <div class="card" id="idiomaCard" style="display:none;">
   <div class="grupo-dia" style="margin-top:0;">Idioma</div>
-  <p class="aviso-backup" id="idiomaNativoInfo"></p>
-  <button class="secondary" id="btnIdiomaNativo" onclick="restaurarIdiomaNativo()" style="width:100%; margin-bottom:12px;"></button>
-  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher outro idioma</button>
+  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher idioma</button>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
@@ -3903,32 +3903,6 @@ function t(chave) {
 function listaOpcoesIdioma() {
   return Object.entries(NOMES_IDIOMA);
 }
-function detectarIdiomaNativo() {
-  const candidatos = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'pt-BR']);
-  for (const bruto of candidatos) {
-    const codigo = String(bruto || '').toLowerCase().split('-')[0];
-    if (NOMES_IDIOMA[codigo] && TRADUCOES[codigo]) return codigo;
-  }
-  return 'pt';
-}
-const idiomaNativoDispositivo = detectarIdiomaNativo();
-
-function nomeIdiomaNativo() {
-  return NOMES_IDIOMA[idiomaNativoDispositivo] || idiomaNativoDispositivo.toUpperCase();
-}
-
-function atualizarCardIdioma() {
-  const info = document.getElementById('idiomaNativoInfo');
-  const btn = document.getElementById('btnIdiomaNativo');
-  if (info) info.textContent = 'Idioma do dispositivo: ' + nomeIdiomaNativo();
-  if (btn) btn.textContent = '↩ ' + nomeIdiomaNativo() + ' — idioma do dispositivo';
-}
-
-function restaurarIdiomaNativo() {
-  mudarIdioma(idiomaNativoDispositivo);
-  atualizarCardIdioma();
-}
-
 async function escolherIdioma() {
   const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);
   if (novo === null) return;
@@ -5330,7 +5304,6 @@ limparPrefixoLocalAntigo();
 processarComprovanteCompartilhado();
 popularSeletorIdioma();
 aplicarTraducoes();
-atualizarCardIdioma();
 renderizar();
 carregarTaxasCambio().then(() => {
   popularSeletorMoeda();
