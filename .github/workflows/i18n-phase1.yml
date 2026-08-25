@@ -1,0 +1,64 @@
+name: Fase 1 - Internacionalizacao
+
+on:
+  push:
+    branches: [fase1-internacionalizacao]
+    paths: ['.github/workflows/i18n-phase1.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fase1-internacionalizacao
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Aplicar reorganizacao do idioma
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('public/index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''    <span id="seletorMoeda" onclick="abrirSeletorMoedaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer;">R$ Real</span>\n    <span id="taxaCambioInfo" style="font-size:0.75rem; color:var(--muted-foreground); margin-left:6px;"></span>'''
+          new='''    <span id="seletorMoeda" onclick="abrirSeletorMoedaGlobal()" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer;">R$ Real</span>\n    <span id="seletorIdioma" onclick="abrirSeletorIdiomaGlobal()" role="button" tabindex="0" aria-label="Selecionar idioma" style="display:inline-block; background:transparent; color:var(--primary); border:1px solid var(--primary); border-radius:8px; padding:4px 8px; font-size:0.8rem; cursor:pointer; margin-left:6px;">🌐PT</span>\n    <span id="taxaCambioInfo" style="font-size:0.75rem; color:var(--muted-foreground); margin-left:6px;"></span>'''
+          assert old in s
+          s=s.replace(old,new,1)
+          old="let idiomaSelecionado = localStorage.getItem(IDIOMA_KEY) || 'pt';"
+          new="""const CONFIG_IDIOMA = {\n  pt: { locale: 'pt-BR', dir: 'ltr' }, es: { locale: 'es-ES', dir: 'ltr' }, en: { locale: 'en-US', dir: 'ltr' },\n  fr: { locale: 'fr-FR', dir: 'ltr' }, de: { locale: 'de-DE', dir: 'ltr' }, it: { locale: 'it-IT', dir: 'ltr' },\n  zh: { locale: 'zh-CN', dir: 'ltr' }, ja: { locale: 'ja-JP', dir: 'ltr' }, ko: { locale: 'ko-KR', dir: 'ltr' },\n  ar: { locale: 'ar', dir: 'rtl' }, he: { locale: 'he', dir: 'rtl' }, ur: { locale: 'ur', dir: 'rtl' }, fa: { locale: 'fa', dir: 'rtl' }\n};\nconst idiomaSalvo = localStorage.getItem(IDIOMA_KEY);\nlet idiomaSelecionado = NOMES_IDIOMA[idiomaSalvo] ? idiomaSalvo : 'pt';\nfunction configIdioma(codigo = idiomaSelecionado) { return CONFIG_IDIOMA[codigo] || { locale: codigo, dir: 'ltr' }; }\nfunction aplicarMetadadosIdioma() { const config = configIdioma(); document.documentElement.lang = config.locale; document.documentElement.dir = config.dir; }"""
+          assert old in s
+          s=s.replace(old,new,1)
+          old="""function aplicarTraducoes() {\n  const mapa = ['rotuloEntradas', 'rotuloSaidas', 'rotuloSaldo', 'emptyMsg', 'btnFalarTransacaoTexto', 'rotuloColarTexto'];\n  mapa.forEach(id => {\n    const el = document.getElementById(id);\n    if (el) el.textContent = t(id);\n  });\n}"""
+          new="""function aplicarTraducoes() {\n  aplicarMetadadosIdioma();\n  const mapaLegado = ['rotuloEntradas', 'rotuloSaidas', 'rotuloSaldo', 'emptyMsg', 'btnFalarTransacaoTexto', 'rotuloColarTexto'];\n  mapaLegado.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = t(id); });\n  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });\n}"""
+          assert old in s
+          s=s.replace(old,new,1)
+          old="""function mudarIdioma(novo) {\n  idiomaSelecionado = novo;\n  localStorage.setItem(IDIOMA_KEY, novo);\n  popularSeletorIdioma();\n  aplicarTraducoes();\n  renderizar();\n}"""
+          new="""function mudarIdioma(novo) {\n  if (!NOMES_IDIOMA[novo] || !TRADUCOES[novo]) return;\n  idiomaSelecionado = novo;\n  localStorage.setItem(IDIOMA_KEY, novo);\n  popularSeletorIdioma();\n  aplicarTraducoes();\n  renderizar();\n}"""
+          assert old in s
+          s=s.replace(old,new,1)
+          needle="""async function abrirSeletorIdiomaGlobal() {\n  const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);\n  if (novo === null) return;\n  mudarIdioma(novo);\n}\n"""
+          assert needle in s
+          s=s.replace(needle,needle+"""\ndocument.addEventListener('keydown', (e) => {\n  if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.id === 'seletorIdioma') {\n    e.preventDefault();\n    abrirSeletorIdiomaGlobal();\n  }\n});\n""",1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar JavaScript
+        run: |
+          python3 - <<'PY'
+          import re
+          s=open('public/index.html',encoding='utf-8').read()
+          scripts=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,re.S)
+          open('/tmp/sifia-check.js','w',encoding='utf-8').write('\n'.join(scripts))
+          assert s.count('id="seletorIdioma"') == 1
+          PY
+          node --check /tmp/sifia-check.js
+      - name: Commit da reorganizacao
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html
+          git commit -m 'feat: reorganiza base da internacionalizacao do Sifia'
+          git push origin fase1-internacionalizacao
