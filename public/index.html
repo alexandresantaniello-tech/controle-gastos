@@ -5022,6 +5022,7 @@ async function assinarSifia() {
     localStorage.setItem(EMAIL_LICENCA_KEY, email);
     statusEl.textContent = '';
     mostrarPixNoPaywall(dados);
+    iniciarVerificacaoAutomaticaPagamento();
   } catch (err) {
     statusEl.textContent = 'Não foi possível gerar a cobrança. Tente novamente.';
   } finally {
@@ -5059,6 +5060,7 @@ async function gerarNovaCobrancaPaywall() {
     if (!resp.ok) throw new Error(dados.erro);
     localStorage.setItem(CHAVE_LICENCA_KEY, dados.chaveDeLicenca);
     mostrarPixNoPaywall(dados);
+    iniciarVerificacaoAutomaticaPagamento();
     statusEl.textContent = '';
   } catch (err) {
     statusEl.textContent = 'Não foi possível gerar um novo Pix. Tente novamente.';
@@ -5072,6 +5074,54 @@ async function copiarCodigoPix() {
   document.getElementById('statusPaywall2').textContent = 'Código copiado!';
 }
 
+let timerVerificacaoPagamento = null;
+let verificacaoPagamentoEmAndamento = false;
+
+function pararVerificacaoAutomaticaPagamento() {
+  if (timerVerificacaoPagamento) clearInterval(timerVerificacaoPagamento);
+  timerVerificacaoPagamento = null;
+}
+
+async function consultarPagamentoAutomaticamente() {
+  if (verificacaoPagamentoEmAndamento) return;
+  const overlay = document.getElementById('paywallOverlay');
+  const passo2 = document.getElementById('paywallPasso2');
+  if (!overlay || !overlay.classList.contains('aberto') || !passo2 || passo2.style.display === 'none') {
+    pararVerificacaoAutomaticaPagamento();
+    return;
+  }
+  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
+  if (!chave) return;
+  verificacaoPagamentoEmAndamento = true;
+  try {
+    const resp = await fetch('/api/licenca/' + chave, { cache: 'no-store' });
+    if (!resp.ok) return;
+    const dados = await resp.json();
+    if (dados.ativa) {
+      pararVerificacaoAutomaticaPagamento();
+      const statusEl = document.getElementById('statusPaywall2');
+      if (statusEl) statusEl.textContent = 'Pagamento confirmado ✓ Liberando seu acesso...';
+      setTimeout(() => {
+        overlay.classList.remove('aberto');
+        const bloco = document.getElementById('blocoAssinatura');
+        if (bloco) bloco.style.display = 'block';
+      }, 650);
+    }
+  } catch (err) {
+    // Falha temporária de rede não interrompe o fluxo; a próxima consulta tenta de novo.
+  } finally {
+    verificacaoPagamentoEmAndamento = false;
+  }
+}
+
+function iniciarVerificacaoAutomaticaPagamento() {
+  pararVerificacaoAutomaticaPagamento();
+  const statusEl = document.getElementById('statusPaywall2');
+  if (statusEl) statusEl.textContent = 'Aguardando confirmação do pagamento...';
+  consultarPagamentoAutomaticamente();
+  timerVerificacaoPagamento = setInterval(consultarPagamentoAutomaticamente, 2500);
+}
+
 async function verificarPagamentoPaywall() {
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
   const statusEl = document.getElementById('statusPaywall2');
@@ -5081,6 +5131,7 @@ async function verificarPagamentoPaywall() {
     const resp = await fetch(`/api/licenca/${chave}`);
     const dados = await resp.json();
     if (dados.ativa) {
+      pararVerificacaoAutomaticaPagamento();
       document.getElementById('paywallOverlay').classList.remove('aberto');
     } else {
       statusEl.textContent = 'Pagamento ainda não confirmado. Se já pagou, aguarde alguns instantes e tente de novo.';
