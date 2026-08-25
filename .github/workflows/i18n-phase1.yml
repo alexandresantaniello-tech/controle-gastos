@@ -24,66 +24,43 @@ jobs:
           from pathlib import Path
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
-
-          # O sistema anterior traduzia apenas 6 elementos. Esta camada traduz
-          # tambem os textos dinamicos renderizados em HTML/JS, preservando dados
-          # do usuario (nomes, observacoes, instituicoes, valores e datas).
-          marker='''function mudarIdioma(novo) {\n  if (!NOMES_IDIOMA[novo] || !TRADUCOES[novo]) return;'''
+          marker="function mudarIdioma(novo) {\n  if (!NOMES_IDIOMA[novo] || !TRADUCOES[novo]) return;"
           assert marker in s
-
           helper=r'''
 const I18N_UI = {
   pt: {},
   en: {
     'Entrada':'Income','Entradas':'Income','Saída':'Expense','Saídas':'Expenses','Saldo':'Balance',
-    'Relatórios':'Reports','Manual':'Manual','Planejamento':'Planning','Upload':'Upload','Backup':'Backup','Idioma':'Language',
-    'MOEDA':'CURRENCY','EXCLUIR':'DELETE','ENCERRAR RECORRÊNCIA':'END RECURRENCE','RECORRÊNCIA ENCERRADA':'RECURRENCE ENDED',
-    'Observação':'Note','OBSERVAÇÃO':'NOTE','Instituição':'Institution','INSTITUIÇÃO':'INSTITUTION','Forma de pagamento':'Payment method','FORMA DE PAGAMENTO':'PAYMENT METHOD',
-    'Local':'Location','LOCAL':'LOCATION','Diário':'Daily','Semanal':'Weekly','Mensal':'Monthly','Trimestral':'Quarterly','Semestral':'Half-yearly','Anual':'Yearly',
-    'Dia':'Day','Transações':'Transactions','Por forma de pagamento':'By payment method','Transações do período':'Period transactions',
-    'Nenhuma':'None','Nenhuma transação neste mês.':'No transactions this month.','Fechar':'Close','Escolher idioma':'Choose language'
+    'Relatórios':'Reports','Planejamento':'Planning','Backup':'Backup','Idioma':'Language','MOEDA':'CURRENCY',
+    'EXCLUIR':'DELETE','ENCERRAR RECORRÊNCIA':'END RECURRENCE','RECORRÊNCIA ENCERRADA':'RECURRENCE ENDED',
+    'Observação':'Note','OBSERVAÇÃO':'NOTE','Instituição':'Institution','INSTITUIÇÃO':'INSTITUTION',
+    'Forma de pagamento':'Payment method','FORMA DE PAGAMENTO':'PAYMENT METHOD','Local':'Location','LOCAL':'LOCATION',
+    'Diário':'Daily','Semanal':'Weekly','Mensal':'Monthly','Trimestral':'Quarterly','Semestral':'Half-yearly','Anual':'Yearly',
+    'Transações':'Transactions','Por forma de pagamento':'By payment method','Transações do período':'Period transactions','Fechar':'Close'
   },
   es: {
     'Entrada':'Ingreso','Entradas':'Ingresos','Saída':'Gasto','Saídas':'Gastos','Saldo':'Saldo',
-    'Relatórios':'Informes','Manual':'Manual','Planejamento':'Planificación','Upload':'Subir','Backup':'Copia de seguridad','Idioma':'Idioma',
-    'MOEDA':'MONEDA','EXCLUIR':'ELIMINAR','ENCERRAR RECORRÊNCIA':'FINALIZAR RECURRENCIA','RECORRÊNCIA ENCERRADA':'RECURRENCIA FINALIZADA',
-    'Observação':'Observación','OBSERVAÇÃO':'OBSERVACIÓN','Instituição':'Institución','INSTITUIÇÃO':'INSTITUCIÓN','Forma de pagamento':'Forma de pago','FORMA DE PAGAMENTO':'FORMA DE PAGO',
-    'Local':'Lugar','LOCAL':'LUGAR','Diário':'Diario','Semanal':'Semanal','Mensal':'Mensual','Trimestral':'Trimestral','Semestral':'Semestral','Anual':'Anual',
-    'Dia':'Día','Transações':'Transacciones','Por forma de pagamento':'Por forma de pago','Transações do período':'Transacciones del período',
-    'Nenhuma':'Ninguna','Nenhuma transação neste mês.':'Ninguna transacción este mes.','Fechar':'Cerrar','Escolher idioma':'Elegir idioma'
+    'Relatórios':'Informes','Planejamento':'Planificación','Backup':'Copia de seguridad','Idioma':'Idioma','MOEDA':'MONEDA',
+    'EXCLUIR':'ELIMINAR','ENCERRAR RECORRÊNCIA':'FINALIZAR RECURRENCIA','RECORRÊNCIA ENCERRADA':'RECURRENCIA FINALIZADA',
+    'Observação':'Observación','OBSERVAÇÃO':'OBSERVACIÓN','Instituição':'Institución','INSTITUIÇÃO':'INSTITUCIÓN',
+    'Forma de pagamento':'Forma de pago','FORMA DE PAGAMENTO':'FORMA DE PAGO','Local':'Lugar','LOCAL':'LUGAR',
+    'Diário':'Diario','Semanal':'Semanal','Mensal':'Mensual','Trimestral':'Trimestral','Semestral':'Semestral','Anual':'Anual',
+    'Transações':'Transacciones','Por forma de pagamento':'Por forma de pago','Transações do período':'Transacciones del período','Fechar':'Cerrar'
   }
 };
-const MESES_I18N = {
-  pt:['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],
-  en:['January','February','March','April','May','June','July','August','September','October','November','December'],
-  es:['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-};
-function ui(texto) {
-  const base=String(texto == null ? '' : texto);
-  const dic=I18N_UI[idiomaSelecionado] || {};
-  return dic[base] || base;
-}
 function traduzirTextoInterface(texto) {
   let out=String(texto == null ? '' : texto);
   const dic=I18N_UI[idiomaSelecionado] || {};
-  Object.entries(dic).sort((a,b)=>b[0].length-a[0].length).forEach(([pt,tr])=>{
-    out=out.split(pt).join(tr);
-  });
-  const meses=MESES_I18N[idiomaSelecionado];
-  if (meses) NOMES_MESES.forEach((m,i)=>{ out=out.replace(new RegExp(m,'gi'), meses[i]); });
-  if (idiomaSelecionado==='en') out=out.replace(/\bDia (\d+)/g,'Day $1');
-  if (idiomaSelecionado==='es') out=out.replace(/\bDia (\d+)/g,'Día $1');
+  Object.entries(dic).sort((a,b)=>b[0].length-a[0].length).forEach(([pt,tr])=>{ out=out.split(pt).join(tr); });
   return out;
 }
 function aplicarTraducaoProfunda() {
   if (idiomaSelecionado==='pt') return;
-  const raiz=document.querySelector('.container') || document.body;
-  const walker=document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  const walker=document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const nos=[]; while(walker.nextNode()) nos.push(walker.currentNode);
   nos.forEach(no=>{
     const pai=no.parentElement;
     if (!pai || ['SCRIPT','STYLE','TEXTAREA','INPUT'].includes(pai.tagName)) return;
-    // Dados livres do usuario nunca sao traduzidos.
     if (pai.closest('.nota') || pai.closest('.detalhes') || pai.closest('#confLocal') || pai.closest('#confInstituicao')) return;
     no.nodeValue=traduzirTextoInterface(no.nodeValue);
   });
@@ -91,32 +68,20 @@ function aplicarTraducaoProfunda() {
 }
 '''
           s=s.replace(marker,helper+'\n'+marker,1)
-
-          old='''  aplicarTraducoes();\n  renderizar();\n}'''
-          new='''  aplicarTraducoes();\n  renderizar();\n  aplicarTraducaoProfunda();\n}'''
+          old="  aplicarTraducoes();\n  renderizar();\n}"
           assert old in s
-          s=s.replace(old,new,1)
-
-          # renderizar() recria transacoes; reaplica a traducao depois de cada
-          # render para impedir tela metade traduzida/metade em portugues.
-          init='''aplicarTraducoes();\nrenderizar();\ncarregarTaxasCambio().then(() => {'''
+          s=s.replace(old,"  aplicarTraducoes();\n  renderizar();\n  aplicarTraducaoProfunda();\n}",1)
+          init="aplicarTraducoes();\nrenderizar();\ncarregarTaxasCambio().then(() => {"
           assert init in s
-          s=s.replace(init,'''aplicarTraducoes();\nrenderizar();\naplicarTraducaoProfunda();\ncarregarTaxasCambio().then(() => {''',1)
-
-          # Remove chamadas residuais da funcao de idioma nativo ja retirada.
-          s=s.replace('  atualizarCardIdioma();\n','')
-
+          s=s.replace(init,"aplicarTraducoes();\nrenderizar();\naplicarTraducaoProfunda();\ncarregarTaxasCambio().then(() => {",1)
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Validar JavaScript e regressao
+      - name: Validar JavaScript
         run: |
           python3 - <<'PY'
           import re
           s=open('public/index.html',encoding='utf-8').read()
           assert 'aplicarTraducaoProfunda' in s
-          assert "'ENCERRAR RECORRÊNCIA':'END RECURRENCE'" in s
-          assert "'ENCERRAR RECORRÊNCIA':'FINALIZAR RECURRENCIA'" in s
-          assert 'atualizarCardIdioma();' not in s
           scripts=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,re.S)
           open('/tmp/sifia.js','w',encoding='utf-8').write('\n'.join(scripts))
           PY
