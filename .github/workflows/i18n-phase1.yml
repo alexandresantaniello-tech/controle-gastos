@@ -1,8 +1,8 @@
-name: Fase 1 - Internacionalizacao
+name: Ajuste menu idioma
 
 on:
   push:
-    branches: [fase1-internacionalizacao]
+    branches: [main]
     paths: ['.github/workflows/i18n-phase1.yml']
 
 permissions:
@@ -14,73 +14,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fase1-internacionalizacao
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Implementar menu Idioma com recuperacao nativa
+          ref: main
+      - name: Ajustar menu
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
-
-          # Remove o seletor provisório ao lado da moeda.
-          import re
-          s,n=re.subn(r'\n\s*<span id="seletorIdioma"[^>]*>🌐PT</span>', '', s, count=1)
-          assert n == 1, 'seletor provisório não encontrado'
-
-          # Sexto botão na mesma linha dos cinco botões principais.
-          alvo='''  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>\n</div>'''
-          novo='''  <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto">Backup</span></div>\n  <div class="upload-toggle" id="idiomaToggle" onclick="alternarIdioma()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="toggle-texto">Idioma</span></div>\n</div>\n\n<div class="card" id="idiomaCard" style="display:none;">\n  <div class="grupo-dia" style="margin-top:0;">Idioma</div>\n  <p class="aviso-backup" id="idiomaNativoInfo"></p>\n  <button class="secondary" id="btnIdiomaNativo" onclick="restaurarIdiomaNativo()" style="width:100%; margin-bottom:12px;"></button>\n  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher outro idioma</button>\n</div>'''
-          assert alvo in s, 'linha dos botões principais não encontrada'
-          s=s.replace(alvo,novo,1)
-
-          # Segurança: idioma do dispositivo é detectado sempre e não depende
-          # do idioma atualmente escolhido no Sifia.
-          marcador='''function listaOpcoesIdioma() {\n  return Object.entries(NOMES_IDIOMA);\n}\n'''
-          assert marcador in s, 'função listaOpcoesIdioma não encontrada'
-          seguranca='''function detectarIdiomaNativo() {\n  const candidatos = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'pt-BR']);\n  for (const bruto of candidatos) {\n    const codigo = String(bruto || '').toLowerCase().split('-')[0];\n    if (NOMES_IDIOMA[codigo] && TRADUCOES[codigo]) return codigo;\n  }\n  return 'pt';\n}\nconst idiomaNativoDispositivo = detectarIdiomaNativo();\n\nfunction nomeIdiomaNativo() {\n  return NOMES_IDIOMA[idiomaNativoDispositivo] || idiomaNativoDispositivo.toUpperCase();\n}\n\nfunction atualizarCardIdioma() {\n  const info = document.getElementById('idiomaNativoInfo');\n  const btn = document.getElementById('btnIdiomaNativo');\n  if (info) info.textContent = 'Idioma do dispositivo: ' + nomeIdiomaNativo();\n  if (btn) btn.textContent = '↩ ' + nomeIdiomaNativo() + ' — idioma do dispositivo';\n}\n\nfunction restaurarIdiomaNativo() {\n  mudarIdioma(idiomaNativoDispositivo);\n  atualizarCardIdioma();\n}\n\nasync function escolherIdioma() {\n  const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);\n  if (novo === null) return;\n  mudarIdioma(novo);\n  atualizarCardIdioma();\n}\n\nfunction alternarIdioma() {\n  const card = document.getElementById('idiomaCard');\n  const toggle = document.getElementById('idiomaToggle');\n  const abrindo = card.style.display === 'none';\n  fecharTodasSecoes();\n  if (!abrindo) { fecharSecaoNoHistorico(); return; }\n  card.style.display = 'block';\n  toggle.querySelector('.toggle-texto').textContent = '– Fechar';\n  atualizarCardIdioma();\n  document.getElementById('togglesLinha').scrollIntoView({ behavior: 'smooth', block: 'start' });\n  abrirSecaoNoHistorico('idiomaCard');\n}\n\n'''
-          s=s.replace(marcador, marcador+seguranca, 1)
-
-          # O antigo seletor global passa a usar a mesma função central.
-          s=s.replace("async function abrirSeletorIdiomaGlobal() {\n  const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);\n  if (novo === null) return;\n  mudarIdioma(novo);\n}", "async function abrirSeletorIdiomaGlobal() { return escolherIdioma(); }", 1)
-
-          # Integra o novo card ao mecanismo que garante uma seção aberta por vez.
-          alvo="    ['planejamentoCard', 'planejamentoToggle', 'Planejamento'],\n  ];"
-          assert alvo in s, 'lista de seções não encontrada'
-          s=s.replace(alvo,"    ['planejamentoCard', 'planejamentoToggle', 'Planejamento'],\n    ['idiomaCard', 'idiomaToggle', 'Idioma'],\n  ];",1)
-
-          alvo="  planejamentoCard: () => alternarPlanejamento(),\n};"
-          assert alvo in s, 'mapa de histórico não encontrado'
-          s=s.replace(alvo,"  planejamentoCard: () => alternarPlanejamento(),\n  idiomaCard: () => alternarIdioma(),\n};",1)
-
-          # Inicializa também a informação de recuperação nativa.
-          alvo='''popularSeletorIdioma();\naplicarTraducoes();\nrenderizar();'''
-          assert alvo in s, 'inicialização de idioma não encontrada'
-          s=s.replace(alvo,'''popularSeletorIdioma();\naplicarTraducoes();\natualizarCardIdioma();\nrenderizar();''',1)
-
+          s=s.replace('.toggles-linha { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }','.toggles-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }',1)
+          s=s.replace('    flex: 0 1 98px;\n    justify-content: center;','    width: 100%;\n    min-width: 0;\n    min-height: 44px;\n    justify-content: center;',1)
+          s=s.replace('''  <p class="aviso-backup" id="idiomaNativoInfo"></p>\n  <button class="secondary" id="btnIdiomaNativo" onclick="restaurarIdiomaNativo()" style="width:100%; margin-bottom:12px;"></button>\n  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher outro idioma</button>''','''  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher idioma</button>''',1)
+          s,n=re.subn(r'\nfunction detectarIdiomaNativo\(\) \{.*?\nasync function escolherIdioma\(\) \{','\nasync function escolherIdioma() {',s,count=1,flags=re.S)
+          assert n == 1
+          s=s.replace('\natualizarCardIdioma();\nrenderizar();','\nrenderizar();',1)
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Validar implementação
+      - name: Validar
         run: |
-          python3 - <<'PY'
-          import re
-          s=open('public/index.html',encoding='utf-8').read()
-          assert s.count('id="idiomaToggle"') == 1
-          assert s.count('id="idiomaCard"') == 1
-          assert 'id="seletorIdioma"' not in s
-          assert 'detectarIdiomaNativo' in s
-          assert 'restaurarIdiomaNativo' in s
-          assert "idiomaCard: () => alternarIdioma()" in s
-          scripts=re.findall(r'<script(?:[^>]*)>(.*?)</script>',s,re.S)
-          open('/tmp/sifia-check.js','w',encoding='utf-8').write('\n'.join(scripts))
-          PY
-          node --check /tmp/sifia-check.js
+          grep -q 'grid-template-columns: repeat(3, minmax(0, 1fr))' public/index.html
+          grep -q 'Escolher idioma' public/index.html
+          if grep -q 'restaurarIdiomaNativo' public/index.html; then exit 1; fi
+          if grep -q 'idiomaNativoDispositivo' public/index.html; then exit 1; fi
       - name: Commit
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add public/index.html
-          git commit -m 'feat: adiciona menu Idioma com retorno ao idioma nativo'
-          git push origin fase1-internacionalizacao
+          git commit -m 'fix: padroniza seis botoes e remove idioma nativo'
+          git push origin main
