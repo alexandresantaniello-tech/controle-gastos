@@ -2287,10 +2287,10 @@ const sendBtn = document.getElementById('sendBtn');
 const status = document.getElementById('status');
 const TEXTO_PADRAO_DROPZONE = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Escolha o arquivo';
 
-{
+// Aviso especifico para dispositivos iOS, onde o compartilhamento tem limitacoes proprias.
+if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
   const dicaIphone = document.getElementById('dicaIphone');
-  const ehIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (dicaIphone && ehIOS) dicaIphone.style.display = 'block';
+  if (dicaIphone) dicaIphone.style.display = 'block';
 }
 
 dropZone.addEventListener('click', () => fileInput.click());
@@ -4585,9 +4585,20 @@ async function apagarTodasTransacoes() {
 
 function fazerBackup() {
   const dados = {
-    versao: 1,
+    versao: 2,
     exportadoEm: new Date().toISOString(),
     transacoes: carregarTransacoes(),
+    planejamento: carregarPlanejamento(),
+    planejamentoRecorrencias: carregarPlanejamentoRecorrencias(),
+    recorrencias: carregarRecorrencias(),
+    observacoesConhecidas: lerObservacoesConhecidas(),
+    preferencias: {
+      moeda: localStorage.getItem(MOEDA_KEY) || 'BRL',
+      idioma: localStorage.getItem(IDIOMA_KEY) || 'pt',
+      saldoOculto: localStorage.getItem(SALDO_OCULTO_KEY) === '1',
+      dicaFechada: localStorage.getItem(DICA_FECHADA_KEY) === '1',
+      dicaEditavelFechada: localStorage.getItem(DICA_EDITAVEL_FECHADA_KEY) === '1',
+    },
   };
   const json = JSON.stringify(dados, null, 2);
   const nomeArquivo = `sifia-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -4613,6 +4624,18 @@ function fazerBackup() {
   }
 }
 
+function mesclarPorId(atuais, recebidos) {
+  const listaAtual = Array.isArray(atuais) ? atuais : [];
+  const listaRecebida = Array.isArray(recebidos) ? recebidos : [];
+  const idsAtuais = new Set(listaAtual.map(item => item && item.id).filter(id => id !== undefined && id !== null));
+  const semIdAtuais = new Set(listaAtual.filter(item => !item || item.id === undefined || item.id === null).map(item => JSON.stringify(item)));
+  const novos = listaRecebida.filter(item => {
+    if (item && item.id !== undefined && item.id !== null) return !idsAtuais.has(item.id);
+    return !semIdAtuais.has(JSON.stringify(item));
+  });
+  return { lista: [...listaAtual, ...novos], adicionados: novos.length };
+}
+
 function restaurarBackup() {
   const input = document.getElementById('arquivoRestaurar');
   const statusEl = document.getElementById('statusBackup');
@@ -4626,13 +4649,48 @@ function restaurarBackup() {
   reader.onload = (e) => {
     try {
       const dados = JSON.parse(e.target.result);
+      if (!dados || typeof dados !== 'object' || !Array.isArray(dados.transacoes)) {
+        throw new Error('Formato de backup inválido');
+      }
 
-      const transacoesAtuais = carregarTransacoes();
-      const idsAtuais = new Set(transacoesAtuais.map(t => t.id));
-      const novasTransacoes = (dados.transacoes || []).filter(t => !idsAtuais.has(t.id));
-      salvarTransacoes([...transacoesAtuais, ...novasTransacoes]);
+      const transacoes = mesclarPorId(carregarTransacoes(), dados.transacoes);
+      salvarTransacoes(transacoes.lista);
+      let totalAdicionado = transacoes.adicionados;
 
-      statusEl.textContent = `Restaurado: ${novasTransacoes.length} transação(ões) adicionada(s).`;
+      // Backups v1 continham somente transacoes. Campos novos sao opcionais
+      // para manter compatibilidade com todos os backups antigos do Sifia.
+      if (Array.isArray(dados.planejamento)) {
+        const resultado = mesclarPorId(carregarPlanejamento(), dados.planejamento);
+        salvarPlanejamento(resultado.lista);
+        totalAdicionado += resultado.adicionados;
+      }
+      if (Array.isArray(dados.planejamentoRecorrencias)) {
+        const resultado = mesclarPorId(carregarPlanejamentoRecorrencias(), dados.planejamentoRecorrencias);
+        salvarPlanejamentoRecorrencias(resultado.lista);
+        totalAdicionado += resultado.adicionados;
+      }
+      if (Array.isArray(dados.recorrencias)) {
+        const resultado = mesclarPorId(carregarRecorrencias(), dados.recorrencias);
+        salvarRecorrencias(resultado.lista);
+        totalAdicionado += resultado.adicionados;
+      }
+      if (Array.isArray(dados.observacoesConhecidas)) {
+        const observacoes = [...new Set([...lerObservacoesConhecidas(), ...dados.observacoesConhecidas.filter(Boolean)])];
+        localStorage.setItem(OBSERVACOES_CONHECIDAS_KEY, JSON.stringify(observacoes));
+      }
+
+      const preferencias = dados.preferencias;
+      if (preferencias && typeof preferencias === 'object') {
+        if (typeof preferencias.moeda === 'string' && preferencias.moeda) localStorage.setItem(MOEDA_KEY, preferencias.moeda);
+        if (typeof preferencias.idioma === 'string' && preferencias.idioma) localStorage.setItem(IDIOMA_KEY, preferencias.idioma);
+        if (typeof preferencias.saldoOculto === 'boolean') localStorage.setItem(SALDO_OCULTO_KEY, preferencias.saldoOculto ? '1' : '0');
+        if (preferencias.dicaFechada === true) localStorage.setItem(DICA_FECHADA_KEY, '1');
+        if (preferencias.dicaEditavelFechada === true) localStorage.setItem(DICA_EDITAVEL_FECHADA_KEY, '1');
+      }
+
+      statusEl.textContent = dados.versao >= 2
+        ? `Backup restaurado: ${totalAdicionado} item(ns) novo(s) adicionado(s).`
+        : `Backup antigo restaurado: ${transacoes.adicionados} transação(ões) adicionada(s).`;
       statusEl.className = 'status';
       input.value = '';
       renderizar();
