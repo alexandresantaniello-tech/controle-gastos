@@ -1,0 +1,32 @@
+name: Aplicar recuperação segura
+
+on:
+  push:
+    paths:
+      - 'scripts/aplicar-recuperacao-segura.js'
+      - '.github/workflows/aplicar-recuperacao-segura.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar alteração
+        run: node scripts/aplicar-recuperacao-segura.js
+      - name: Validar sintaxe do servidor
+        run: node --check server.js
+      - name: Commitar arquivos alterados
+        run: |
+          if git diff --quiet; then
+            echo "Nenhuma alteração pendente."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js public/index.html
+          git commit -m "Protege recuperação de assinatura com código por e-mail"
+          git push
