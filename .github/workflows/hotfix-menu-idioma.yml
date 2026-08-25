@@ -1,0 +1,68 @@
+name: Hotfix menu idioma
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hotfix-menu-idioma.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Ajustar interface
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('public/index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # 6 botoes: grade fixa 3x2, todos exatamente iguais e alinhados.
+          s = s.replace(
+            '.toggles-linha { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }',
+            '.toggles-linha { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 0; margin-bottom: 14px; scroll-margin-top: 16px; }'
+          )
+          s = s.replace(
+            '    flex: 0 1 98px;\n    justify-content: center;',
+            '    width: 100%;\n    min-width: 0;\n    min-height: 44px;\n    justify-content: center;'
+          )
+
+          # Card de idioma simples: sem idioma nativo/dispositivo.
+          old_card = '''<div class="card" id="idiomaCard" style="display:none;">
+  <div class="grupo-dia" style="margin-top:0;">Idioma</div>
+  <p class="aviso-backup" id="idiomaNativoInfo"></p>
+  <button class="secondary" id="btnIdiomaNativo" onclick="restaurarIdiomaNativo()" style="width:100%; margin-bottom:12px;"></button>
+  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher outro idioma</button>
+</div>'''
+          new_card = '''<div class="card" id="idiomaCard" style="display:none;">
+  <div class="grupo-dia" style="margin-top:0;">Idioma</div>
+  <button onclick="escolherIdioma()" style="width:100%;">🌐 Escolher idioma</button>
+</div>'''
+          s = s.replace(old_card, new_card)
+
+          # Remove toda a logica de idioma nativo do dispositivo.
+          s = re.sub(r'\nfunction detectarIdiomaNativo\(\) \{.*?\nasync function escolherIdioma\(\) \{', '\nasync function escolherIdioma() {', s, flags=re.S)
+          s = s.replace('\natualizarCardIdioma();\nrenderizar();', '\nrenderizar();')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Validar alteracoes
+        run: |
+          grep -q 'grid-template-columns: repeat(3, minmax(0, 1fr))' public/index.html
+          grep -q '🌐 Escolher idioma' public/index.html
+          ! grep -q 'restaurarIdiomaNativo' public/index.html
+          ! grep -q 'idiomaNativoDispositivo' public/index.html
+      - name: Publicar na main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html
+          git commit -m 'Padronizar 6 botoes e remover idioma nativo'
+          git push origin main
