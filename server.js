@@ -619,6 +619,91 @@ app.post('/api/licenca/:chave/cancelar-renovacao', limiteApiIA, async (req, res)
   res.json({ cancelada: true, acessoAte: registro.proximoPagamentoEm });
 });
 
+// ---------- Ajuda e Suporte: formulario "Falar com o suporte" ----------
+// Reaproveita a mesma infraestrutura de e-mail transacional (Resend) ja
+// usada pra recuperacao de licenca - chave nunca sai do backend, mesmo
+// padrao de fetch direto pra API do Resend. Sem banco de chamados nesta V1
+// (decisao explicita) - e fire-and-forget: valida, gera protocolo, manda o
+// e-mail pro suporte com reply-to pro proprio usuario, devolve o protocolo.
+// Se o envio falhar, devolve erro de verdade - nunca finge sucesso.
+const ASSUNTOS_SUPORTE_VALIDOS = ['registro', 'historico', 'recorrentes', 'planejamento', 'relatorios', 'moedas', 'importacao', 'idiomas', 'assinatura', 'privacidade', 'outro'];
+
+// Formato SIF-AAAAMMDD-XXXX. Sem contador global (fragil, exige banco so pra
+// isso) - sufixo aleatorio de 4 caracteres alfanumericos (36^4 = ~1.68
+// milhao de combinacoes por dia) e suficiente pra minimizar colisao sem
+// precisar de infraestrutura nova.
+function gerarProtocoloSuporte() {
+  const agora = new Date();
+  const data = agora.getFullYear().toString() + String(agora.getMonth() + 1).padStart(2, '0') + String(agora.getDate()).padStart(2, '0');
+  const alfabeto = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let sufixo = '';
+  for (let i = 0; i < 4; i++) sufixo += alfabeto[crypto.randomInt(0, alfabeto.length)];
+  return `SIF-${data}-${sufixo}`;
+}
+
+async function enviarSolicitacaoSuporte(dados) {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
+  const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
+  const commitEmProducao = process.env.RENDER_GIT_COMMIT || 'desconhecido';
+  const corpoTexto = `Protocolo: ${dados.protocolo}
+Assunto: ${dados.assunto}
+E-mail para resposta: ${dados.email}
+
+Descrição:
+${dados.descricao}
+
+---
+Idioma selecionado: ${dados.idioma}
+Navegador: ${dados.userAgent}
+Plataforma: ${dados.plataforma}
+Commit em produção: ${commitEmProducao}
+Recebido em: ${new Date().toISOString()}`;
+
+  const resposta = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: remetente,
+      to: ['contato@sifiaapp.com'],
+      reply_to: [dados.email],
+      subject: `[Suporte Sifia] ${dados.protocolo} — ${dados.assunto}`,
+      text: corpoTexto,
+    }),
+  });
+  if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
+}
+
+// limiteApiIA (20/min por IP) e proporcional aqui: e o mesmo endpoint que ja
+// protege /api/licenca/recuperar, que tambem dispara e-mail via Resend a
+// partir de um POST publico sem autenticacao.
+app.post('/api/suporte', limiteApiIA, async (req, res) => {
+  const assunto = String(req.body && req.body.assunto || '').trim();
+  const descricao = String(req.body && req.body.descricao || '').trim();
+  const email = String(req.body && req.body.email || '').trim();
+  const idioma = String(req.body && req.body.idioma || '').slice(0, 10);
+  const userAgent = String(req.body && req.body.userAgent || '').slice(0, 300);
+  const plataforma = String(req.body && req.body.plataforma || '').slice(0, 100);
+
+  if (!ASSUNTOS_SUPORTE_VALIDOS.includes(assunto)) {
+    return res.status(400).json({ erro: 'Assunto inválido.' });
+  }
+  if (!descricao || descricao.length > 2000) {
+    return res.status(400).json({ erro: 'Descreva o problema (até 2000 caracteres).' });
+  }
+  if (!email || !email.includes('@') || email.length > 200) {
+    return res.status(400).json({ erro: 'Informe um e-mail válido.' });
+  }
+
+  const protocolo = gerarProtocoloSuporte();
+  try {
+    await enviarSolicitacaoSuporte({ protocolo, assunto, descricao, email, idioma, userAgent, plataforma });
+    res.json({ protocolo });
+  } catch (err) {
+    console.error('Falha ao enviar solicitacao de suporte', err);
+    res.status(500).json({ erro: 'Não foi possível enviar sua solicitação agora. Tente novamente em instantes.' });
+  }
+});
+
 // Roda 1x por dia: gera a cobranca Pix do proximo ciclo pra quem esta perto
 // do vencimento, e suspende quem passou do vencimento sem confirmar
 // pagamento (o webhook so reage a eventos que o Mercado Pago manda - isto

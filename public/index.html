@@ -332,6 +332,21 @@
   .uso-limite { font-size: 0.78rem; color: var(--muted-foreground); margin-top: 10px; }
   .uso-limite.perto-limite { color: var(--aviso); }
   .uso-limite.no-limite { color: var(--destructive); }
+  .suporte-categorias { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+  .suporte-categoria-chip {
+    font-size: 0.78rem; color: var(--muted-foreground); background: var(--secondary);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    min-height: 32px; display: inline-flex; align-items: center;
+  }
+  .suporte-categoria-chip.ativa { background: var(--gradient-crystal); border-color: var(--primary); color: var(--primary-foreground); }
+  .suporte-pergunta { margin-top: 0; }
+  .suporte-pergunta-linha { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 44px; }
+  .suporte-seta { flex-shrink: 0; color: var(--muted-foreground); transition: transform 0.15s; }
+  .suporte-pergunta.aberta .suporte-seta { transform: rotate(90deg); }
+  .suporte-resposta { display: none; font-size: 0.88rem; color: var(--muted-foreground); line-height: 1.5; white-space: pre-line; padding: 4px 0 12px; }
+  .suporte-pergunta.aberta .suporte-resposta { display: block; }
+  .suporte-vazio { text-align: center; padding: 16px 0; }
+  .suporte-ainda-precisa { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; }
   .rodape-link {
     color: var(--muted-foreground);
     font-size: 0.8rem;
@@ -346,7 +361,8 @@
     opacity: 0.75;
   }
   .rodape-link:hover { opacity: 1; color: var(--primary); }
-  #termosToggle { margin-bottom: 0; }
+  .rodape-links-linha { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-bottom: 8px; }
+  .rodape-links-linha .rodape-link { margin-bottom: 0; width: auto; }
   .politica-texto { font-size: 0.85rem; line-height: 1.6; color: var(--muted-foreground); }
   .politica-texto h3 { font-size: 0.95rem; color: var(--foreground); margin: 16px 0 6px; font-family: var(--font-sans); }
   .politica-texto h3:first-child { margin-top: 0; }
@@ -772,9 +788,46 @@
   <div class="status" id="statusPlanejamento"></div>
 </div>
 
+<div class="rodape-links-linha">
+<div class="rodape-link" id="suporteToggle" onclick="alternarSuporte()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="toggle-texto" data-i18n="navSuporte">Ajuda e Suporte</span></div>
 <div class="rodape-link" id="privacidadeToggle" onclick="alternarPrivacidade()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg><span class="toggle-texto" data-i18n="linkPoliticaPrivacidade">Política de Privacidade</span></div>
 
 <div class="rodape-link" id="termosToggle" onclick="alternarTermos()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6M9 16h6M9 8h1M4 4h16v16H4z"/></svg><span class="toggle-texto" data-i18n="linkTermosUso">Termos de Uso</span></div>
+</div>
+
+<div class="card" id="suporteCard" style="display:none;">
+  <div id="suporteVistaCentral">
+    <div class="grupo-dia" style="margin-top:0;" data-i18n="navSuporte">Ajuda e Suporte</div>
+    <input type="text" id="suporteBusca" data-i18n-placeholder="suporteBuscaPlaceholder" data-i18n-aria="suporteBuscaPlaceholder" placeholder="Como podemos ajudar?" aria-label="Como podemos ajudar?" oninput="filtrarSuporte()">
+    <div class="suporte-categorias" id="suporteCategorias"></div>
+    <div id="suporteListaPerguntas"></div>
+    <div class="suporte-ainda-precisa">
+      <div class="grupo-dia" data-i18n="suporteAindaPrecisaTitulo">Ainda precisa de ajuda?</div>
+      <p class="aviso-backup" data-i18n="suporte-contato-resposta"></p>
+      <button class="secondary" onclick="abrirFormularioSuporte()" data-i18n="suporteFalarComSuporte">Falar com o suporte</button>
+    </div>
+  </div>
+
+  <div id="suporteVistaFormulario" style="display:none;">
+    <div class="grupo-dia" style="margin-top:0;" data-i18n="suporteFormTitulo">Falar com o suporte</div>
+
+    <label class="campo" data-i18n="suporteFormAssuntoLabel" style="margin-top:0;">Assunto</label>
+    <div class="campo-clicavel" id="suporteAssuntoCampo" onclick="editarSuporteAssunto()">
+      <span id="suporteAssuntoTexto" class="vazio" data-i18n="suporteEscolherAssunto">Escolher assunto</span>
+      <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+    </div>
+
+    <label class="campo" data-i18n="suporteFormDescricaoLabel">Descreva o problema</label>
+    <textarea id="suporteDescricao" rows="5" data-i18n-placeholder="suporteDescricaoPlaceholder" placeholder="Descreva o que aconteceu"></textarea>
+
+    <label class="campo" data-i18n="suporteFormEmailLabel">E-mail para resposta</label>
+    <input type="email" id="suporteEmail" placeholder="voce@email.com">
+
+    <button onclick="enviarSuporte()" id="btnEnviarSuporte" style="margin-top:14px;" data-i18n="suporteEnviarBotao">Enviar solicitação</button>
+    <button class="secondary" onclick="fecharFormularioSuporte()" style="margin-top:8px;" data-i18n="suporteVoltarBotao">‹ Voltar pra Ajuda e Suporte</button>
+    <div class="status" id="statusSuporte"></div>
+  </div>
+</div>
 
 <div class="card" id="termosCard" style="display:none;">
   <div class="politica-texto">
@@ -1518,6 +1571,7 @@ function fecharTodasSecoes() {
     ['privacidadeCard', 'privacidadeToggle', t('linkPoliticaPrivacidade')],
     ['planejamentoCard', 'planejamentoToggle', t('navPlanejamento')],
     ['idiomaCard', 'idiomaToggle', t('navIdioma')],
+    ['suporteCard', 'suporteToggle', t('navSuporte')],
   ];
   secoes.forEach(([cardId, toggleId, rotulo]) => {
     document.getElementById(cardId).style.display = 'none';
@@ -1547,6 +1601,7 @@ const SECAO_TOGGLE_FN = {
   uploadCard: () => alternarUpload(),
   termosCard: () => alternarTermos(),
   privacidadeCard: () => alternarPrivacidade(),
+  suporteCard: () => alternarSuporte(),
   listaMes: () => alternarListaMes(),
   planejamentoCard: () => alternarPlanejamento(),
   idiomaCard: () => alternarIdioma(),
@@ -4195,6 +4250,193 @@ const TRADUCOES2 = {
   valorLabelComSufixoExemplo: { pt:"Valor{sufixo} (ex: {exemplo}):", es:"Monto{sufixo} (ej: {exemplo}):", en:"Amount{sufixo} (e.g. {exemplo}):", fr:"Montant{sufixo} (ex : {exemplo}) :", de:"Betrag{sufixo} (z. B. {exemplo}):", it:"Importo{sufixo} (es: {exemplo}):", zh:"金额{sufixo}（例如{exemplo}）：", ja:"金額{sufixo}（例：{exemplo}）：", ko:"금액{sufixo} (예: {exemplo}):", ar:"المبلغ{sufixo} (مثل {exemplo}):", hi:"राशि{sufixo} (जैसे {exemplo}):", ru:"Сумма{sufixo} (напр. {exemplo}):", nl:"Bedrag{sufixo} (bijv. {exemplo}):", pl:"Kwota{sufixo} (np. {exemplo}):", tr:"Tutar{sufixo} (örn. {exemplo}):", vi:"Số tiền{sufixo} (vd: {exemplo}):", th:"จำนวนเงิน{sufixo} (เช่น {exemplo}):", id:"Jumlah{sufixo} (mis: {exemplo}):", tl:"Halaga{sufixo} (hal: {exemplo}):", sw:"Kiasi{sufixo} (mf: {exemplo}):", he:"סכום{sufixo} (למשל {exemplo}):", el:"Ποσό{sufixo} (π.χ. {exemplo}):", sv:"Belopp{sufixo} (t.ex. {exemplo}):", no:"Beløp{sufixo} (f.eks. {exemplo}):", da:"Beløb{sufixo} (f.eks. {exemplo}):", fi:"Summa{sufixo} (esim. {exemplo}):", cs:"Částka{sufixo} (např. {exemplo}):", ro:"Sumă{sufixo} (ex: {exemplo}):", hu:"Összeg{sufixo} (pl. {exemplo}):", uk:"Сума{sufixo} (напр. {exemplo}):", bn:"পরিমাণ{sufixo} (যেমন {exemplo}):", ur:"رقم{sufixo} (مثلاً {exemplo}):", fa:"مبلغ{sufixo} (مثلاً {exemplo}):", ms:"Jumlah{sufixo} (cth: {exemplo}):", pa:"ਰਕਮ{sufixo} (ਜਿਵੇਂ {exemplo}):", ta:"தொகை{sufixo} (எ.கா: {exemplo}):", gu:"રકમ{sufixo} (દા.ત. {exemplo}):", am:"መጠን{sufixo} (ለምሳሌ {exemplo}):", ha:"Adadi{sufixo} (misali: {exemplo}):" },
   valorExemploModal: { pt:"Valor (ex: {exemplo}):", es:"Monto (ej: {exemplo}):", en:"Amount (e.g. {exemplo}):", fr:"Montant (ex : {exemplo}) :", de:"Betrag (z. B. {exemplo}):", it:"Importo (es: {exemplo}):", zh:"金额（例如{exemplo}）：", ja:"金額（例：{exemplo}）：", ko:"금액 (예: {exemplo}):", ar:"المبلغ (مثل {exemplo}):", hi:"राशि (जैसे {exemplo}):", ru:"Сумма (напр. {exemplo}):", nl:"Bedrag (bijv. {exemplo}):", pl:"Kwota (np. {exemplo}):", tr:"Tutar (örn. {exemplo}):", vi:"Số tiền (vd: {exemplo}):", th:"จำนวนเงิน (เช่น {exemplo}):", id:"Jumlah (mis: {exemplo}):", tl:"Halaga (hal: {exemplo}):", sw:"Kiasi (mf: {exemplo}):", he:"סכום (למשל {exemplo}):", el:"Ποσό (π.χ. {exemplo}):", sv:"Belopp (t.ex. {exemplo}):", no:"Beløp (f.eks. {exemplo}):", da:"Beløb (f.eks. {exemplo}):", fi:"Summa (esim. {exemplo}):", cs:"Částka (např. {exemplo}):", ro:"Sumă (ex: {exemplo}):", hu:"Összeg (pl. {exemplo}):", uk:"Сума (напр. {exemplo}):", bn:"পরিমাণ (যেমন {exemplo}):", ur:"رقم (مثلاً {exemplo}):", fa:"مبلغ (مثلاً {exemplo}):", ms:"Jumlah (cth: {exemplo}):", pa:"ਰਕਮ (ਜਿਵੇਂ {exemplo}):", ta:"தொகை (எ.கா: {exemplo}):", gu:"રકમ (દા.ત. {exemplo}):", am:"መጠን (ለምሳሌ {exemplo}):", ha:"Adadi (misali: {exemplo}):" },
   porQuantosMeses: { pt:"Por quantos meses? Deixe em branco pra repetir sem parar (ex: aluguel) ou informe um número (ex: 8, pra uma parcela em 8x).", es:"¿Por cuántos meses? Déjalo en blanco para repetir sin parar (ej: alquiler) o indica un número (ej: 8, para una cuota en 8x).", en:"For how many months? Leave blank to repeat forever (e.g. rent) or enter a number (e.g. 8, for an 8-installment plan).", fr:"Pendant combien de mois ? Laissez vide pour répéter indéfiniment (ex : loyer) ou indiquez un nombre (ex : 8, pour un paiement en 8 fois).", de:"Für wie viele Monate? Leer lassen für unbegrenzte Wiederholung (z. B. Miete) oder eine Zahl eingeben (z. B. 8, für eine Ratenzahlung in 8x).", it:"Per quanti mesi? Lascia vuoto per ripetere senza fine (es: affitto) o inserisci un numero (es: 8, per una rata in 8x).", zh:"持续几个月？留空表示无限重复（如房租），或输入数字（如8，表示分8期）。", ja:"何ヶ月間ですか？無期限に繰り返す場合は空欄のままにしてください（例：家賃）。数字を入力することもできます（例：8回払いの場合は8）。", ko:"몇 개월 동안인가요? 계속 반복하려면 비워두세요 (예: 월세), 숫자를 입력할 수도 있습니다 (예: 8회 분할의 경우 8).", ar:"لكم عدد الأشهر؟ اتركه فارغًا للتكرار بلا توقف (مثل الإيجار) أو أدخل رقمًا (مثل 8، لدفعة على 8 أقساط).", hi:"कितने महीनों के लिए? बिना रुके दोहराने के लिए खाली छोड़ें (जैसे किराया) या एक संख्या दर्ज करें (जैसे 8, 8 किस्तों के लिए)।", ru:"На сколько месяцев? Оставьте пустым для бесконечного повторения (например, аренда) или введите число (например, 8, для рассрочки на 8 платежей).", nl:"Voor hoeveel maanden? Laat leeg om oneindig te herhalen (bijv. huur) of voer een getal in (bijv. 8, voor een betaling in 8 termijnen).", pl:"Na ile miesięcy? Zostaw puste, aby powtarzać bez końca (np. czynsz), lub podaj liczbę (np. 8, dla raty w 8x).", tr:"Kaç ay için? Sonsuza kadar tekrarlamak için boş bırakın (örn. kira) veya bir sayı girin (örn. 8 taksit için 8).", vi:"Trong bao nhiêu tháng? Để trống để lặp lại mãi mãi (vd: tiền thuê nhà) hoặc nhập một số (vd: 8, cho khoản trả góp 8 kỳ).", th:"เป็นเวลากี่เดือน? เว้นว่างไว้เพื่อทำซ้ำตลอดไป (เช่น ค่าเช่า) หรือระบุตัวเลข (เช่น 8 สำหรับการผ่อน 8 งวด)", id:"Berapa bulan? Kosongkan untuk mengulang tanpa henti (mis: sewa) atau masukkan angka (mis: 8, untuk cicilan 8x).", tl:"Ilang buwan? Iwanang blangko para ulitin nang walang hanggan (hal: renta) o maglagay ng numero (hal: 8, para sa hulugan na 8x).", sw:"Kwa miezi mingapi? Acha wazi kurudia bila kikomo (mf: kodi) au weka nambari (mf: 8, kwa malipo ya awamu 8).", he:"למשך כמה חודשים? השאר ריק כדי לחזור ללא הפסקה (למשל שכר דירה) או הזן מספר (למשל 8, לתשלום ב-8 תשלומים).", el:"Για πόσους μήνες; Αφήστε κενό για επανάληψη χωρίς τέλος (π.χ. ενοίκιο) ή εισάγετε έναν αριθμό (π.χ. 8, για δόση σε 8x).", sv:"I hur många månader? Lämna tomt för att upprepa för alltid (t.ex. hyra) eller ange ett nummer (t.ex. 8, för en avbetalning i 8x).", no:"I hvor mange måneder? La stå tomt for å gjenta for alltid (f.eks. husleie) eller angi et tall (f.eks. 8, for en nedbetaling i 8x).", da:"I hvor mange måneder? Lad stå tomt for at gentage for evigt (f.eks. husleje), eller angiv et tal (f.eks. 8, for en afdrag i 8x).", fi:"Kuinka monta kuukautta? Jätä tyhjäksi toistaaksesi loputtomasti (esim. vuokra) tai anna numero (esim. 8, 8 erän maksusuunnitelmalle).", cs:"Na kolik měsíců? Nechte prázdné pro nekonečné opakování (např. nájem) nebo zadejte číslo (např. 8, pro splátku na 8x).", ro:"Pentru câte luni? Lasă necompletat pentru a repeta la nesfârșit (ex: chirie) sau introdu un număr (ex: 8, pentru o plată în 8 rate).", hu:"Hány hónapig? Hagyja üresen a végtelen ismétléshez (pl. bérleti díj), vagy adjon meg egy számot (pl. 8, egy 8 részletes fizetéshez).", uk:"На скільки місяців? Залиште порожнім для нескінченного повторення (напр. оренда) або введіть число (напр. 8, для розстрочки на 8 платежів).", bn:"কত মাসের জন্য? চিরকাল পুনরাবৃত্তির জন্য খালি রাখুন (যেমন ভাড়া) অথবা একটি সংখ্যা লিখুন (যেমন ৮, ৮ কিস্তির জন্য)।", ur:"کتنے مہینوں کے لیے؟ ہمیشہ کے لیے دہرانے کے لیے خالی چھوڑیں (مثلاً کرایہ) یا ایک نمبر درج کریں (مثلاً 8، 8 اقساط کے لیے)۔", fa:"برای چند ماه؟ برای تکرار بی‌پایان خالی بگذارید (مثلاً اجاره) یا عددی وارد کنید (مثلاً ۸، برای پرداخت ۸ قسطی).", ms:"Untuk berapa bulan? Biarkan kosong untuk berulang selama-lamanya (cth: sewa) atau masukkan nombor (cth: 8, untuk ansuran 8x).", pa:"ਕਿੰਨੇ ਮਹੀਨਿਆਂ ਲਈ? ਹਮੇਸ਼ਾ ਲਈ ਦੁਹਰਾਉਣ ਲਈ ਖਾਲੀ ਛੱਡੋ (ਜਿਵੇਂ ਕਿਰਾਇਆ) ਜਾਂ ਇੱਕ ਨੰਬਰ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ 8, 8 ਕਿਸ਼ਤਾਂ ਲਈ)।", ta:"எத்தனை மாதங்களுக்கு? முடிவில்லாமல் மீண்டும் செய்ய காலியாக விடவும் (எ.கா: வாடகை) அல்லது ஒரு எண்ணை உள்ளிடவும் (எ.கா: 8, 8 தவணைகளுக்கு).", gu:"કેટલા મહિનાઓ માટે? કાયમ પુનરાવર્તન કરવા ખાલી છોડો (દા.ત. ભાડું) અથવા સંખ્યા દાખલ કરો (દા.ત. 8, 8 હપ્તા માટે).", am:"ለስንት ወራት? ለዘላለም ለመድገም ባዶ ይተዉት (ለምሳሌ ኪራይ) ወይም ቁጥር ያስገቡ (ለምሳሌ 8፣ በ8x ክፍያ ለማድረግ)።", ha:"Har wata nawa? Bar fanko don maimaitawa har abada (misali: haya) ko shigar da lamba (misali: 8, don biya a kashi 8)." },
+
+  navSuporte: { pt:"Ajuda e Suporte" },
+  suporteBuscaPlaceholder: { pt:"Como podemos ajudar?" },
+  suporteSemResultado: { pt:"Não encontramos uma resposta para isso." },
+  suporteFalarComSuporte: { pt:"Falar com o suporte" },
+  suporteAindaPrecisaTitulo: { pt:"Ainda precisa de ajuda?" },
+  suporteFormTitulo: { pt:"Falar com o suporte" },
+  suporteFormAssuntoLabel: { pt:"Assunto" },
+  suporteEscolherAssunto: { pt:"Escolher assunto" },
+  suporteFormDescricaoLabel: { pt:"Descreva o problema" },
+  suporteDescricaoPlaceholder: { pt:"Descreva o que aconteceu" },
+  suporteFormEmailLabel: { pt:"E-mail para resposta" },
+  suporteEnviarBotao: { pt:"Enviar solicitação" },
+  suporteVoltarBotao: { pt:"‹ Voltar pra Ajuda e Suporte" },
+  suporteErroAssunto: { pt:"Escolha um assunto." },
+  suporteErroDescricao: { pt:"Descreva o problema." },
+  suporteErroEmail: { pt:"Informe um e-mail válido." },
+  suporteEnviando: { pt:"Enviando..." },
+  suporteErroEnvio: { pt:"Não foi possível enviar sua solicitação. Tente novamente." },
+  suporteEnviadoSucesso: { pt:"Solicitação enviada! Protocolo: {protocolo}. A resposta será enviada ao e-mail informado." },
+
+  suporteAssuntoRegistro: { pt:"Registro" },
+  suporteAssuntoHistorico: { pt:"Histórico" },
+  suporteAssuntoRecorrentes: { pt:"Despesas recorrentes" },
+  suporteAssuntoPlanejamento: { pt:"Planejamento" },
+  suporteAssuntoRelatorios: { pt:"Relatórios" },
+  suporteAssuntoMoedas: { pt:"Moedas" },
+  suporteAssuntoImportacao: { pt:"Importação/Backup" },
+  suporteAssuntoIdiomas: { pt:"Idiomas" },
+  suporteAssuntoAssinatura: { pt:"Assinatura" },
+  suporteAssuntoPrivacidade: { pt:"Privacidade" },
+  suporteAssuntoOutro: { pt:"Outro" },
+
+  suporteCatComecando: { pt:"Começando" },
+  suporteCatRegistro: { pt:"Registrar movimentações" },
+  suporteCatHistorico: { pt:"Histórico e movimentações" },
+  suporteCatRecorrentes: { pt:"Despesas recorrentes" },
+  suporteCatPlanejamento: { pt:"Planejamento" },
+  suporteCatRelatorios: { pt:"Relatórios" },
+  suporteCatMoedas: { pt:"Moedas" },
+  suporteCatImportacao: { pt:"Importação e Backup" },
+  suporteCatIdiomas: { pt:"Idiomas" },
+  suporteCatAssinatura: { pt:"Assinatura" },
+  suporteCatPrivacidade: { pt:"Privacidade e segurança" },
+
+  "suporte-contato-resposta": { pt:"Se a Central de Ajuda não resolver sua dúvida ou problema, utilize Falar com o suporte. Preencha o formulário dentro do Sifia informando o assunto, descrevendo o problema e indicando o e-mail no qual deseja receber a resposta. Depois do envio bem-sucedido, o Sifia deverá apresentar o protocolo da solicitação. Não envie senhas, dados bancários ou informações financeiras desnecessárias para solicitar atendimento." },
+
+  "inicio-o-que-e-sifia-pergunta": { pt:"O que é o Sifia?" },
+  "inicio-o-que-e-sifia-resposta": { pt:"O Sifia é um Sistema de Informação Financeira por IA. Ele ajuda você a registrar, organizar, acompanhar e compreender suas movimentações financeiras sem precisar conectar sua conta bancária.\n\nVocê pode registrar o que acontece com seu dinheiro de diferentes formas e acompanhar essas informações pelo Histórico, Planejamento e Relatórios." },
+  "inicio-primeiro-registro-pergunta": { pt:"Como faço meu primeiro registro?" },
+  "inicio-primeiro-registro-resposta": { pt:"Você pode registrar uma movimentação por imagem, texto, voz ou preenchimento manual.\n\nEscolha a forma que preferir, confira as informações identificadas pelo Sifia e corrija qualquer campo necessário antes de confirmar.\n\nDepois da confirmação, a movimentação passa a fazer parte do seu histórico." },
+  "inicio-dados-pergunta": { pt:"Onde ficam salvos meus dados financeiros?" },
+  "inicio-dados-resposta": { pt:"Seus registros financeiros ficam salvos no próprio aparelho.\n\nO Sifia não precisa conectar sua conta bancária para organizar suas informações.\n\nAlguns dados necessários ao funcionamento da assinatura, como e-mail e status da licença, são tratados separadamente pelo serviço." },
+
+  "registro-imagem-pergunta": { pt:"Como registrar usando uma imagem?" },
+  "registro-imagem-resposta": { pt:"Envie uma foto ou imagem que contenha as informações da movimentação.\n\nO Sifia analisa o conteúdo e preenche os dados que conseguir identificar.\n\nAntes de salvar, você pode conferir e editar as informações." },
+  "registro-varias-transacoes-pergunta": { pt:"Uma imagem pode gerar mais de um registro?" },
+  "registro-varias-transacoes-resposta": { pt:"Sim. Se uma mesma imagem contiver várias movimentações identificáveis, o Sifia pode gerar vários registros a partir dela.\n\nConfira cada movimentação antes de confirmar." },
+  "registro-texto-pergunta": { pt:"Como registrar uma movimentação por texto?" },
+  "registro-texto-resposta": { pt:"Digite a informação da forma mais natural possível.\n\nPor exemplo: \"Paguei R$ 80 de combustível no débito.\"\n\nO Sifia interpreta o texto e prepara o registro para sua revisão.\n\nSempre confira as informações antes de confirmar." },
+  "registro-voz-pergunta": { pt:"Como registrar por voz?" },
+  "registro-voz-resposta": { pt:"Use a opção de voz e fale a movimentação que deseja registrar.\n\nDepois que sua fala for convertida em texto, o Sifia utiliza essa informação para preparar o registro.\n\nA disponibilidade e a qualidade do reconhecimento de voz também dependem do navegador, sistema operacional e aparelho utilizados." },
+  "registro-manual-pergunta": { pt:"Posso preencher uma movimentação manualmente?" },
+  "registro-manual-resposta": { pt:"Sim.\n\nO registro manual permite preencher diretamente as informações da movimentação sem precisar usar imagem, voz ou interpretação de texto." },
+  "registro-revisar-pergunta": { pt:"Posso corrigir o que o Sifia identificou?" },
+  "registro-revisar-resposta": { pt:"Sim. A revisão faz parte do processo.\n\nAntes de confirmar, confira campos como valor, data, tipo, pagamento, Local, instituição e Observação.\n\nSe alguma informação estiver errada, edite antes de salvar." },
+  "registro-local-pergunta": { pt:"O que significa \"Local\"?" },
+  "registro-local-resposta": { pt:"Local identifica onde ou com quem a movimentação aconteceu.\n\nPode ser, por exemplo, um estabelecimento, empresa, pessoa, recebedor ou pagador relacionado à movimentação." },
+  "registro-observacao-pergunta": { pt:"Para que serve a Observação?" },
+  "registro-observacao-resposta": { pt:"A Observação permite acrescentar um significado pessoal ao registro.\n\nVocê pode usar algo como \"Passeio em família\" ou qualquer outra informação que ajude você a lembrar o contexto daquela movimentação." },
+
+  "historico-encontrar-pergunta": { pt:"Onde encontro minhas movimentações anteriores?" },
+  "historico-encontrar-resposta": { pt:"Abra o Histórico para consultar os registros que já foram confirmados.\n\nVocê pode navegar pelas movimentações e acompanhar o que aconteceu em diferentes períodos." },
+  "historico-editar-pergunta": { pt:"Posso editar uma movimentação depois de salvá-la?" },
+  "historico-editar-resposta": { pt:"Sim.\n\nAbra a movimentação que deseja corrigir e utilize a opção de edição disponível no registro.\n\nFaça as alterações necessárias e confirme novamente." },
+  "historico-excluir-pergunta": { pt:"Posso excluir uma movimentação?" },
+  "historico-excluir-resposta": { pt:"Sim.\n\nAo excluir uma movimentação, confira a confirmação apresentada pelo Sifia antes de prosseguir.\n\nA exclusão remove aquele registro do histórico." },
+  "historico-saldo-pergunta": { pt:"Como o saldo é calculado?" },
+  "historico-saldo-resposta": { pt:"O Sifia utiliza as entradas e saídas registradas para apresentar o saldo correspondente às suas movimentações.\n\nPor isso, manter os registros corretos ajuda a manter os valores apresentados coerentes." },
+  "historico-ocultar-pergunta": { pt:"Posso esconder os valores da tela?" },
+  "historico-ocultar-resposta": { pt:"Sim.\n\nO Sifia possui opção para ocultar os valores exibidos, útil quando você quer consultar o aplicativo sem deixar seus números visíveis para quem estiver próximo.\n\nIsso apenas oculta a visualização. Seus registros não são apagados." },
+
+  "despesas-recorrentes-criar-pergunta": { pt:"Como cadastrar uma despesa recorrente?" },
+  "despesas-recorrentes-criar-resposta": { pt:"No registro Manual, ative a opção de recorrência e informe os dados da despesa e sua periodicidade.\n\nUse esse recurso para despesas que se repetem regularmente." },
+  "despesas-recorrentes-periodicidade-pergunta": { pt:"Para que serve a periodicidade?" },
+  "despesas-recorrentes-periodicidade-resposta": { pt:"A periodicidade informa ao Sifia com que frequência aquela despesa se repete.\n\nEla permite que o aplicativo trate o registro como uma despesa recorrente em vez de uma movimentação isolada." },
+  "despesas-custo-dia-pergunta": { pt:"O que significa o valor \"por dia\" de uma despesa recorrente?" },
+  "despesas-custo-dia-resposta": { pt:"O Sifia pode mostrar o equivalente diário de uma despesa recorrente.\n\nPor exemplo: R$ 900 por mês ≈ R$ 30 por dia.\n\nEssa informação ajuda a visualizar o peso cotidiano daquele compromisso.\n\nEla não é uma nova cobrança nem altera o valor da despesa." },
+  "despesas-recorrentes-encerrar-pergunta": { pt:"O que acontece quando encerro uma recorrência?" },
+  "despesas-recorrentes-encerrar-resposta": { pt:"Encerrar uma recorrência impede sua continuidade a partir do encerramento.\n\nO histórico do que já aconteceu é preservado." },
+
+  "planejamento-o-que-e-pergunta": { pt:"Para que serve o Planejamento?" },
+  "planejamento-o-que-e-resposta": { pt:"O Planejamento ajuda você a olhar para compromissos financeiros futuros.\n\nVocê pode registrar uma conta antes que ela aconteça e acompanhar se está pendente ou já foi realizada." },
+  "planejamento-adicionar-pergunta": { pt:"Como adicionar um compromisso futuro?" },
+  "planejamento-adicionar-resposta": { pt:"Abra Planejamento e adicione o compromisso com as informações disponíveis.\n\nQuando chegar o momento de realizá-lo, você poderá transformar o planejado em uma movimentação real." },
+  "planejamento-sem-valor-pergunta": { pt:"Posso planejar algo mesmo sem saber o valor?" },
+  "planejamento-sem-valor-resposta": { pt:"Sim.\n\nSe você sabe que terá determinado compromisso, mas ainda não conhece o valor definitivo, pode registrá-lo no Planejamento e completar a informação posteriormente." },
+  "planejamento-recorrencia-pergunta": { pt:"O Planejamento aceita compromissos recorrentes?" },
+  "planejamento-recorrencia-resposta": { pt:"Sim.\n\nVocê pode utilizar recorrência para compromissos futuros que se repetem.\n\nIsso é diferente das despesas recorrentes cadastradas pelo Manual." },
+  "planejamento-pago-pergunta": { pt:"O que acontece quando marco um compromisso como pago?" },
+  "planejamento-pago-resposta": { pt:"O Sifia permite transformar o item planejado em uma movimentação efetivamente realizada.\n\nNesse momento, confirme os dados reais da movimentação." },
+  "planejamento-data-real-pergunta": { pt:"E se eu pagar em uma data diferente da planejada?" },
+  "planejamento-data-real-resposta": { pt:"Ao realizar o compromisso, utilize a data em que a movimentação realmente aconteceu.\n\nAssim, o histórico representa o que ocorreu de fato." },
+  "planejamento-juros-multa-pergunta": { pt:"Paguei uma conta atrasada com juros ou multa. O que faço?" },
+  "planejamento-juros-multa-resposta": { pt:"Ao registrar a realização de uma conta vencida, o Sifia permite considerar o valor efetivamente pago.\n\nSe houve juros ou multa, registre o valor real da movimentação para que seu histórico represente corretamente o que aconteceu." },
+  "planejamento-recorrencia-encerrar-pergunta": { pt:"Posso encerrar um planejamento recorrente sem apagar o passado?" },
+  "planejamento-recorrencia-encerrar-resposta": { pt:"Sim.\n\nO encerramento impede a continuidade da recorrência sem apagar os registros anteriores relacionados ao que já aconteceu." },
+
+  "relatorio-o-que-e-pergunta": { pt:"Para que servem os Relatórios?" },
+  "relatorio-o-que-e-resposta": { pt:"Os Relatórios transformam os registros acumulados em uma visão organizada do período escolhido.\n\nEles ajudam você a compreender entradas, saídas, saldo e as movimentações que formaram aquele resultado." },
+  "relatorio-periodos-pergunta": { pt:"Quais períodos posso analisar?" },
+  "relatorio-periodos-resposta": { pt:"O Sifia oferece seis períodos:\n\nDiário, Semanal, Mensal, Trimestral, Semestral e Anual.\n\nEscolha o período de acordo com o que deseja compreender." },
+  "relatorio-conteudo-pergunta": { pt:"O que aparece no Relatório?" },
+  "relatorio-conteudo-resposta": { pt:"O Relatório organiza as informações financeiras correspondentes ao período escolhido, incluindo entradas, saídas, saldo e os movimentos que compõem o resultado.\n\nTambém apresenta formas de pagamento e agrupamentos utilizados para facilitar a compreensão." },
+  "relatorio-observacoes-pergunta": { pt:"As Observações aparecem nos Relatórios?" },
+  "relatorio-observacoes-resposta": { pt:"As informações dos seus registros podem ser utilizadas na organização e compreensão do período.\n\nPor isso, uma Observação bem preenchida pode ajudar a preservar o contexto pessoal de uma movimentação." },
+  "relatorio-compartilhar-pergunta": { pt:"Posso compartilhar meu Relatório?" },
+  "relatorio-compartilhar-resposta": { pt:"Sim.\n\nO Sifia possui opções de compartilhamento do relatório, permitindo levar essas informações para fora do aplicativo quando você desejar." },
+  "relatorio-ia-pergunta": { pt:"Posso analisar meu Relatório com uma IA?" },
+  "relatorio-ia-resposta": { pt:"Sim.\n\nVocê pode compartilhar o relatório e utilizar a ferramenta de IA de sua preferência para fazer perguntas, comparar informações ou buscar outras formas de compreender seus números.\n\nO Sifia não obriga você a utilizar uma IA específica para essa análise." },
+
+  "moedas-trocar-pergunta": { pt:"Como mudar a moeda exibida?" },
+  "moedas-trocar-resposta": { pt:"Toque no seletor de moeda próximo ao saldo e escolha a moeda desejada.\n\nO Sifia utiliza uma taxa de referência para apresentar os valores convertidos." },
+  "moedas-quantidade-pergunta": { pt:"Quantas moedas estão disponíveis?" },
+  "moedas-quantidade-resposta": { pt:"Atualmente, o sistema de conversão pode disponibilizar até 166 moedas, conforme as informações recebidas pelo serviço de câmbio utilizado pelo Sifia." },
+  "moedas-altera-dados-pergunta": { pt:"Trocar a moeda altera meus registros?" },
+  "moedas-altera-dados-resposta": { pt:"Não.\n\nA troca da moeda global altera a forma como os valores são exibidos.\n\nO valor financeiro armazenado pelo Sifia não é substituído pela conversão mostrada na tela." },
+  "moedas-taxa-pergunta": { pt:"A cotação é da data em que fiz a compra?" },
+  "moedas-taxa-resposta": { pt:"Não.\n\nO Sifia não mantém um histórico da cotação correspondente à data original de cada movimentação.\n\nA conversão é uma referência de exibição baseada na taxa disponível para o aplicativo." },
+  "moedas-tempo-real-pergunta": { pt:"A cotação é atualizada em tempo real?" },
+  "moedas-tempo-real-resposta": { pt:"Não necessariamente.\n\nO Sifia utiliza cache das informações de câmbio e pode continuar utilizando uma cotação anteriormente carregada quando uma atualização não estiver disponível.\n\nPor isso, trate a conversão como referência de visualização, não como cotação financeira em tempo real." },
+  "moedas-sem-internet-pergunta": { pt:"A troca de moeda funciona sem internet?" },
+  "moedas-sem-internet-resposta": { pt:"Se o Sifia já tiver informações de câmbio armazenadas, poderá utilizar a última taxa disponível.\n\nNo primeiro uso, sem nenhuma taxa previamente carregada e sem conexão, a troca de moeda pode ficar indisponível até que seja possível obter as informações necessárias." },
+
+  "importacao-extrato-pergunta": { pt:"Posso importar extratos bancários?" },
+  "importacao-extrato-resposta": { pt:"Sim.\n\nO Sifia possui recurso de importação para ajudar a trazer movimentações anteriores sem precisar conectar sua conta bancária." },
+  "importacao-limites-pergunta": { pt:"Quantos extratos posso importar?" },
+  "importacao-limites-resposta": { pt:"O recurso de importação permite trabalhar com até 4 bancos diferentes e até os últimos 3 meses de cada instituição, conforme as regras atuais do recurso." },
+  "importacao-conecta-banco-pergunta": { pt:"Preciso conectar minha conta bancária para importar?" },
+  "importacao-conecta-banco-resposta": { pt:"Não.\n\nA importação é feita a partir dos arquivos fornecidos por você.\n\nO Sifia não precisa receber acesso direto à sua conta bancária." },
+  "importacao-pdf-senha-pergunta": { pt:"Meu extrato PDF tem senha. Posso importar?" },
+  "importacao-pdf-senha-resposta": { pt:"Sim, quando o arquivo for compatível com o recurso.\n\nA senha é utilizada no seu aparelho para abrir o PDF protegido.\n\nEla não é enviada nem armazenada pelo Sifia." },
+  "backup-criar-pergunta": { pt:"Como faço backup dos meus dados?" },
+  "backup-criar-resposta": { pt:"Use a função de Backup disponível no Sifia para gerar uma cópia das informações compatíveis com o recurso.\n\nGuarde o arquivo em um local seguro." },
+  "backup-restaurar-pergunta": { pt:"Como restaurar um backup?" },
+  "backup-restaurar-resposta": { pt:"Abra a função de restauração e selecione um arquivo de backup compatível gerado pelo Sifia.\n\nConfira o processo antes de concluir a restauração." },
+  "backup-trocar-aparelho-pergunta": { pt:"Vou trocar de celular. Como levo meus registros?" },
+  "backup-trocar-aparelho-resposta": { pt:"Antes de trocar de aparelho, gere um backup no aparelho antigo e guarde o arquivo.\n\nNo novo aparelho, utilize a função de restauração para trazer as informações incluídas no backup.\n\nNão apague os dados do aparelho antigo antes de confirmar que o arquivo foi criado corretamente." },
+
+  "idiomas-quantidade-pergunta": { pt:"Quantos idiomas o Sifia oferece?" },
+  "idiomas-quantidade-resposta": { pt:"A interface do Sifia está disponível em 39 idiomas." },
+  "idiomas-trocar-pergunta": { pt:"Como mudar o idioma?" },
+  "idiomas-trocar-resposta": { pt:"Abra o seletor de idioma do Sifia e escolha a opção desejada.\n\nA interface será atualizada para o idioma selecionado." },
+  "idiomas-rtl-pergunta": { pt:"O Sifia funciona com idiomas escritos da direita para a esquerda?" },
+  "idiomas-rtl-resposta": { pt:"Sim.\n\nA interface possui suporte a idiomas RTL, como o árabe, adaptando a direção da interface quando necessário." },
+  "idiomas-termos-pergunta": { pt:"Termos de Uso e Política de Privacidade também estão nos 39 idiomas?" },
+  "idiomas-termos-resposta": { pt:"Não neste momento.\n\nA internacionalização da interface e a tradução dos documentos jurídicos são processos diferentes.\n\nConsulte os documentos jurídicos na versão atualmente disponibilizada pelo Sifia." },
+
+  "assinatura-preco-pergunta": { pt:"Quanto custa o Sifia?" },
+  "assinatura-preco-resposta": { pt:"A assinatura atual custa R$ 19,90 por mês.\n\nO fluxo atual utiliza pagamento via Pix." },
+  "assinatura-conta-pergunta": { pt:"Preciso criar uma conta com senha?" },
+  "assinatura-conta-resposta": { pt:"O Sifia não utiliza uma conta tradicional com usuário e senha para seus registros financeiros.\n\nA assinatura utiliza uma licença e o e-mail informado no processo para funções relacionadas ao acesso e à recuperação da licença." },
+  "assinatura-recuperar-pergunta": { pt:"Como recuperar meu acesso?" },
+  "assinatura-recuperar-resposta": { pt:"Utilize a opção de recuperação disponível na área de assinatura e informe o e-mail relacionado à licença.\n\nO Sifia poderá enviar um código de confirmação para concluir o processo de recuperação." },
+  "assinatura-email-nao-chegou-pergunta": { pt:"O código de recuperação não chegou. O que faço?" },
+  "assinatura-email-nao-chegou-resposta": { pt:"Confira se o e-mail foi digitado corretamente e verifique também as pastas de spam, lixo eletrônico ou promoções.\n\nA entrega também pode depender do seu provedor de e-mail.\n\nSe o problema continuar, utilize o canal de suporte disponibilizado pelo Sifia." },
+  "assinatura-cancelar-renovacao-pergunta": { pt:"Posso cancelar a renovação?" },
+  "assinatura-cancelar-renovacao-resposta": { pt:"Sim.\n\nVocê pode cancelar a renovação da assinatura.\n\nQuando aplicável, o acesso permanece disponível até o término do período já pago." },
+  "assinatura-sete-dias-pergunta": { pt:"Posso pedir reembolso?" },
+  "assinatura-sete-dias-resposta": { pt:"O Sifia possui fluxo para exercício do direito de arrependimento dentro dos 7 dias aplicáveis à contratação, com reembolso integral conforme as condições previstas nos Termos de Uso.\n\nConsulte os Termos para conhecer as condições completas." },
+  "assinatura-desinstalar-pergunta": { pt:"Desinstalar o Sifia cancela minha assinatura?" },
+  "assinatura-desinstalar-resposta": { pt:"Não.\n\nApagar dados ou desinstalar o aplicativo não substitui o processo de cancelamento da renovação.\n\nUse a função específica de cancelamento da assinatura." },
+
+  "privacidade-dados-locais-pergunta": { pt:"Meus dados financeiros ficam no servidor do Sifia?" },
+  "privacidade-dados-locais-resposta": { pt:"Os registros financeiros principais ficam salvos no seu aparelho.\n\nDados necessários para serviços específicos, como assinatura e licença, possuem tratamento separado conforme explicado na Política de Privacidade." },
+  "privacidade-conta-bancaria-pergunta": { pt:"O Sifia acessa minha conta bancária?" },
+  "privacidade-conta-bancaria-resposta": { pt:"Não.\n\nO Sifia foi desenvolvido para funcionar sem conectar sua conta bancária e sem depender de Open Finance para organizar seus registros." },
+  "privacidade-imagem-pergunta": { pt:"O que acontece com a imagem que envio para a IA?" },
+  "privacidade-imagem-resposta": { pt:"Quando você utiliza uma função que exige interpretação por IA, o conteúdo necessário é enviado para processamento.\n\nO Sifia não transforma o envio da imagem em armazenamento permanente do comprovante em seu banco de dados próprio.\n\nConsulte a Política de Privacidade para detalhes sobre processamento por terceiros e retenção aplicável." },
+  "privacidade-voz-pergunta": { pt:"O Sifia grava minha voz?" },
+  "privacidade-voz-resposta": { pt:"O reconhecimento de voz utiliza os recursos disponíveis no navegador ou sistema operacional.\n\nO Sifia trabalha com o texto resultante para preparar o registro e não mantém uma gravação de áudio como parte dos seus registros financeiros." },
+  "privacidade-pdf-senha-pergunta": { pt:"O Sifia guarda a senha do meu extrato?" },
+  "privacidade-pdf-senha-resposta": { pt:"Não.\n\nQuando um PDF protegido precisa de senha para ser aberto, essa senha é utilizada no seu aparelho para liberar o documento e não é armazenada pelo Sifia." },
+  "privacidade-backup-pergunta": { pt:"O Sifia guarda automaticamente uma cópia dos meus dados?" },
+  "privacidade-backup-resposta": { pt:"Não trate o armazenamento local como um backup automático externo.\n\nSe você quiser preservar uma cópia para recuperação ou troca de aparelho, utilize a função de Backup e guarde o arquivo gerado em local seguro." },
+  "privacidade-termos-pergunta": { pt:"Onde encontro os Termos de Uso e a Política de Privacidade?" },
+  "privacidade-termos-resposta": { pt:"Os documentos jurídicos ficam disponíveis dentro do Sifia nas respectivas opções de Termos de Uso e Política de Privacidade.\n\nEles explicam com mais detalhes as regras do serviço, tratamento de dados, assinatura e responsabilidades." },
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
 // - necessario pra frases com valor dinamico no meio (ex: "Excluir {qtd}
@@ -4889,6 +5131,307 @@ async function editarPeriodoDespesaFixa() {
   const tipo = dias === 1 ? 'diario' : dias === 7 ? 'semanal' : 'mensal';
   periodoDespesaFixaAtual = { tipo, dias };
   atualizarTextoPeriodoDespesaFixa();
+}
+
+// ---------- Ajuda e Suporte: base de conhecimento local (busca + categorias
+// + acordeao) e formulario de escalonamento humano. Busca/navegacao nunca
+// tocam o servidor - so o envio do formulario final bate em /api/suporte, e
+// so leva assunto/descricao/e-mail + alguns dados tecnicos nao financeiros
+// (idioma, navegador, plataforma). IDs de pergunta sao semanticos e estaveis
+// de proposito (nunca por posicao) - servem hoje pra busca/categoria e no
+// futuro pra abrir uma resposta especifica a partir de um "?" de contexto
+// em qualquer tela do app. ----------
+
+const SUPORTE_CATEGORIAS = [
+  { chave: 'comecando', chaveTraducao: 'suporteCatComecando' },
+  { chave: 'registro', chaveTraducao: 'suporteCatRegistro' },
+  { chave: 'historico', chaveTraducao: 'suporteCatHistorico' },
+  { chave: 'recorrentes', chaveTraducao: 'suporteCatRecorrentes' },
+  { chave: 'planejamento', chaveTraducao: 'suporteCatPlanejamento' },
+  { chave: 'relatorios', chaveTraducao: 'suporteCatRelatorios' },
+  { chave: 'moedas', chaveTraducao: 'suporteCatMoedas' },
+  { chave: 'importacao', chaveTraducao: 'suporteCatImportacao' },
+  { chave: 'idiomas', chaveTraducao: 'suporteCatIdiomas' },
+  { chave: 'assinatura', chaveTraducao: 'suporteCatAssinatura' },
+  { chave: 'privacidade', chaveTraducao: 'suporteCatPrivacidade' },
+];
+
+const SUPORTE_PERGUNTAS = [
+  { id: 'inicio-o-que-e-sifia', categoria: 'comecando' },
+  { id: 'inicio-primeiro-registro', categoria: 'comecando' },
+  { id: 'inicio-dados', categoria: 'comecando' },
+  { id: 'registro-imagem', categoria: 'registro' },
+  { id: 'registro-varias-transacoes', categoria: 'registro' },
+  { id: 'registro-texto', categoria: 'registro' },
+  { id: 'registro-voz', categoria: 'registro' },
+  { id: 'registro-manual', categoria: 'registro' },
+  { id: 'registro-revisar', categoria: 'registro' },
+  { id: 'registro-local', categoria: 'registro' },
+  { id: 'registro-observacao', categoria: 'registro' },
+  { id: 'historico-encontrar', categoria: 'historico' },
+  { id: 'historico-editar', categoria: 'historico' },
+  { id: 'historico-excluir', categoria: 'historico' },
+  { id: 'historico-saldo', categoria: 'historico' },
+  { id: 'historico-ocultar', categoria: 'historico' },
+  { id: 'despesas-recorrentes-criar', categoria: 'recorrentes' },
+  { id: 'despesas-recorrentes-periodicidade', categoria: 'recorrentes' },
+  { id: 'despesas-custo-dia', categoria: 'recorrentes', palavrasChave: 'custo por dia' },
+  { id: 'despesas-recorrentes-encerrar', categoria: 'recorrentes' },
+  { id: 'planejamento-o-que-e', categoria: 'planejamento' },
+  { id: 'planejamento-adicionar', categoria: 'planejamento' },
+  { id: 'planejamento-sem-valor', categoria: 'planejamento' },
+  { id: 'planejamento-recorrencia', categoria: 'planejamento' },
+  { id: 'planejamento-pago', categoria: 'planejamento' },
+  { id: 'planejamento-data-real', categoria: 'planejamento' },
+  { id: 'planejamento-juros-multa', categoria: 'planejamento' },
+  { id: 'planejamento-recorrencia-encerrar', categoria: 'planejamento' },
+  { id: 'relatorio-o-que-e', categoria: 'relatorios' },
+  { id: 'relatorio-periodos', categoria: 'relatorios' },
+  { id: 'relatorio-conteudo', categoria: 'relatorios' },
+  { id: 'relatorio-observacoes', categoria: 'relatorios' },
+  { id: 'relatorio-compartilhar', categoria: 'relatorios' },
+  { id: 'relatorio-ia', categoria: 'relatorios' },
+  { id: 'moedas-trocar', categoria: 'moedas' },
+  { id: 'moedas-quantidade', categoria: 'moedas' },
+  { id: 'moedas-altera-dados', categoria: 'moedas' },
+  { id: 'moedas-taxa', categoria: 'moedas' },
+  { id: 'moedas-tempo-real', categoria: 'moedas' },
+  { id: 'moedas-sem-internet', categoria: 'moedas' },
+  { id: 'importacao-extrato', categoria: 'importacao' },
+  { id: 'importacao-limites', categoria: 'importacao' },
+  { id: 'importacao-conecta-banco', categoria: 'importacao' },
+  { id: 'importacao-pdf-senha', categoria: 'importacao' },
+  { id: 'backup-criar', categoria: 'importacao' },
+  { id: 'backup-restaurar', categoria: 'importacao' },
+  { id: 'backup-trocar-aparelho', categoria: 'importacao' },
+  { id: 'idiomas-quantidade', categoria: 'idiomas' },
+  { id: 'idiomas-trocar', categoria: 'idiomas' },
+  { id: 'idiomas-rtl', categoria: 'idiomas' },
+  { id: 'idiomas-termos', categoria: 'idiomas' },
+  { id: 'assinatura-preco', categoria: 'assinatura' },
+  { id: 'assinatura-conta', categoria: 'assinatura' },
+  { id: 'assinatura-recuperar', categoria: 'assinatura' },
+  { id: 'assinatura-email-nao-chegou', categoria: 'assinatura' },
+  { id: 'assinatura-cancelar-renovacao', categoria: 'assinatura' },
+  { id: 'assinatura-sete-dias', categoria: 'assinatura' },
+  { id: 'assinatura-desinstalar', categoria: 'assinatura' },
+  { id: 'privacidade-dados-locais', categoria: 'privacidade' },
+  { id: 'privacidade-conta-bancaria', categoria: 'privacidade' },
+  { id: 'privacidade-imagem', categoria: 'privacidade' },
+  { id: 'privacidade-voz', categoria: 'privacidade' },
+  { id: 'privacidade-pdf-senha', categoria: 'privacidade' },
+  { id: 'privacidade-backup', categoria: 'privacidade' },
+  { id: 'privacidade-termos', categoria: 'privacidade' },
+];
+
+let suporteCategoriaAtiva = null;
+let suportePerguntaAberta = null;
+
+function normalizarTextoBusca(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function suportePerguntasFiltradas() {
+  // Cada palavra digitada precisa aparecer em algum lugar do texto (ordem
+  // livre) - busca por frase exata inteira falhava pra qualquer combinacao
+  // de palavras que nao aparecesse literalmente nessa ordem no conteudo
+  // (ex: "e-mail nao chegou" nao batia com "O codigo... nao chegou").
+  const palavras = normalizarTextoBusca(document.getElementById('suporteBusca').value).split(/\s+/).filter(Boolean);
+  return SUPORTE_PERGUNTAS.filter(item => {
+    if (suporteCategoriaAtiva && item.categoria !== suporteCategoriaAtiva) return false;
+    if (palavras.length === 0) return true;
+    const categoriaInfo = SUPORTE_CATEGORIAS.find(c => c.chave === item.categoria);
+    const textoBusca = normalizarTextoBusca(
+      t(item.id + '-pergunta') + ' ' + t(item.id + '-resposta') + ' ' + (categoriaInfo ? t(categoriaInfo.chaveTraducao) : '') + ' ' + (item.palavrasChave || '')
+    );
+    return palavras.every(p => textoBusca.includes(p));
+  });
+}
+
+function renderizarSuporteCategorias() {
+  document.getElementById('suporteCategorias').innerHTML = SUPORTE_CATEGORIAS.map(cat => {
+    const ativa = suporteCategoriaAtiva === cat.chave;
+    return `<span class="suporte-categoria-chip${ativa ? ' ativa' : ''}" role="button" tabindex="0" aria-pressed="${ativa}" onclick="selecionarCategoriaSuporte('${cat.chave}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selecionarCategoriaSuporte('${cat.chave}');}">${escapeHtml(t(cat.chaveTraducao))}</span>`;
+  }).join('');
+}
+
+function selecionarCategoriaSuporte(chave) {
+  suporteCategoriaAtiva = suporteCategoriaAtiva === chave ? null : chave;
+  renderizarSuporteCategorias();
+  renderizarSuporteLista();
+}
+
+function alternarSuportePergunta(id) {
+  suportePerguntaAberta = suportePerguntaAberta === id ? null : id;
+  renderizarSuporteLista();
+}
+
+function renderizarSuporteLista() {
+  const el = document.getElementById('suporteListaPerguntas');
+  const itens = suportePerguntasFiltradas();
+  if (itens.length === 0) {
+    el.innerHTML = `
+      <div class="suporte-vazio">
+        <p class="dica-observacao">${escapeHtml(t('suporteSemResultado'))}</p>
+        <button class="secondary" onclick="abrirFormularioSuporte()">${escapeHtml(t('suporteFalarComSuporte'))}</button>
+      </div>`;
+    return;
+  }
+  el.innerHTML = itens.map(item => {
+    const aberta = suportePerguntaAberta === item.id;
+    return `
+    <div class="suporte-pergunta${aberta ? ' aberta' : ''}">
+      <div class="suporte-pergunta-linha campo-clicavel" role="button" tabindex="0" aria-expanded="${aberta}" onclick="alternarSuportePergunta('${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();alternarSuportePergunta('${item.id}');}">
+        <span>${escapeHtml(t(item.id + '-pergunta'))}</span>
+        <svg class="icone-toggle suporte-seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="suporte-resposta">${escapeHtml(t(item.id + '-resposta'))}</div>
+    </div>
+  `;
+  }).join('');
+}
+
+function filtrarSuporte() {
+  renderizarSuporteLista();
+}
+
+const SUPORTE_ASSUNTOS = [
+  ['registro', 'suporteAssuntoRegistro'],
+  ['historico', 'suporteAssuntoHistorico'],
+  ['recorrentes', 'suporteAssuntoRecorrentes'],
+  ['planejamento', 'suporteAssuntoPlanejamento'],
+  ['relatorios', 'suporteAssuntoRelatorios'],
+  ['moedas', 'suporteAssuntoMoedas'],
+  ['importacao', 'suporteAssuntoImportacao'],
+  ['idiomas', 'suporteAssuntoIdiomas'],
+  ['assinatura', 'suporteAssuntoAssinatura'],
+  ['privacidade', 'suporteAssuntoPrivacidade'],
+  ['outro', 'suporteAssuntoOutro'],
+];
+let suporteAssuntoSelecionado = '';
+
+async function editarSuporteAssunto() {
+  const opcoes = SUPORTE_ASSUNTOS.map(([valor, chave]) => [valor, t(chave)]);
+  const nova = await modalSelecionar(t('suporteFormAssuntoLabel'), opcoes, suporteAssuntoSelecionado);
+  if (nova === null) return;
+  suporteAssuntoSelecionado = nova;
+  atualizarTextoAssuntoSuporte();
+}
+
+function atualizarTextoAssuntoSuporte() {
+  const el = document.getElementById('suporteAssuntoTexto');
+  const achado = SUPORTE_ASSUNTOS.find(([valor]) => valor === suporteAssuntoSelecionado);
+  if (achado) {
+    el.textContent = t(achado[1]);
+    el.classList.remove('vazio');
+  } else {
+    el.textContent = t('suporteEscolherAssunto');
+    el.classList.add('vazio');
+  }
+}
+
+function abrirFormularioSuporte() {
+  document.getElementById('suporteVistaCentral').style.display = 'none';
+  document.getElementById('suporteVistaFormulario').style.display = 'block';
+  document.getElementById('suporteCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fecharFormularioSuporte() {
+  document.getElementById('suporteVistaFormulario').style.display = 'none';
+  document.getElementById('suporteVistaCentral').style.display = 'block';
+}
+
+let enviandoSuporte = false;
+
+// Payload enviado ao servidor: SOMENTE assunto/descricao/e-mail (digitados
+// pelo proprio usuario nesta tela) + idioma/navegador/plataforma (dados
+// tecnicos, nao financeiros). Nunca le carregarTransacoes(), Planejamento,
+// recorrencias, saldo ou qualquer outro dado financeiro guardado no
+// aparelho - o formulario nao tem acesso a essas funcoes, entao nao ha como
+// esse payload carregar informacao financeira nem por engano.
+async function enviarSuporte() {
+  if (enviandoSuporte) return;
+  const statusEl = document.getElementById('statusSuporte');
+  const descricao = document.getElementById('suporteDescricao').value.trim();
+  const email = document.getElementById('suporteEmail').value.trim();
+
+  if (!suporteAssuntoSelecionado) {
+    statusEl.className = 'status error';
+    statusEl.textContent = t('suporteErroAssunto');
+    return;
+  }
+  if (!descricao) {
+    statusEl.className = 'status error';
+    statusEl.textContent = t('suporteErroDescricao');
+    return;
+  }
+  if (!email || !email.includes('@')) {
+    statusEl.className = 'status error';
+    statusEl.textContent = t('suporteErroEmail');
+    return;
+  }
+
+  enviandoSuporte = true;
+  const btn = document.getElementById('btnEnviarSuporte');
+  btn.disabled = true;
+  statusEl.className = 'status';
+  statusEl.textContent = t('suporteEnviando');
+
+  try {
+    const resp = await fetch('/api/suporte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        assunto: suporteAssuntoSelecionado,
+        descricao,
+        email,
+        idioma: idiomaSelecionado,
+        userAgent: navigator.userAgent,
+        plataforma: (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '',
+      }),
+    });
+    const dados = await resp.json();
+    if (!resp.ok) throw new Error(dados.erro || t('suporteErroEnvio'));
+
+    statusEl.className = 'status';
+    statusEl.textContent = t('suporteEnviadoSucesso', { protocolo: dados.protocolo });
+    document.getElementById('suporteDescricao').value = '';
+    document.getElementById('suporteEmail').value = '';
+    suporteAssuntoSelecionado = '';
+    atualizarTextoAssuntoSuporte();
+  } catch (err) {
+    statusEl.className = 'status error';
+    statusEl.textContent = err.message || t('suporteErroEnvio');
+  } finally {
+    enviandoSuporte = false;
+    btn.disabled = false;
+  }
+}
+
+function renderizarSuporte() {
+  document.getElementById('suporteBusca').value = '';
+  suporteCategoriaAtiva = null;
+  suportePerguntaAberta = null;
+  renderizarSuporteCategorias();
+  renderizarSuporteLista();
+  atualizarTextoAssuntoSuporte();
+  document.getElementById('suporteVistaCentral').style.display = 'block';
+  document.getElementById('suporteVistaFormulario').style.display = 'none';
+}
+
+function alternarSuporte() {
+  const card = document.getElementById('suporteCard');
+  const toggle = document.getElementById('suporteToggle');
+  const abrindo = card.style.display === 'none';
+  fecharTodasSecoes();
+  if (!abrindo) {
+    fecharSecaoNoHistorico();
+    return;
+  }
+  card.style.display = 'block';
+  renderizarSuporte();
+  toggle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  abrirSecaoNoHistorico('suporteCard');
 }
 
 // ---------- Backup / restauracao ----------
