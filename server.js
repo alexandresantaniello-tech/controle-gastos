@@ -673,10 +673,25 @@ Recebido em: ${new Date().toISOString()}`;
   if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
 }
 
-// limiteApiIA (20/min por IP) e proporcional aqui: e o mesmo endpoint que ja
-// protege /api/licenca/recuperar, que tambem dispara e-mail via Resend a
-// partir de um POST publico sem autenticacao.
-app.post('/api/suporte', limiteApiIA, async (req, res) => {
+// Limiter proprio, independente de limiteApiIA - achado numa auditoria:
+// como limiteApiIA e uma unica instancia compartilhada por varios endpoints
+// (parse-receipt, parse-texto, share-target, assinar, licenca/*), o mesmo
+// IP que esgotasse esse contador usando IA/importacao ficaria bloqueado de
+// abrir um chamado de suporte no pior momento possivel - e justamente
+// quando algo deu errado com essas outras funcoes. O inverso tambem vale:
+// varias tentativas de suporte nao podem consumir o limite operacional das
+// APIs de IA. Janela mais longa (10min) e teto mais baixo (5) que
+// limiteApiIA porque suporte e uma acao pontual de humano, nao uma
+// sequencia de chamadas automaticas (ex: importacao pagina a pagina).
+const limiteSuporte = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas solicitações de suporte em pouco tempo. Aguarde alguns minutos e tente novamente.' },
+});
+
+app.post('/api/suporte', limiteSuporte, async (req, res) => {
   const assunto = String(req.body && req.body.assunto || '').trim();
   const descricao = String(req.body && req.body.descricao || '').trim();
   const email = String(req.body && req.body.email || '').trim();
