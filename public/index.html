@@ -1128,7 +1128,7 @@ function atualizarValoresExibidos() {
   const toggle = document.getElementById('cristalToggle');
   toggle.innerHTML = svgCristal(!saldoOculto);
   toggle.title = saldoOculto ? t('toquePraVerValores') : t('toquePraOcultar');
-  const oculto = 'R$ ••••••';
+  const oculto = (SIMBOLOS_MOEDA[moedaSelecionada] || 'R$') + ' ••••••';
   document.getElementById('saldo').textContent = saldoOculto ? oculto : formatarMoeda(saldoAtual);
   document.getElementById('totalEntradas').textContent = saldoOculto ? oculto : formatarMoeda(totalEntradasAtual);
   document.getElementById('totalSaidas').textContent = saldoOculto ? oculto : formatarMoeda(totalSaidasAtual);
@@ -3854,7 +3854,10 @@ function popularSeletorMoeda() {
 }
 
 async function abrirSeletorMoedaGlobal() {
-  if (!taxasCambio) return;
+  if (!taxasCambio) {
+    await modalAlerta(t('cambioNaoCarregou'));
+    return;
+  }
   const nova = await modalSelecionar(t('verAppEmQualMoeda'), listaOpcoesMoeda(), moedaSelecionada);
   if (nova === null) return;
   mudarMoeda(nova);
@@ -4268,7 +4271,7 @@ function atualizarInfoCambio() {
   const taxa = taxasCambio[moedaSelecionada];
   // taxasCambio vem como "1 BRL = X moeda" - inverte pra mostrar do jeito
   // que as pessoas costumam pensar ("1 dolar = quantos reais").
-  infoEl.textContent = `1 ${moedaSelecionada} ≈ R$ ${(1 / taxa).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  infoEl.textContent = `1 ${moedaSelecionada} ≈ R$ ${(1 / taxa).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // moedaOverride existe pra transacao que tem moeda de exibicao propria
@@ -4277,11 +4280,11 @@ function formatarMoeda(valor, moedaOverride) {
   const numero = Number(valor || 0);
   const moeda = moedaOverride || moedaSelecionada;
   if (moeda === 'BRL' || !taxasCambio || !taxasCambio[moeda]) {
-    return 'R$ ' + numero.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    return 'R$ ' + numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   const convertido = numero * taxasCambio[moeda];
   const simbolo = SIMBOLOS_MOEDA[moeda] || moeda;
-  return simbolo + ' ' + convertido.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+  return simbolo + ' ' + convertido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const ICONE_NOTA = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>';
