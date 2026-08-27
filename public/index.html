@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Sifia">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Sifia — Controle da sua Renda</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
@@ -47,6 +51,10 @@
     color: var(--foreground);
     margin: 0;
     padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
     max-width: 720px;
     -webkit-user-select: none;
     user-select: none;
@@ -60,7 +68,13 @@
     -webkit-touch-callout: default;
   }
   @media (min-width: 480px) {
-    body { padding: 24px; }
+    body {
+      padding: 24px;
+      padding-top: max(24px, env(safe-area-inset-top));
+      padding-right: max(24px, env(safe-area-inset-right));
+      padding-bottom: max(24px, env(safe-area-inset-bottom));
+      padding-left: max(24px, env(safe-area-inset-left));
+    }
   }
   h1 { font-size: 1.4rem; margin-bottom: 4px; letter-spacing: -0.02em; }
   .header-logo { margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
@@ -385,8 +399,8 @@
   .btn-voltar-flutuante {
     display: none;
     position: fixed;
-    right: 20px;
-    bottom: 20px;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
     width: 52px;
     height: 52px;
     border-radius: 50%;
@@ -1066,13 +1080,6 @@ function garantirPdfJsCarregado() {
   });
   return pdfJsCarregamento;
 }
-
-// Segredo de app (nao e uma credencial de usuario, e visivel no codigo do
-// navegador pra quem souber procurar) - barra a maioria dos robos que
-// varrem a internet procurando endpoints abertos como o nosso, mas nao
-// impede alguem determinado que leia o codigo-fonte. Complementa o rate
-// limit do servidor, nao substitui.
-const APP_SECRET_CLIENTE = 'f71a2c46b055aaab9711937ae8633acf78c7bb8d4c0f81e6';
 
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
@@ -2382,7 +2389,9 @@ const status = document.getElementById('status');
 const TEXTO_PADRAO_DROPZONE = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Escolha o arquivo';
 
 // Aviso especifico para dispositivos iOS, onde o compartilhamento tem limitacoes proprias.
-if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+const dispositivoIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (dispositivoIOS) {
   const dicaIphone = document.getElementById('dicaIphone');
   if (dicaIphone) dicaIphone.style.display = 'block';
 }
@@ -2442,6 +2451,45 @@ function handleFile(file) {
   status.className = 'status';
 }
 
+function imagemPrecisaConversao(file) {
+  const tipo = String(file && file.type || '').toLowerCase();
+  const nome = String(file && file.name || '').toLowerCase();
+  if (/\.(heic|heif)$/.test(nome) || tipo === 'image/heic' || tipo === 'image/heif') return true;
+  return tipo.startsWith('image/') && !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(tipo);
+}
+
+// Fotos do iPhone podem vir em HEIC/HEIF, enquanto a API de leitura aceita
+// JPEG/PNG/GIF/WebP. O Safari do proprio iPhone consegue exibir a foto; usamos
+// essa decodificacao nativa e enviamos uma copia JPEG, sem alterar o arquivo
+// original na galeria. Limitar o maior lado evita estourar memoria no celular.
+async function converterImagemParaJpeg(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const imagem = new Image();
+    await new Promise((resolve, reject) => {
+      imagem.onload = resolve;
+      imagem.onerror = () => reject(new Error('Formato de imagem não suportado neste dispositivo.'));
+      imagem.src = url;
+    });
+
+    const maiorLado = Math.max(imagem.naturalWidth, imagem.naturalHeight);
+    const escala = maiorLado > 2400 ? 2400 / maiorLado : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(imagem.naturalWidth * escala));
+    canvas.height = Math.max(1, Math.round(imagem.naturalHeight * escala));
+    canvas.getContext('2d').drawImage(imagem, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    canvas.width = 0;
+    canvas.height = 0;
+    if (!blob) throw new Error('Não foi possível converter a imagem.');
+    const nomeJpeg = String(file.name || 'comprovante').replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], nomeJpeg, { type: 'image/jpeg', lastModified: Date.now() });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function enviarComprovante(formData, tentativa) {
   const controller = new AbortController();
   // Paginas densas do extrato podem levar bem mais que 25s pra gerar a
@@ -2449,7 +2497,13 @@ async function enviarComprovante(formData, tentativa) {
   // servidor terminar, alinhado com o timeout do lado do servidor.
   const timeoutId = setTimeout(() => controller.abort(), 65000);
   try {
-    const resp = await fetch('/api/parse-receipt', { method: 'POST', headers: { 'X-App-Secret': APP_SECRET_CLIENTE }, body: formData, signal: controller.signal });
+    const chaveDeLicenca = localStorage.getItem(CHAVE_LICENCA_KEY) || '';
+    const resp = await fetch('/api/parse-receipt', {
+      method: 'POST',
+      headers: { 'X-License-Key': chaveDeLicenca },
+      body: formData,
+      signal: controller.signal,
+    });
     clearTimeout(timeoutId);
     return await resp.json();
   } catch (err) {
@@ -2922,10 +2976,12 @@ sendBtn.addEventListener('click', async () => {
   status.textContent = t('analisandoComprovante');
   status.className = 'status';
 
-  const formData = new FormData();
-  formData.append('receipt', imagemSelecionada);
-
   try {
+    const arquivoParaEnvio = imagemPrecisaConversao(imagemSelecionada)
+      ? await converterImagemParaJpeg(imagemSelecionada)
+      : imagemSelecionada;
+    const formData = new FormData();
+    formData.append('receipt', arquivoParaEnvio);
     const resposta = await enviarComprovante(formData, 1);
 
     if (resposta.erro) {
@@ -5824,7 +5880,10 @@ async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido) {
   try {
     const resp = await fetch('/api/parse-texto', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET_CLIENTE },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-License-Key': localStorage.getItem(CHAVE_LICENCA_KEY) || '',
+      },
       body: JSON.stringify({ texto }),
     });
     const dados = await resp.json();

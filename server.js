@@ -30,6 +30,13 @@ function gerarChaveLicenca() {
 async function salvarLicenca(chave, registro) {
   await redis.set(`licenca:${chave}`, registro);
   await redis.sadd(CHAVE_LICENCAS_KEY, chave);
+  // O indice acelera recuperacao, mas nunca pode transformar uma licenca ja
+  // salva em falha de pagamento/cancelamento se o atalho estiver indisponivel.
+  try {
+    await atualizarIndiceLicencaPorEmail(chave, registro);
+  } catch (err) {
+    console.error('Falha ao atualizar indice de recuperacao da licenca', err);
+  }
 }
 
 async function buscarLicenca(chave) {
@@ -59,15 +66,109 @@ const limiteApiIA = rateLimit({
   message: { erro: 'Muitas requisições em pouco tempo - aguarde um minuto e tente de novo.' },
 });
 
-// Segunda camada, so no endpoint mais caro (analise de imagem): exige um
-// segredo que so o proprio Sifia manda automaticamente. Nao aplicamos no
-// /api/parse-texto porque o Atalho do iOS chama ele direto, sem esse
-// cabecalho - exigir la quebraria esse caminho pra quem ja configurou.
-function exigirSegredoApp(req, res, next) {
-  if (req.headers['x-app-secret'] !== process.env.APP_SECRET) {
-    return res.status(403).json({ erro: 'acesso negado' });
+// Acoes de assinatura e recuperacao nao podem compartilhar o contador das
+// chamadas de IA. Uma importacao de extrato pode consumir varias chamadas em
+// sequencia; isso nunca deve impedir a pessoa de pagar, recuperar o acesso ou
+// cancelar a renovacao. Cada fluxo tambem ganha um teto coerente com a sua
+// frequencia real, sem permitir abuso automatizado.
+const limiteNovaAssinatura = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de assinatura. Aguarde alguns minutos e tente novamente.' },
+});
+
+const limiteEnvioRecuperacao = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas solicitações de código. Aguarde alguns minutos e tente novamente.' },
+});
+
+const limiteConfirmacaoRecuperacao = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de confirmação. Aguarde alguns minutos e solicite um novo código.' },
+});
+
+const limiteConsultaLicenca = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas consultas de assinatura. Aguarde um instante e tente novamente.' },
+});
+
+const limiteGestaoAssinatura = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas alterações de assinatura. Aguarde alguns minutos e tente novamente.' },
+});
+
+const COOKIE_LICENCA = 'sifia_licenca';
+
+function cookiesDaRequisicao(req) {
+  const resultado = {};
+  String(req.headers.cookie || '').split(';').forEach(par => {
+    const separador = par.indexOf('=');
+    if (separador < 1) return;
+    const chave = par.slice(0, separador).trim();
+    const valor = par.slice(separador + 1).trim();
+    try { resultado[chave] = decodeURIComponent(valor); } catch (_) { resultado[chave] = valor; }
+  });
+  return resultado;
+}
+
+function chaveLicencaDaRequisicao(req) {
+  return String(
+    req.headers['x-license-key']
+    || (req.body && req.body.chaveDeLicenca)
+    || cookiesDaRequisicao(req)[COOKIE_LICENCA]
+    || ''
+  ).trim();
+}
+
+async function licencaAtivaDaRequisicao(req) {
+  const chave = chaveLicencaDaRequisicao(req);
+  if (!chave) return null;
+  const registro = await buscarLicenca(chave);
+  return registro && registro.ativa ? { chave, registro } : null;
+}
+
+async function exigirLicencaAtiva(req, res, next) {
+  try {
+    const licenca = await licencaAtivaDaRequisicao(req);
+    if (!licenca) return res.status(402).json({ erro: 'Assinatura ativa necessária.' });
+    req.licencaSifia = licenca;
+    next();
+  } catch (err) {
+    console.error('Falha ao validar licenca', err);
+    res.status(503).json({ erro: 'Não foi possível validar a assinatura agora.' });
   }
-  next();
+}
+
+async function exigirLicencaNoCompartilhamento(req, res, next) {
+  try {
+    const licenca = await licencaAtivaDaRequisicao(req);
+    if (licenca) {
+      req.licencaSifia = licenca;
+      return next();
+    }
+    return res.status(402).send(`<!DOCTYPE html>
+<html><body style="background:#000919;color:#e6f4fe;font-family:sans-serif;text-align:center;padding:30vh 24px 0;">
+<p>Abra o Sifia e valide sua assinatura antes de compartilhar um comprovante.</p>
+<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>
+</body></html>`);
+  } catch (err) {
+    console.error('Falha ao validar licenca no compartilhamento', err);
+    return res.status(503).send('Não foi possível validar a assinatura agora.');
+  }
 }
 
 function getExtractionPrompt() {
@@ -279,7 +380,7 @@ function mensagemErroAmigavel(err) {
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
 }
 
-app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('receipt'), async (req, res) => {
+app.post('/api/parse-receipt', limiteApiIA, exigirLicencaAtiva, upload.single('receipt'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
@@ -296,7 +397,7 @@ app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('rec
 // pra frase falada/transcrita em vez de imagem. Usado tanto pelo microfone
 // no navegador (Android/desktop) quanto pelo Atalho do iOS (dita e manda
 // pra ca via ?voz=).
-app.post('/api/parse-texto', limiteApiIA, async (req, res) => {
+app.post('/api/parse-texto', limiteApiIA, exigirLicencaAtiva, async (req, res) => {
   const texto = (req.body && req.body.texto || '').trim();
   if (!texto) {
     return res.status(400).json({ erro: 'Nenhum texto enviado' });
@@ -314,7 +415,7 @@ app.post('/api/parse-texto', limiteApiIA, async (req, res) => {
 // So redireciona pra "/?compartilhado=..." - quem realmente adiciona as
 // transacoes (e pergunta a data quando a IA nao reconhece) e o mesmo codigo
 // cliente usado pelo Atalho do iOS e, indiretamente, pelo upload manual.
-app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res) => {
+app.post('/share-target', limiteApiIA, exigirLicencaNoCompartilhamento, upload.single('receipt'), async (req, res) => {
   let transacoes = null;
   let erro = null;
 
@@ -347,6 +448,23 @@ app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res
 const VALOR_ASSINATURA = 19.90;
 const DIAS_ANTECEDENCIA_RENOVACAO = 3; // gera o Pix do proximo mes com alguns dias de folga
 
+// Soma um mes de calendario sem o overflow nativo de Date.setMonth(). Ex.:
+// 31/jan vira 28/fev (ou 29 em ano bissexto), nunca uma data em marco.
+function adicionarUmMesCalendario(dataBase) {
+  const origem = new Date(dataBase);
+  const diaOriginal = origem.getUTCDate();
+  const resultado = new Date(origem);
+  resultado.setUTCDate(1);
+  resultado.setUTCMonth(resultado.getUTCMonth() + 1);
+  const ultimoDiaDoMes = new Date(Date.UTC(
+    resultado.getUTCFullYear(),
+    resultado.getUTCMonth() + 1,
+    0
+  )).getUTCDate();
+  resultado.setUTCDate(Math.min(diaOriginal, ultimoDiaDoMes));
+  return resultado;
+}
+
 // Gera uma cobranca Pix avulsa (nao e assinatura do Mercado Pago - o produto
 // de Assinaturas deles nao oferece Pix, so cartao, confirmado testando de
 // verdade). external_reference carrega a chave de licenca pra o webhook
@@ -366,11 +484,39 @@ async function criarCobrancaPix(chave, email) {
   return { paymentId: resposta.id, qrCode: dadosPix.qr_code_base64, copiaECola: dadosPix.qr_code };
 }
 
+async function enviarCobrancaRenovacaoPorEmail(email, pix, vencimento) {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
+  const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
+  const dataVencimento = new Date(vencimento).toLocaleDateString('pt-BR');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: [email],
+        subject: 'Pix para renovar sua assinatura do Sifia',
+        text: 'Sua assinatura do Sifia vence em ' + dataVencimento
+          + '. Use o Pix copia e cola abaixo para renovar por mais um mês:\n\n'
+          + pix.copiaECola
+          + '\n\nO acesso só será renovado depois da confirmação do pagamento.',
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (!resposta.ok) throw new Error('Resend recusou o envio da renovacao: ' + resposta.status + ' ' + await resposta.text());
+}
+
 // Primeira cobranca de uma assinatura nova.
-app.post('/api/assinar', limiteApiIA, async (req, res) => {
-  const email = (req.body && req.body.email || '').trim();
-  if (!email) {
-    return res.status(400).json({ erro: 'E-mail obrigatório' });
+app.post('/api/assinar', limiteNovaAssinatura, async (req, res) => {
+  const email = normalizarEmail(req.body && req.body.email);
+  if (!emailValido(email)) {
+    return res.status(400).json({ erro: 'E-mail inválido' });
   }
   try {
     const chave = gerarChaveLicenca();
@@ -404,7 +550,10 @@ function assinaturaWebhookValida(req, paymentId) {
   );
   const ts = partes.ts;
   const assinaturaRecebida = partes.v1;
-  if (!ts || !assinaturaRecebida) return false;
+  // HMAC-SHA256 hexadecimal tem exatamente 64 caracteres. Validar antes de
+  // timingSafeEqual evita excecao por buffers de tamanhos diferentes e
+  // impede que um cabecalho malformado force retries/logs indefinidamente.
+  if (!ts || !/^[a-f0-9]{64}$/i.test(assinaturaRecebida || '')) return false;
 
   let manifesto = '';
   if (paymentId) manifesto += `id:${paymentId};`;
@@ -416,7 +565,10 @@ function assinaturaWebhookValida(req, paymentId) {
     .update(manifesto)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(assinaturaCalculada), Buffer.from(assinaturaRecebida));
+  return crypto.timingSafeEqual(
+    Buffer.from(assinaturaCalculada, 'hex'),
+    Buffer.from(assinaturaRecebida, 'hex')
+  );
 }
 
 // Aviso automatico do Mercado Pago a cada evento de pagamento. Reage ja na
@@ -424,6 +576,7 @@ function assinaturaWebhookValida(req, paymentId) {
 // proteger o custo de IA por chamada: continuar liberando acesso enquanto o
 // pagamento nao esta confirmado e risco desnecessario.
 app.post('/api/webhook/mercadopago', async (req, res) => {
+  let marcadorAprovacaoEmProcessamento = null;
   try {
     const tipo = req.query.type || req.body.type;
     const paymentId = req.query['data.id'] || (req.body.data && req.body.data.id);
@@ -444,25 +597,78 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     }
 
     if (detalhes.status === 'approved') {
+      // O Mercado Pago pode reenviar uma aprovacao antiga mesmo depois de
+      // outra renovacao ter sido paga. Comparar apenas com ultimoPaymentId
+      // nao basta nesse caso: a aprovacao antiga somaria outro mes. O
+      // marcador por paymentId preserva a idempotencia historica e o NX
+      // impede duas entregas simultaneas de aplicarem o mesmo ciclo.
+      const chaveMarcador = `pagamento:aprovacao-processada:${paymentId}`;
+      const estadoMarcador = await redis.get(chaveMarcador);
+      if (estadoMarcador === 'concluida') return res.sendStatus(200);
+
+      // Compatibilidade com pagamentos aprovados antes desta protecao.
+      if (String(registro.ultimoPaymentId || '') === String(paymentId)) {
+        await redis.set(chaveMarcador, 'concluida');
+        return res.sendStatus(200);
+      }
+
+      const reivindicou = await redis.set(
+        chaveMarcador,
+        'processando',
+        { nx: true, ex: 5 * 60 }
+      );
+      if (!reivindicou) {
+        // Outra entrega esta processando o mesmo pagamento. Pedir retry e
+        // mais seguro do que responder sucesso antes de a licenca ser salva.
+        return res.sendStatus(500);
+      }
+      marcadorAprovacaoEmProcessamento = chaveMarcador;
+
       registro.ativa = true;
       registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
+      delete registro.renovacaoPaymentId;
+      delete registro.renovacaoCopiaECola;
+      delete registro.renovacaoEmailEnviado;
       registro.ultimoPaymentId = paymentId; // pra saber o que estornar se ela pedir reembolso
       if (!registro.primeiroPagamentoEm) {
         registro.primeiroPagamentoEm = new Date().toISOString(); // marca o inicio da janela de 7 dias do CDC Art. 49
       }
-      const proximo = new Date();
-      proximo.setMonth(proximo.getMonth() + 1);
-      registro.proximoPagamentoEm = proximo.toISOString();
-    } else {
+      const agora = new Date();
+      const vencimentoAtual = registro.proximoPagamentoEm
+        ? new Date(registro.proximoPagamentoEm)
+        : null;
+      // Renovacao paga antes do vencimento estende a partir do fim do periodo
+      // ja pago, para a pessoa nao perder os dias restantes. Primeira compra
+      // (ou pagamento atrasado) inicia um novo mes a partir da aprovacao.
+      const baseDoNovoCiclo = vencimentoAtual
+        && !Number.isNaN(vencimentoAtual.getTime())
+        && vencimentoAtual > agora
+        ? vencimentoAtual
+        : agora;
+      registro.proximoPagamentoEm = adicionarUmMesCalendario(baseDoNovoCiclo).toISOString();
+    } else if (detalhes.status === 'refunded' || detalhes.status === 'charged_back') {
+      // So eventos que desfazem dinheiro ja aprovado cortam o acesso agora.
+      // Pending/in_process/rejected/cancelled nao podem remover dias de um
+      // periodo anterior que ja foi pago; o vencimento diario cuida disso.
       registro.ativa = false;
     }
+    registro.ultimoStatusPagamento = detalhes.status;
     registro.atualizadoEm = new Date().toISOString();
     await salvarLicenca(chave, registro);
+    if (marcadorAprovacaoEmProcessamento) {
+      await redis.set(marcadorAprovacaoEmProcessamento, 'concluida');
+      marcadorAprovacaoEmProcessamento = null;
+    }
 
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.sendStatus(200); // sempre 200 pro Mercado Pago nao ficar reenviando o mesmo evento
+    if (marcadorAprovacaoEmProcessamento) {
+      try { await redis.del(marcadorAprovacaoEmProcessamento); } catch (_) {}
+    }
+    // Sem confirmacao de sucesso, o Mercado Pago tenta entregar novamente.
+    // Responder 200 aqui podia perder definitivamente uma ativacao paga.
+    res.sendStatus(500);
   }
 });
 
@@ -478,49 +684,125 @@ function normalizarEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function emailValido(email) {
+  const normalizado = normalizarEmail(email);
+  return normalizado.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizado);
+}
+
 function hashCodigoRecuperacao(email, codigo) {
   return crypto.createHash('sha256').update(email + ':' + codigo).digest('hex');
 }
 
+function chaveIndiceLicencaPorEmail(email) {
+  // O e-mail nao aparece no nome da chave do Redis nem em logs operacionais.
+  const hashEmail = crypto.createHash('sha256').update(normalizarEmail(email)).digest('hex');
+  return `licenca:indice-email:${hashEmail}`;
+}
+
+function registroLicencaTemPrioridade(candidata, atual) {
+  if (!atual) return true;
+  // Uma assinatura paga/ativa sempre vence uma tentativa de Pix mais nova
+  // que ainda nao foi paga.
+  if (!!candidata.ativa !== !!atual.ativa) return !!candidata.ativa;
+  return new Date(candidata.atualizadoEm || 0) > new Date(atual.atualizadoEm || 0);
+}
+
+async function atualizarIndiceLicencaPorEmail(chave, registro) {
+  const email = normalizarEmail(registro && registro.email);
+  if (!email) return;
+  const indiceKey = chaveIndiceLicencaPorEmail(email);
+  const chaveAtual = await redis.get(indiceKey);
+
+  // Se a licenca que sustentava o indice acabou de ser desativada, removemos
+  // o atalho. A proxima recuperacao faz uma varredura unica e encontra outra
+  // ativa, se existir, em vez de devolver uma assinatura cancelada.
+  if (String(chaveAtual || '') === String(chave) && !registro.ativa) {
+    await redis.del(indiceKey);
+    return;
+  }
+  // Licencas inativas novas nao podem substituir uma assinatura paga.
+  if (!registro.ativa) return;
+  if (!chaveAtual || String(chaveAtual) === String(chave)) {
+    await redis.set(indiceKey, chave);
+    return;
+  }
+
+  const registroAtual = await buscarLicenca(chaveAtual);
+  if (!registroAtual || registroLicencaTemPrioridade(registro, registroAtual)) {
+    await redis.set(indiceKey, chave);
+  }
+}
+
 async function encontrarLicencaMaisRecentePorEmail(email) {
+  const indiceKey = chaveIndiceLicencaPorEmail(email);
+  const chaveIndexada = await redis.get(indiceKey);
+  if (chaveIndexada) {
+    const registroIndexado = await buscarLicenca(chaveIndexada);
+    if (registroIndexado
+      && registroIndexado.ativa
+      && normalizarEmail(registroIndexado.email) === email) {
+      return { chave: chaveIndexada, ...registroIndexado };
+    }
+  }
+
+  // Compatibilidade/migracao: licencas criadas antes do indice sao
+  // localizadas uma vez pela lista antiga. O resultado correto fica indexado
+  // para as proximas recuperacoes.
   const chaves = await todasAsChavesDeLicenca();
   let encontrada = null;
   for (const chave of chaves) {
     const registro = await buscarLicenca(chave);
     if (registro && normalizarEmail(registro.email) === email) {
-      if (!encontrada || new Date(registro.atualizadoEm || 0) > new Date(encontrada.atualizadoEm || 0)) encontrada = { chave, ...registro };
+      const candidata = { chave, ...registro };
+      if (registroLicencaTemPrioridade(candidata, encontrada)) encontrada = candidata;
     }
   }
+  if (encontrada) await redis.set(indiceKey, encontrada.chave);
   return encontrada;
 }
 
 async function enviarCodigoRecuperacao(email, codigo) {
   if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
   const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
-  const resposta = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: remetente,
-      to: [email],
-      subject: 'Seu código de acesso ao Sifia',
-      text: 'Seu código de acesso ao Sifia é ' + codigo + '. Ele expira em 10 minutos. Se você não pediu este código, ignore este e-mail.',
-      html: '<div style="font-family:Arial,sans-serif;color:#0b172a"><h2>Sifia</h2><p>Seu código de acesso é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">' + codigo + '</p><p>Ele expira em 10 minutos.</p><p>Se você não pediu este código, ignore este e-mail.</p></div>',
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: [email],
+        subject: 'Seu código de acesso ao Sifia',
+        text: 'Seu código de acesso ao Sifia é ' + codigo + '. Ele expira em 10 minutos. Se você não pediu este código, ignore este e-mail.',
+        html: '<div style="font-family:Arial,sans-serif;color:#0b172a"><h2>Sifia</h2><p>Seu código de acesso é:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">' + codigo + '</p><p>Ele expira em 10 minutos.</p><p>Se você não pediu este código, ignore este e-mail.</p></div>',
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
 }
 
-app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/recuperar', limiteEnvioRecuperacao, async (req, res) => {
   const email = normalizarEmail(req.body && req.body.email);
-  if (!email || !email.includes('@')) return res.status(400).json({ erro: 'E-mail inválido' });
+  if (!emailValido(email)) return res.status(400).json({ erro: 'E-mail inválido' });
   try {
     const encontrada = await encontrarLicencaMaisRecentePorEmail(email);
-    if (!encontrada) return res.json({ codigoEnviado: true });
     const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const token = crypto.randomBytes(24).toString('hex');
-    await redis.set('recuperacao:' + token, { email, chave: encontrada.chave, codigoHash: hashCodigoRecuperacao(email, codigo), tentativas: 0 }, { ex: RECUPERACAO_TTL_SEGUNDOS });
-    await enviarCodigoRecuperacao(email, codigo);
+    await redis.set('recuperacao:' + token, {
+      email,
+      chave: encontrada ? encontrada.chave : null,
+      codigoHash: hashCodigoRecuperacao(email, codigo),
+      tentativas: 0,
+    }, { ex: RECUPERACAO_TTL_SEGUNDOS });
+    // A resposta tem o mesmo formato exista ou nao uma conta para o e-mail.
+    // Isso impede enumeracao de assinantes pela presenca do token.
+    if (encontrada) await enviarCodigoRecuperacao(email, codigo);
     res.json({ codigoEnviado: true, token });
   } catch (err) {
     console.error('Falha ao iniciar recuperação', err);
@@ -528,7 +810,7 @@ app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
   }
 });
 
-app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/confirmar-recuperacao', limiteConfirmacaoRecuperacao, async (req, res) => {
   const token = String(req.body && req.body.token || '').trim();
   const codigo = String(req.body && req.body.codigo || '').trim();
   if (!token || !/^\d{6}$/.test(codigo)) return res.status(400).json({ erro: 'Código inválido.' });
@@ -554,13 +836,23 @@ app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => 
 });
 
 // O app consulta isso periodicamente pra saber se libera os recursos pagos.
-app.get('/api/licenca/:chave', async (req, res) => {
+app.get('/api/licenca/:chave', limiteConsultaLicenca, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
   }
   const dentroDoPrazoDeArrependimento = !!registro.primeiroPagamentoEm &&
     (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
+
+  const opcoesCookie = { httpOnly: true, secure: true, sameSite: 'none', path: '/' };
+  if (registro.ativa) {
+    // O cookie leva apenas a chave aleatoria da assinatura. Cada uso ainda
+    // consulta o Redis; cancelar/reembolsar invalida imediatamente.
+    res.cookie(COOKIE_LICENCA, req.params.chave, { ...opcoesCookie, maxAge: 35 * 24 * 60 * 60 * 1000 });
+  } else {
+    res.clearCookie(COOKIE_LICENCA, opcoesCookie);
+  }
+
   res.json({
     ativa: registro.ativa,
     podeReembolsar: dentroDoPrazoDeArrependimento,
@@ -572,7 +864,7 @@ app.get('/api/licenca/:chave', async (req, res) => {
 // Direito de arrependimento (CDC Art. 49): dentro de 7 dias da primeira
 // cobrança, a pessoa pode cancelar sem dar motivo e recebe reembolso
 // integral, automático, sem intervencao manual - por lei, incondicional.
-app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/:chave/cancelar', limiteGestaoAssinatura, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
@@ -608,7 +900,7 @@ app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
 // impede a proxima cobranca. A pessoa mantem acesso ate o fim do periodo ja
 // pago (processarRenovacoes cuida de suspender sozinho quando esse periodo
 // acabar, sem gerar Pix novo pra quem cancelou).
-app.post('/api/licenca/:chave/cancelar-renovacao', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/:chave/cancelar-renovacao', limiteGestaoAssinatura, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
@@ -659,17 +951,28 @@ Plataforma: ${dados.plataforma}
 Commit em produção: ${commitEmProducao}
 Recebido em: ${new Date().toISOString()}`;
 
-  const resposta = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: remetente,
-      to: ['contato@sifiaapp.com'],
-      reply_to: [dados.email],
-      subject: `[Suporte Sifia] ${dados.protocolo} — ${dados.assunto}`,
-      text: corpoTexto,
-    }),
-  });
+  // Nao deixa o formulario ficar preso indefinidamente se o provedor de
+  // e-mail aceitar a conexao mas parar de responder. O cliente recebe erro
+  // real e libera o botao para uma nova tentativa.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: ['contato@sifiaapp.com'],
+        reply_to: [dados.email],
+        subject: `[Suporte Sifia] ${dados.protocolo} — ${dados.assunto}`,
+        text: corpoTexto,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
 }
 
@@ -705,7 +1008,7 @@ app.post('/api/suporte', limiteSuporte, async (req, res) => {
   if (!descricao || descricao.length > 2000) {
     return res.status(400).json({ erro: 'Descreva o problema (até 2000 caracteres).' });
   }
-  if (!email || !email.includes('@') || email.length > 200) {
+  if (!emailValido(email)) {
     return res.status(400).json({ erro: 'Informe um e-mail válido.' });
   }
 
@@ -740,18 +1043,44 @@ async function processarRenovacoes() {
     }
     if (registro.renovacaoCancelada) continue; // cancelou - so deixa o acesso expirar sozinho, sem gerar Pix novo
 
-    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO && !registro.cobrancaRenovacaoGerada) {
+    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO) {
       try {
-        await criarCobrancaPix(chave, registro.email);
-        registro.cobrancaRenovacaoGerada = true;
-        await salvarLicenca(chave, registro);
+        let pix;
+        if (!registro.cobrancaRenovacaoGerada || !registro.renovacaoCopiaECola) {
+          pix = await criarCobrancaPix(chave, registro.email);
+          registro.cobrancaRenovacaoGerada = true;
+          registro.renovacaoPaymentId = pix.paymentId;
+          registro.renovacaoCopiaECola = pix.copiaECola;
+          registro.renovacaoEmailEnviado = false;
+          // Salva antes do e-mail: se o provedor falhar, a proxima rotina
+          // reutiliza o mesmo Pix em vez de criar varias cobrancas.
+          await salvarLicenca(chave, registro);
+        } else {
+          pix = {
+            paymentId: registro.renovacaoPaymentId,
+            copiaECola: registro.renovacaoCopiaECola,
+          };
+        }
+
+        if (!registro.renovacaoEmailEnviado) {
+          await enviarCobrancaRenovacaoPorEmail(registro.email, pix, registro.proximoPagamentoEm);
+          registro.renovacaoEmailEnviado = true;
+          registro.atualizadoEm = new Date().toISOString();
+          await salvarLicenca(chave, registro);
+        }
       } catch (err) {
-        console.error('Falha ao gerar cobranca de renovacao para', chave, err);
+        console.error('Falha ao preparar ou enviar cobranca de renovacao para', chave, err);
       }
     }
   }
 }
-setInterval(processarRenovacoes, 24 * 60 * 60 * 1000);
+// Executa tambem na inicializacao. Esperar as primeiras 24 horas fazia uma
+// reinicializacao/deploy adiar cobrancas e suspensoes; reinicios frequentes
+// poderiam impedir a rotina de rodar por tempo indeterminado.
+processarRenovacoes().catch(err => console.error('Falha na rotina inicial de renovacoes', err));
+setInterval(() => {
+  processarRenovacoes().catch(err => console.error('Falha na rotina diaria de renovacoes', err));
+}, 24 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
