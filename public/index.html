@@ -2458,6 +2458,45 @@ function handleFile(file) {
   status.className = 'status';
 }
 
+function imagemPrecisaConversao(file) {
+  const tipo = String(file && file.type || '').toLowerCase();
+  const nome = String(file && file.name || '').toLowerCase();
+  if (/\.(heic|heif)$/.test(nome) || tipo === 'image/heic' || tipo === 'image/heif') return true;
+  return tipo.startsWith('image/') && !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(tipo);
+}
+
+// Fotos do iPhone podem vir em HEIC/HEIF, enquanto a API de leitura aceita
+// JPEG/PNG/GIF/WebP. O Safari do proprio iPhone consegue exibir a foto; usamos
+// essa decodificacao nativa e enviamos uma copia JPEG, sem alterar o arquivo
+// original na galeria. Limitar o maior lado evita estourar memoria no celular.
+async function converterImagemParaJpeg(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const imagem = new Image();
+    await new Promise((resolve, reject) => {
+      imagem.onload = resolve;
+      imagem.onerror = () => reject(new Error('Formato de imagem não suportado neste dispositivo.'));
+      imagem.src = url;
+    });
+
+    const maiorLado = Math.max(imagem.naturalWidth, imagem.naturalHeight);
+    const escala = maiorLado > 2400 ? 2400 / maiorLado : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(imagem.naturalWidth * escala));
+    canvas.height = Math.max(1, Math.round(imagem.naturalHeight * escala));
+    canvas.getContext('2d').drawImage(imagem, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    canvas.width = 0;
+    canvas.height = 0;
+    if (!blob) throw new Error('Não foi possível converter a imagem.');
+    const nomeJpeg = String(file.name || 'comprovante').replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], nomeJpeg, { type: 'image/jpeg', lastModified: Date.now() });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function enviarComprovante(formData, tentativa) {
   const controller = new AbortController();
   // Paginas densas do extrato podem levar bem mais que 25s pra gerar a
@@ -2938,10 +2977,12 @@ sendBtn.addEventListener('click', async () => {
   status.textContent = t('analisandoComprovante');
   status.className = 'status';
 
-  const formData = new FormData();
-  formData.append('receipt', imagemSelecionada);
-
   try {
+    const arquivoParaEnvio = imagemPrecisaConversao(imagemSelecionada)
+      ? await converterImagemParaJpeg(imagemSelecionada)
+      : imagemSelecionada;
+    const formData = new FormData();
+    formData.append('receipt', arquivoParaEnvio);
     const resposta = await enviarComprovante(formData, 1);
 
     if (resposta.erro) {
