@@ -449,7 +449,10 @@ function assinaturaWebhookValida(req, paymentId) {
   );
   const ts = partes.ts;
   const assinaturaRecebida = partes.v1;
-  if (!ts || !assinaturaRecebida) return false;
+  // HMAC-SHA256 hexadecimal tem exatamente 64 caracteres. Validar antes de
+  // timingSafeEqual evita excecao por buffers de tamanhos diferentes e
+  // impede que um cabecalho malformado force retries/logs indefinidamente.
+  if (!ts || !/^[a-f0-9]{64}$/i.test(assinaturaRecebida || '')) return false;
 
   let manifesto = '';
   if (paymentId) manifesto += `id:${paymentId};`;
@@ -461,7 +464,10 @@ function assinaturaWebhookValida(req, paymentId) {
     .update(manifesto)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(assinaturaCalculada), Buffer.from(assinaturaRecebida));
+  return crypto.timingSafeEqual(
+    Buffer.from(assinaturaCalculada, 'hex'),
+    Buffer.from(assinaturaRecebida, 'hex')
+  );
 }
 
 // Aviso automatico do Mercado Pago a cada evento de pagamento. Reage ja na
