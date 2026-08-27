@@ -443,6 +443,12 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
       return res.sendStatus(200);
     }
 
+    // Webhooks podem ser repetidos. Processar de novo o mesmo pagamento
+    // mudaria a data do proximo ciclo e poderia conceder tempo extra.
+    if (detalhes.status === 'approved' && String(registro.ultimoPaymentId || '') === String(paymentId)) {
+      return res.sendStatus(200);
+    }
+
     if (detalhes.status === 'approved') {
       registro.ativa = true;
       registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
@@ -453,16 +459,22 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
       const proximo = new Date();
       proximo.setMonth(proximo.getMonth() + 1);
       registro.proximoPagamentoEm = proximo.toISOString();
-    } else {
+    } else if (detalhes.status === 'refunded' || detalhes.status === 'charged_back') {
+      // So eventos que desfazem dinheiro ja aprovado cortam o acesso agora.
+      // Pending/in_process/rejected/cancelled nao podem remover dias de um
+      // periodo anterior que ja foi pago; o vencimento diario cuida disso.
       registro.ativa = false;
     }
+    registro.ultimoStatusPagamento = detalhes.status;
     registro.atualizadoEm = new Date().toISOString();
     await salvarLicenca(chave, registro);
 
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.sendStatus(200); // sempre 200 pro Mercado Pago nao ficar reenviando o mesmo evento
+    // Sem confirmacao de sucesso, o Mercado Pago tenta entregar novamente.
+    // Responder 200 aqui podia perder definitivamente uma ativacao paga.
+    res.sendStatus(500);
   }
 });
 
@@ -751,7 +763,13 @@ async function processarRenovacoes() {
     }
   }
 }
-setInterval(processarRenovacoes, 24 * 60 * 60 * 1000);
+// Executa tambem na inicializacao. Esperar as primeiras 24 horas fazia uma
+// reinicializacao/deploy adiar cobrancas e suspensoes; reinicios frequentes
+// poderiam impedir a rotina de rodar por tempo indeterminado.
+processarRenovacoes().catch(err => console.error('Falha na rotina inicial de renovacoes', err));
+setInterval(() => {
+  processarRenovacoes().catch(err => console.error('Falha na rotina diaria de renovacoes', err));
+}, 24 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
