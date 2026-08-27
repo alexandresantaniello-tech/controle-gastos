@@ -1067,13 +1067,6 @@ function garantirPdfJsCarregado() {
   return pdfJsCarregamento;
 }
 
-// Segredo de app (nao e uma credencial de usuario, e visivel no codigo do
-// navegador pra quem souber procurar) - barra a maioria dos robos que
-// varrem a internet procurando endpoints abertos como o nosso, mas nao
-// impede alguem determinado que leia o codigo-fonte. Complementa o rate
-// limit do servidor, nao substitui.
-const APP_SECRET_CLIENTE = 'f71a2c46b055aaab9711937ae8633acf78c7bb8d4c0f81e6';
-
 const STORAGE_KEY = 'controle_gastos_transacoes';
 const DICA_FECHADA_KEY = 'controle_gastos_dica_fechada';
 const DICA_EDITAVEL_FECHADA_KEY = 'controle_gastos_dica_editavel_fechada';
@@ -2449,7 +2442,13 @@ async function enviarComprovante(formData, tentativa) {
   // servidor terminar, alinhado com o timeout do lado do servidor.
   const timeoutId = setTimeout(() => controller.abort(), 65000);
   try {
-    const resp = await fetch('/api/parse-receipt', { method: 'POST', headers: { 'X-App-Secret': APP_SECRET_CLIENTE }, body: formData, signal: controller.signal });
+    const chaveDeLicenca = localStorage.getItem(CHAVE_LICENCA_KEY) || '';
+    const resp = await fetch('/api/parse-receipt', {
+      method: 'POST',
+      headers: { 'X-License-Key': chaveDeLicenca },
+      body: formData,
+      signal: controller.signal,
+    });
     clearTimeout(timeoutId);
     return await resp.json();
   } catch (err) {
@@ -5824,7 +5823,10 @@ async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido) {
   try {
     const resp = await fetch('/api/parse-texto', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET_CLIENTE },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-License-Key': localStorage.getItem(CHAVE_LICENCA_KEY) || '',
+      },
       body: JSON.stringify({ texto }),
     });
     const dados = await resp.json();
