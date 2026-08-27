@@ -475,6 +475,7 @@ function assinaturaWebhookValida(req, paymentId) {
 // proteger o custo de IA por chamada: continuar liberando acesso enquanto o
 // pagamento nao esta confirmado e risco desnecessario.
 app.post('/api/webhook/mercadopago', async (req, res) => {
+  let marcadorAprovacaoEmProcessamento = null;
   try {
     const tipo = req.query.type || req.body.type;
     const paymentId = req.query['data.id'] || (req.body.data && req.body.data.id);
@@ -494,13 +495,34 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // Webhooks podem ser repetidos. Processar de novo o mesmo pagamento
-    // mudaria a data do proximo ciclo e poderia conceder tempo extra.
-    if (detalhes.status === 'approved' && String(registro.ultimoPaymentId || '') === String(paymentId)) {
-      return res.sendStatus(200);
-    }
-
     if (detalhes.status === 'approved') {
+      // O Mercado Pago pode reenviar uma aprovacao antiga mesmo depois de
+      // outra renovacao ter sido paga. Comparar apenas com ultimoPaymentId
+      // nao basta nesse caso: a aprovacao antiga somaria outro mes. O
+      // marcador por paymentId preserva a idempotencia historica e o NX
+      // impede duas entregas simultaneas de aplicarem o mesmo ciclo.
+      const chaveMarcador = `pagamento:aprovacao-processada:${paymentId}`;
+      const estadoMarcador = await redis.get(chaveMarcador);
+      if (estadoMarcador === 'concluida') return res.sendStatus(200);
+
+      // Compatibilidade com pagamentos aprovados antes desta protecao.
+      if (String(registro.ultimoPaymentId || '') === String(paymentId)) {
+        await redis.set(chaveMarcador, 'concluida');
+        return res.sendStatus(200);
+      }
+
+      const reivindicou = await redis.set(
+        chaveMarcador,
+        'processando',
+        { nx: true, ex: 5 * 60 }
+      );
+      if (!reivindicou) {
+        // Outra entrega esta processando o mesmo pagamento. Pedir retry e
+        // mais seguro do que responder sucesso antes de a licenca ser salva.
+        return res.sendStatus(500);
+      }
+      marcadorAprovacaoEmProcessamento = chaveMarcador;
+
       registro.ativa = true;
       registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
       delete registro.renovacaoPaymentId;
@@ -532,10 +554,17 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     registro.ultimoStatusPagamento = detalhes.status;
     registro.atualizadoEm = new Date().toISOString();
     await salvarLicenca(chave, registro);
+    if (marcadorAprovacaoEmProcessamento) {
+      await redis.set(marcadorAprovacaoEmProcessamento, 'concluida');
+      marcadorAprovacaoEmProcessamento = null;
+    }
 
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
+    if (marcadorAprovacaoEmProcessamento) {
+      try { await redis.del(marcadorAprovacaoEmProcessamento); } catch (_) {}
+    }
     // Sem confirmacao de sucesso, o Mercado Pago tenta entregar novamente.
     // Responder 200 aqui podia perder definitivamente uma ativacao paga.
     res.sendStatus(500);
