@@ -798,7 +798,9 @@
 <div class="card" id="suporteCard" style="display:none;">
   <div id="suporteVistaCentral">
     <div class="grupo-dia" style="margin-top:0;" data-i18n="navSuporte">Ajuda e Suporte</div>
-    <input type="text" id="suporteBusca" data-i18n-placeholder="suporteBuscaPlaceholder" data-i18n-aria="suporteBuscaPlaceholder" placeholder="Como podemos ajudar?" aria-label="Como podemos ajudar?" oninput="filtrarSuporte()">
+    <label class="campo" data-i18n="suporteBuscaTitulo" style="margin-top:0;">🔍 Pesquise uma dúvida</label>
+    <input type="text" id="suporteBusca" data-i18n-placeholder="suporteBuscaPlaceholder" data-i18n-aria="suporteBuscaAria" placeholder="Ex.: Como faço backup?" aria-label="Pesquisar na Central de Ajuda" oninput="filtrarSuporte()">
+    <p class="dica-observacao" id="suporteContagemResultados" style="min-height:1.2em;"></p>
     <div class="suporte-categorias" id="suporteCategorias"></div>
     <div id="suporteListaPerguntas"></div>
     <div class="suporte-ainda-precisa">
@@ -4252,8 +4254,11 @@ const TRADUCOES2 = {
   porQuantosMeses: { pt:"Por quantos meses? Deixe em branco pra repetir sem parar (ex: aluguel) ou informe um número (ex: 8, pra uma parcela em 8x).", es:"¿Por cuántos meses? Déjalo en blanco para repetir sin parar (ej: alquiler) o indica un número (ej: 8, para una cuota en 8x).", en:"For how many months? Leave blank to repeat forever (e.g. rent) or enter a number (e.g. 8, for an 8-installment plan).", fr:"Pendant combien de mois ? Laissez vide pour répéter indéfiniment (ex : loyer) ou indiquez un nombre (ex : 8, pour un paiement en 8 fois).", de:"Für wie viele Monate? Leer lassen für unbegrenzte Wiederholung (z. B. Miete) oder eine Zahl eingeben (z. B. 8, für eine Ratenzahlung in 8x).", it:"Per quanti mesi? Lascia vuoto per ripetere senza fine (es: affitto) o inserisci un numero (es: 8, per una rata in 8x).", zh:"持续几个月？留空表示无限重复（如房租），或输入数字（如8，表示分8期）。", ja:"何ヶ月間ですか？無期限に繰り返す場合は空欄のままにしてください（例：家賃）。数字を入力することもできます（例：8回払いの場合は8）。", ko:"몇 개월 동안인가요? 계속 반복하려면 비워두세요 (예: 월세), 숫자를 입력할 수도 있습니다 (예: 8회 분할의 경우 8).", ar:"لكم عدد الأشهر؟ اتركه فارغًا للتكرار بلا توقف (مثل الإيجار) أو أدخل رقمًا (مثل 8، لدفعة على 8 أقساط).", hi:"कितने महीनों के लिए? बिना रुके दोहराने के लिए खाली छोड़ें (जैसे किराया) या एक संख्या दर्ज करें (जैसे 8, 8 किस्तों के लिए)।", ru:"На сколько месяцев? Оставьте пустым для бесконечного повторения (например, аренда) или введите число (например, 8, для рассрочки на 8 платежей).", nl:"Voor hoeveel maanden? Laat leeg om oneindig te herhalen (bijv. huur) of voer een getal in (bijv. 8, voor een betaling in 8 termijnen).", pl:"Na ile miesięcy? Zostaw puste, aby powtarzać bez końca (np. czynsz), lub podaj liczbę (np. 8, dla raty w 8x).", tr:"Kaç ay için? Sonsuza kadar tekrarlamak için boş bırakın (örn. kira) veya bir sayı girin (örn. 8 taksit için 8).", vi:"Trong bao nhiêu tháng? Để trống để lặp lại mãi mãi (vd: tiền thuê nhà) hoặc nhập một số (vd: 8, cho khoản trả góp 8 kỳ).", th:"เป็นเวลากี่เดือน? เว้นว่างไว้เพื่อทำซ้ำตลอดไป (เช่น ค่าเช่า) หรือระบุตัวเลข (เช่น 8 สำหรับการผ่อน 8 งวด)", id:"Berapa bulan? Kosongkan untuk mengulang tanpa henti (mis: sewa) atau masukkan angka (mis: 8, untuk cicilan 8x).", tl:"Ilang buwan? Iwanang blangko para ulitin nang walang hanggan (hal: renta) o maglagay ng numero (hal: 8, para sa hulugan na 8x).", sw:"Kwa miezi mingapi? Acha wazi kurudia bila kikomo (mf: kodi) au weka nambari (mf: 8, kwa malipo ya awamu 8).", he:"למשך כמה חודשים? השאר ריק כדי לחזור ללא הפסקה (למשל שכר דירה) או הזן מספר (למשל 8, לתשלום ב-8 תשלומים).", el:"Για πόσους μήνες; Αφήστε κενό για επανάληψη χωρίς τέλος (π.χ. ενοίκιο) ή εισάγετε έναν αριθμό (π.χ. 8, για δόση σε 8x).", sv:"I hur många månader? Lämna tomt för att upprepa för alltid (t.ex. hyra) eller ange ett nummer (t.ex. 8, för en avbetalning i 8x).", no:"I hvor mange måneder? La stå tomt for å gjenta for alltid (f.eks. husleie) eller angi et tall (f.eks. 8, for en nedbetaling i 8x).", da:"I hvor mange måneder? Lad stå tomt for at gentage for evigt (f.eks. husleje), eller angiv et tal (f.eks. 8, for en afdrag i 8x).", fi:"Kuinka monta kuukautta? Jätä tyhjäksi toistaaksesi loputtomasti (esim. vuokra) tai anna numero (esim. 8, 8 erän maksusuunnitelmalle).", cs:"Na kolik měsíců? Nechte prázdné pro nekonečné opakování (např. nájem) nebo zadejte číslo (např. 8, pro splátku na 8x).", ro:"Pentru câte luni? Lasă necompletat pentru a repeta la nesfârșit (ex: chirie) sau introdu un număr (ex: 8, pentru o plată în 8 rate).", hu:"Hány hónapig? Hagyja üresen a végtelen ismétléshez (pl. bérleti díj), vagy adjon meg egy számot (pl. 8, egy 8 részletes fizetéshez).", uk:"На скільки місяців? Залиште порожнім для нескінченного повторення (напр. оренда) або введіть число (напр. 8, для розстрочки на 8 платежів).", bn:"কত মাসের জন্য? চিরকাল পুনরাবৃত্তির জন্য খালি রাখুন (যেমন ভাড়া) অথবা একটি সংখ্যা লিখুন (যেমন ৮, ৮ কিস্তির জন্য)।", ur:"کتنے مہینوں کے لیے؟ ہمیشہ کے لیے دہرانے کے لیے خالی چھوڑیں (مثلاً کرایہ) یا ایک نمبر درج کریں (مثلاً 8، 8 اقساط کے لیے)۔", fa:"برای چند ماه؟ برای تکرار بی‌پایان خالی بگذارید (مثلاً اجاره) یا عددی وارد کنید (مثلاً ۸، برای پرداخت ۸ قسطی).", ms:"Untuk berapa bulan? Biarkan kosong untuk berulang selama-lamanya (cth: sewa) atau masukkan nombor (cth: 8, untuk ansuran 8x).", pa:"ਕਿੰਨੇ ਮਹੀਨਿਆਂ ਲਈ? ਹਮੇਸ਼ਾ ਲਈ ਦੁਹਰਾਉਣ ਲਈ ਖਾਲੀ ਛੱਡੋ (ਜਿਵੇਂ ਕਿਰਾਇਆ) ਜਾਂ ਇੱਕ ਨੰਬਰ ਦਰਜ ਕਰੋ (ਜਿਵੇਂ 8, 8 ਕਿਸ਼ਤਾਂ ਲਈ)।", ta:"எத்தனை மாதங்களுக்கு? முடிவில்லாமல் மீண்டும் செய்ய காலியாக விடவும் (எ.கா: வாடகை) அல்லது ஒரு எண்ணை உள்ளிடவும் (எ.கா: 8, 8 தவணைகளுக்கு).", gu:"કેટલા મહિનાઓ માટે? કાયમ પુનરાવર્તન કરવા ખાલી છોડો (દા.ત. ભાડું) અથવા સંખ્યા દાખલ કરો (દા.ત. 8, 8 હપ્તા માટે).", am:"ለስንት ወራት? ለዘላለም ለመድገም ባዶ ይተዉት (ለምሳሌ ኪራይ) ወይም ቁጥር ያስገቡ (ለምሳሌ 8፣ በ8x ክፍያ ለማድረግ)።", ha:"Har wata nawa? Bar fanko don maimaitawa har abada (misali: haya) ko shigar da lamba (misali: 8, don biya a kashi 8)." },
 
   navSuporte: { pt:"Ajuda e Suporte" },
-  suporteBuscaPlaceholder: { pt:"Como podemos ajudar?" },
-  suporteSemResultado: { pt:"Não encontramos uma resposta para isso." },
+  suporteBuscaTitulo: { pt:"🔍 Pesquise uma dúvida" },
+  suporteBuscaPlaceholder: { pt:"Ex.: Como faço backup?" },
+  suporteBuscaAria: { pt:"Pesquisar na Central de Ajuda" },
+  suporteContagemResultados: { pt:"{qtd} resposta{plural} encontrada{plural}" },
+  suporteSemResultado: { pt:"Não encontramos uma resposta para sua dúvida." },
   suporteFalarComSuporte: { pt:"Falar com o suporte" },
   suporteAindaPrecisaTitulo: { pt:"Ainda precisa de ajuda?" },
   suporteFormTitulo: { pt:"Falar com o suporte" },
@@ -5228,7 +5233,11 @@ let suporteCategoriaAtiva = null;
 let suportePerguntaAberta = null;
 
 function normalizarTextoBusca(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // Tira pontuacao (ex: "backup?" vira "backup ") - sem isso, a ultima
+  // palavra de qualquer pergunta digitada com "?" no final nunca batia com
+  // o mesmo texto sem pontuacao no conteudo (achado testando com a propria
+  // frase do placeholder, "Como faço backup?", que dava zero resultado).
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ');
 }
 
 function suportePerguntasFiltradas() {
@@ -5269,6 +5278,20 @@ function alternarSuportePergunta(id) {
 function renderizarSuporteLista() {
   const el = document.getElementById('suporteListaPerguntas');
   const itens = suportePerguntasFiltradas();
+
+  // So mostra a contagem "X respostas encontradas" quando tem termo de busca
+  // digitado - e o feedback que deixa claro que aquilo e uma PESQUISA (filtra
+  // e mostra quantas bateram), no lugar de silenciosamente so trocar a
+  // lista, que testes com usuario real mostraram parecer "nao fez nada"
+  // (pareceu um campo de chat sem botao de enviar).
+  const termoDigitado = document.getElementById('suporteBusca').value.trim();
+  const contagemEl = document.getElementById('suporteContagemResultados');
+  if (termoDigitado) {
+    contagemEl.textContent = t('suporteContagemResultados', { qtd: itens.length, plural: itens.length === 1 ? '' : 's' });
+  } else {
+    contagemEl.textContent = '';
+  }
+
   if (itens.length === 0) {
     el.innerHTML = `
       <div class="suporte-vazio">
