@@ -347,6 +347,23 @@ app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res
 const VALOR_ASSINATURA = 19.90;
 const DIAS_ANTECEDENCIA_RENOVACAO = 3; // gera o Pix do proximo mes com alguns dias de folga
 
+// Soma um mes de calendario sem o overflow nativo de Date.setMonth(). Ex.:
+// 31/jan vira 28/fev (ou 29 em ano bissexto), nunca uma data em marco.
+function adicionarUmMesCalendario(dataBase) {
+  const origem = new Date(dataBase);
+  const diaOriginal = origem.getUTCDate();
+  const resultado = new Date(origem);
+  resultado.setUTCDate(1);
+  resultado.setUTCMonth(resultado.getUTCMonth() + 1);
+  const ultimoDiaDoMes = new Date(Date.UTC(
+    resultado.getUTCFullYear(),
+    resultado.getUTCMonth() + 1,
+    0
+  )).getUTCDate();
+  resultado.setUTCDate(Math.min(diaOriginal, ultimoDiaDoMes));
+  return resultado;
+}
+
 // Gera uma cobranca Pix avulsa (nao e assinatura do Mercado Pago - o produto
 // de Assinaturas deles nao oferece Pix, so cartao, confirmado testando de
 // verdade). external_reference carrega a chave de licenca pra o webhook
@@ -364,6 +381,34 @@ async function criarCobrancaPix(chave, email) {
   });
   const dadosPix = resposta.point_of_interaction.transaction_data;
   return { paymentId: resposta.id, qrCode: dadosPix.qr_code_base64, copiaECola: dadosPix.qr_code };
+}
+
+async function enviarCobrancaRenovacaoPorEmail(email, pix, vencimento) {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
+  const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
+  const dataVencimento = new Date(vencimento).toLocaleDateString('pt-BR');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: [email],
+        subject: 'Pix para renovar sua assinatura do Sifia',
+        text: 'Sua assinatura do Sifia vence em ' + dataVencimento
+          + '. Use o Pix copia e cola abaixo para renovar por mais um mês:\n\n'
+          + pix.copiaECola
+          + '\n\nO acesso só será renovado depois da confirmação do pagamento.',
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (!resposta.ok) throw new Error('Resend recusou o envio da renovacao: ' + resposta.status + ' ' + await resposta.text());
 }
 
 // Primeira cobranca de uma assinatura nova.
@@ -404,7 +449,10 @@ function assinaturaWebhookValida(req, paymentId) {
   );
   const ts = partes.ts;
   const assinaturaRecebida = partes.v1;
-  if (!ts || !assinaturaRecebida) return false;
+  // HMAC-SHA256 hexadecimal tem exatamente 64 caracteres. Validar antes de
+  // timingSafeEqual evita excecao por buffers de tamanhos diferentes e
+  // impede que um cabecalho malformado force retries/logs indefinidamente.
+  if (!ts || !/^[a-f0-9]{64}$/i.test(assinaturaRecebida || '')) return false;
 
   let manifesto = '';
   if (paymentId) manifesto += `id:${paymentId};`;
@@ -416,7 +464,10 @@ function assinaturaWebhookValida(req, paymentId) {
     .update(manifesto)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(assinaturaCalculada), Buffer.from(assinaturaRecebida));
+  return crypto.timingSafeEqual(
+    Buffer.from(assinaturaCalculada, 'hex'),
+    Buffer.from(assinaturaRecebida, 'hex')
+  );
 }
 
 // Aviso automatico do Mercado Pago a cada evento de pagamento. Reage ja na
@@ -424,6 +475,7 @@ function assinaturaWebhookValida(req, paymentId) {
 // proteger o custo de IA por chamada: continuar liberando acesso enquanto o
 // pagamento nao esta confirmado e risco desnecessario.
 app.post('/api/webhook/mercadopago', async (req, res) => {
+  let marcadorAprovacaoEmProcessamento = null;
   try {
     const tipo = req.query.type || req.body.type;
     const paymentId = req.query['data.id'] || (req.body.data && req.body.data.id);
@@ -444,25 +496,78 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     }
 
     if (detalhes.status === 'approved') {
+      // O Mercado Pago pode reenviar uma aprovacao antiga mesmo depois de
+      // outra renovacao ter sido paga. Comparar apenas com ultimoPaymentId
+      // nao basta nesse caso: a aprovacao antiga somaria outro mes. O
+      // marcador por paymentId preserva a idempotencia historica e o NX
+      // impede duas entregas simultaneas de aplicarem o mesmo ciclo.
+      const chaveMarcador = `pagamento:aprovacao-processada:${paymentId}`;
+      const estadoMarcador = await redis.get(chaveMarcador);
+      if (estadoMarcador === 'concluida') return res.sendStatus(200);
+
+      // Compatibilidade com pagamentos aprovados antes desta protecao.
+      if (String(registro.ultimoPaymentId || '') === String(paymentId)) {
+        await redis.set(chaveMarcador, 'concluida');
+        return res.sendStatus(200);
+      }
+
+      const reivindicou = await redis.set(
+        chaveMarcador,
+        'processando',
+        { nx: true, ex: 5 * 60 }
+      );
+      if (!reivindicou) {
+        // Outra entrega esta processando o mesmo pagamento. Pedir retry e
+        // mais seguro do que responder sucesso antes de a licenca ser salva.
+        return res.sendStatus(500);
+      }
+      marcadorAprovacaoEmProcessamento = chaveMarcador;
+
       registro.ativa = true;
       registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
+      delete registro.renovacaoPaymentId;
+      delete registro.renovacaoCopiaECola;
+      delete registro.renovacaoEmailEnviado;
       registro.ultimoPaymentId = paymentId; // pra saber o que estornar se ela pedir reembolso
       if (!registro.primeiroPagamentoEm) {
         registro.primeiroPagamentoEm = new Date().toISOString(); // marca o inicio da janela de 7 dias do CDC Art. 49
       }
-      const proximo = new Date();
-      proximo.setMonth(proximo.getMonth() + 1);
-      registro.proximoPagamentoEm = proximo.toISOString();
-    } else {
+      const agora = new Date();
+      const vencimentoAtual = registro.proximoPagamentoEm
+        ? new Date(registro.proximoPagamentoEm)
+        : null;
+      // Renovacao paga antes do vencimento estende a partir do fim do periodo
+      // ja pago, para a pessoa nao perder os dias restantes. Primeira compra
+      // (ou pagamento atrasado) inicia um novo mes a partir da aprovacao.
+      const baseDoNovoCiclo = vencimentoAtual
+        && !Number.isNaN(vencimentoAtual.getTime())
+        && vencimentoAtual > agora
+        ? vencimentoAtual
+        : agora;
+      registro.proximoPagamentoEm = adicionarUmMesCalendario(baseDoNovoCiclo).toISOString();
+    } else if (detalhes.status === 'refunded' || detalhes.status === 'charged_back') {
+      // So eventos que desfazem dinheiro ja aprovado cortam o acesso agora.
+      // Pending/in_process/rejected/cancelled nao podem remover dias de um
+      // periodo anterior que ja foi pago; o vencimento diario cuida disso.
       registro.ativa = false;
     }
+    registro.ultimoStatusPagamento = detalhes.status;
     registro.atualizadoEm = new Date().toISOString();
     await salvarLicenca(chave, registro);
+    if (marcadorAprovacaoEmProcessamento) {
+      await redis.set(marcadorAprovacaoEmProcessamento, 'concluida');
+      marcadorAprovacaoEmProcessamento = null;
+    }
 
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.sendStatus(200); // sempre 200 pro Mercado Pago nao ficar reenviando o mesmo evento
+    if (marcadorAprovacaoEmProcessamento) {
+      try { await redis.del(marcadorAprovacaoEmProcessamento); } catch (_) {}
+    }
+    // Sem confirmacao de sucesso, o Mercado Pago tenta entregar novamente.
+    // Responder 200 aqui podia perder definitivamente uma ativacao paga.
+    res.sendStatus(500);
   }
 });
 
@@ -740,18 +845,44 @@ async function processarRenovacoes() {
     }
     if (registro.renovacaoCancelada) continue; // cancelou - so deixa o acesso expirar sozinho, sem gerar Pix novo
 
-    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO && !registro.cobrancaRenovacaoGerada) {
+    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO) {
       try {
-        await criarCobrancaPix(chave, registro.email);
-        registro.cobrancaRenovacaoGerada = true;
-        await salvarLicenca(chave, registro);
+        let pix;
+        if (!registro.cobrancaRenovacaoGerada || !registro.renovacaoCopiaECola) {
+          pix = await criarCobrancaPix(chave, registro.email);
+          registro.cobrancaRenovacaoGerada = true;
+          registro.renovacaoPaymentId = pix.paymentId;
+          registro.renovacaoCopiaECola = pix.copiaECola;
+          registro.renovacaoEmailEnviado = false;
+          // Salva antes do e-mail: se o provedor falhar, a proxima rotina
+          // reutiliza o mesmo Pix em vez de criar varias cobrancas.
+          await salvarLicenca(chave, registro);
+        } else {
+          pix = {
+            paymentId: registro.renovacaoPaymentId,
+            copiaECola: registro.renovacaoCopiaECola,
+          };
+        }
+
+        if (!registro.renovacaoEmailEnviado) {
+          await enviarCobrancaRenovacaoPorEmail(registro.email, pix, registro.proximoPagamentoEm);
+          registro.renovacaoEmailEnviado = true;
+          registro.atualizadoEm = new Date().toISOString();
+          await salvarLicenca(chave, registro);
+        }
       } catch (err) {
-        console.error('Falha ao gerar cobranca de renovacao para', chave, err);
+        console.error('Falha ao preparar ou enviar cobranca de renovacao para', chave, err);
       }
     }
   }
 }
-setInterval(processarRenovacoes, 24 * 60 * 60 * 1000);
+// Executa tambem na inicializacao. Esperar as primeiras 24 horas fazia uma
+// reinicializacao/deploy adiar cobrancas e suspensoes; reinicios frequentes
+// poderiam impedir a rotina de rodar por tempo indeterminado.
+processarRenovacoes().catch(err => console.error('Falha na rotina inicial de renovacoes', err));
+setInterval(() => {
+  processarRenovacoes().catch(err => console.error('Falha na rotina diaria de renovacoes', err));
+}, 24 * 60 * 60 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
