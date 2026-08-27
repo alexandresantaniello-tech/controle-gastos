@@ -59,6 +59,51 @@ const limiteApiIA = rateLimit({
   message: { erro: 'Muitas requisições em pouco tempo - aguarde um minuto e tente de novo.' },
 });
 
+// Acoes de assinatura e recuperacao nao podem compartilhar o contador das
+// chamadas de IA. Uma importacao de extrato pode consumir varias chamadas em
+// sequencia; isso nunca deve impedir a pessoa de pagar, recuperar o acesso ou
+// cancelar a renovacao. Cada fluxo tambem ganha um teto coerente com a sua
+// frequencia real, sem permitir abuso automatizado.
+const limiteNovaAssinatura = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de assinatura. Aguarde alguns minutos e tente novamente.' },
+});
+
+const limiteEnvioRecuperacao = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas solicitações de código. Aguarde alguns minutos e tente novamente.' },
+});
+
+const limiteConfirmacaoRecuperacao = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas tentativas de confirmação. Aguarde alguns minutos e solicite um novo código.' },
+});
+
+const limiteConsultaLicenca = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 180,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas consultas de assinatura. Aguarde um instante e tente novamente.' },
+});
+
+const limiteGestaoAssinatura = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erro: 'Muitas alterações de assinatura. Aguarde alguns minutos e tente novamente.' },
+});
+
 // Segunda camada, so no endpoint mais caro (analise de imagem): exige um
 // segredo que so o proprio Sifia manda automaticamente. Nao aplicamos no
 // /api/parse-texto porque o Atalho do iOS chama ele direto, sem esse
@@ -367,7 +412,7 @@ async function criarCobrancaPix(chave, email) {
 }
 
 // Primeira cobranca de uma assinatura nova.
-app.post('/api/assinar', limiteApiIA, async (req, res) => {
+app.post('/api/assinar', limiteNovaAssinatura, async (req, res) => {
   const email = (req.body && req.body.email || '').trim();
   if (!email) {
     return res.status(400).json({ erro: 'E-mail obrigatório' });
@@ -511,7 +556,7 @@ async function enviarCodigoRecuperacao(email, codigo) {
   if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
 }
 
-app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/recuperar', limiteEnvioRecuperacao, async (req, res) => {
   const email = normalizarEmail(req.body && req.body.email);
   if (!email || !email.includes('@')) return res.status(400).json({ erro: 'E-mail inválido' });
   try {
@@ -528,7 +573,7 @@ app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
   }
 });
 
-app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/confirmar-recuperacao', limiteConfirmacaoRecuperacao, async (req, res) => {
   const token = String(req.body && req.body.token || '').trim();
   const codigo = String(req.body && req.body.codigo || '').trim();
   if (!token || !/^\d{6}$/.test(codigo)) return res.status(400).json({ erro: 'Código inválido.' });
@@ -554,7 +599,7 @@ app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => 
 });
 
 // O app consulta isso periodicamente pra saber se libera os recursos pagos.
-app.get('/api/licenca/:chave', async (req, res) => {
+app.get('/api/licenca/:chave', limiteConsultaLicenca, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
@@ -572,7 +617,7 @@ app.get('/api/licenca/:chave', async (req, res) => {
 // Direito de arrependimento (CDC Art. 49): dentro de 7 dias da primeira
 // cobrança, a pessoa pode cancelar sem dar motivo e recebe reembolso
 // integral, automático, sem intervencao manual - por lei, incondicional.
-app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/:chave/cancelar', limiteGestaoAssinatura, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
@@ -608,7 +653,7 @@ app.post('/api/licenca/:chave/cancelar', limiteApiIA, async (req, res) => {
 // impede a proxima cobranca. A pessoa mantem acesso ate o fim do periodo ja
 // pago (processarRenovacoes cuida de suspender sozinho quando esse periodo
 // acabar, sem gerar Pix novo pra quem cancelou).
-app.post('/api/licenca/:chave/cancelar-renovacao', limiteApiIA, async (req, res) => {
+app.post('/api/licenca/:chave/cancelar-renovacao', limiteGestaoAssinatura, async (req, res) => {
   const registro = await buscarLicenca(req.params.chave);
   if (!registro) {
     return res.status(404).json({ erro: 'Chave não encontrada' });
