@@ -59,15 +59,64 @@ const limiteApiIA = rateLimit({
   message: { erro: 'Muitas requisições em pouco tempo - aguarde um minuto e tente de novo.' },
 });
 
-// Segunda camada, so no endpoint mais caro (analise de imagem): exige um
-// segredo que so o proprio Sifia manda automaticamente. Nao aplicamos no
-// /api/parse-texto porque o Atalho do iOS chama ele direto, sem esse
-// cabecalho - exigir la quebraria esse caminho pra quem ja configurou.
-function exigirSegredoApp(req, res, next) {
-  if (req.headers['x-app-secret'] !== process.env.APP_SECRET) {
-    return res.status(403).json({ erro: 'acesso negado' });
+const COOKIE_LICENCA = 'sifia_licenca';
+
+function cookiesDaRequisicao(req) {
+  const resultado = {};
+  String(req.headers.cookie || '').split(';').forEach(par => {
+    const separador = par.indexOf('=');
+    if (separador < 1) return;
+    const chave = par.slice(0, separador).trim();
+    const valor = par.slice(separador + 1).trim();
+    try { resultado[chave] = decodeURIComponent(valor); } catch (_) { resultado[chave] = valor; }
+  });
+  return resultado;
+}
+
+function chaveLicencaDaRequisicao(req) {
+  return String(
+    req.headers['x-license-key']
+    || (req.body && req.body.chaveDeLicenca)
+    || cookiesDaRequisicao(req)[COOKIE_LICENCA]
+    || ''
+  ).trim();
+}
+
+async function licencaAtivaDaRequisicao(req) {
+  const chave = chaveLicencaDaRequisicao(req);
+  if (!chave) return null;
+  const registro = await buscarLicenca(chave);
+  return registro && registro.ativa ? { chave, registro } : null;
+}
+
+async function exigirLicencaAtiva(req, res, next) {
+  try {
+    const licenca = await licencaAtivaDaRequisicao(req);
+    if (!licenca) return res.status(402).json({ erro: 'Assinatura ativa necessária.' });
+    req.licencaSifia = licenca;
+    next();
+  } catch (err) {
+    console.error('Falha ao validar licenca', err);
+    res.status(503).json({ erro: 'Não foi possível validar a assinatura agora.' });
   }
-  next();
+}
+
+async function exigirLicencaNoCompartilhamento(req, res, next) {
+  try {
+    const licenca = await licencaAtivaDaRequisicao(req);
+    if (licenca) {
+      req.licencaSifia = licenca;
+      return next();
+    }
+    return res.status(402).send(`<!DOCTYPE html>
+<html><body style="background:#000919;color:#e6f4fe;font-family:sans-serif;text-align:center;padding:30vh 24px 0;">
+<p>Abra o Sifia e valide sua assinatura antes de compartilhar um comprovante.</p>
+<p><a href="/" style="color:#4ab8fd;">Voltar ao app</a></p>
+</body></html>`);
+  } catch (err) {
+    console.error('Falha ao validar licenca no compartilhamento', err);
+    return res.status(503).send('Não foi possível validar a assinatura agora.');
+  }
 }
 
 function getExtractionPrompt() {
@@ -279,7 +328,7 @@ function mensagemErroAmigavel(err) {
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
 }
 
-app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('receipt'), async (req, res) => {
+app.post('/api/parse-receipt', limiteApiIA, exigirLicencaAtiva, upload.single('receipt'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
@@ -296,7 +345,7 @@ app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('rec
 // pra frase falada/transcrita em vez de imagem. Usado tanto pelo microfone
 // no navegador (Android/desktop) quanto pelo Atalho do iOS (dita e manda
 // pra ca via ?voz=).
-app.post('/api/parse-texto', limiteApiIA, async (req, res) => {
+app.post('/api/parse-texto', limiteApiIA, exigirLicencaAtiva, async (req, res) => {
   const texto = (req.body && req.body.texto || '').trim();
   if (!texto) {
     return res.status(400).json({ erro: 'Nenhum texto enviado' });
@@ -314,7 +363,7 @@ app.post('/api/parse-texto', limiteApiIA, async (req, res) => {
 // So redireciona pra "/?compartilhado=..." - quem realmente adiciona as
 // transacoes (e pergunta a data quando a IA nao reconhece) e o mesmo codigo
 // cliente usado pelo Atalho do iOS e, indiretamente, pelo upload manual.
-app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res) => {
+app.post('/share-target', limiteApiIA, exigirLicencaNoCompartilhamento, upload.single('receipt'), async (req, res) => {
   let transacoes = null;
   let erro = null;
 
@@ -561,6 +610,16 @@ app.get('/api/licenca/:chave', async (req, res) => {
   }
   const dentroDoPrazoDeArrependimento = !!registro.primeiroPagamentoEm &&
     (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
+
+  const opcoesCookie = { httpOnly: true, secure: true, sameSite: 'none', path: '/' };
+  if (registro.ativa) {
+    // O cookie leva apenas a chave aleatoria da assinatura. Cada uso ainda
+    // consulta o Redis; cancelar/reembolsar invalida imediatamente.
+    res.cookie(COOKIE_LICENCA, req.params.chave, { ...opcoesCookie, maxAge: 35 * 24 * 60 * 60 * 1000 });
+  } else {
+    res.clearCookie(COOKIE_LICENCA, opcoesCookie);
+  }
+
   res.json({
     ativa: registro.ativa,
     podeReembolsar: dentroDoPrazoDeArrependimento,
