@@ -375,9 +375,9 @@ async function criarCobrancaPix(chave, email) {
 
 // Primeira cobranca de uma assinatura nova.
 app.post('/api/assinar', limiteApiIA, async (req, res) => {
-  const email = (req.body && req.body.email || '').trim();
-  if (!email) {
-    return res.status(400).json({ erro: 'E-mail obrigatório' });
+  const email = normalizarEmail(req.body && req.body.email);
+  if (!emailValido(email)) {
+    return res.status(400).json({ erro: 'E-mail inválido' });
   }
   try {
     const chave = gerarChaveLicenca();
@@ -485,6 +485,12 @@ function normalizarEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function emailValido(email) {
+  const normalizado = normalizarEmail(email);
+  return normalizado.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizado);
+}
+
 function hashCodigoRecuperacao(email, codigo) {
   return crypto.createHash('sha256').update(email + ':' + codigo).digest('hex');
 }
@@ -576,7 +582,7 @@ async function enviarCodigoRecuperacao(email, codigo) {
 
 app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
   const email = normalizarEmail(req.body && req.body.email);
-  if (!email || !email.includes('@')) return res.status(400).json({ erro: 'E-mail inválido' });
+  if (!emailValido(email)) return res.status(400).json({ erro: 'E-mail inválido' });
   try {
     const encontrada = await encontrarLicencaMaisRecentePorEmail(email);
     const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -774,7 +780,7 @@ app.post('/api/suporte', limiteSuporte, async (req, res) => {
   if (!descricao || descricao.length > 2000) {
     return res.status(400).json({ erro: 'Descreva o problema (até 2000 caracteres).' });
   }
-  if (!email || !email.includes('@') || email.length > 200) {
+  if (!emailValido(email)) {
     return res.status(400).json({ erro: 'Informe um e-mail válido.' });
   }
 
