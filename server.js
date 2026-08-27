@@ -366,6 +366,34 @@ async function criarCobrancaPix(chave, email) {
   return { paymentId: resposta.id, qrCode: dadosPix.qr_code_base64, copiaECola: dadosPix.qr_code };
 }
 
+async function enviarCobrancaRenovacaoPorEmail(email, pix, vencimento) {
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY ausente');
+  const remetente = process.env.RESEND_FROM || 'Sifia <noreply@sifiaapp.com>';
+  const dataVencimento = new Date(vencimento).toLocaleDateString('pt-BR');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: [email],
+        subject: 'Pix para renovar sua assinatura do Sifia',
+        text: 'Sua assinatura do Sifia vence em ' + dataVencimento
+          + '. Use o Pix copia e cola abaixo para renovar por mais um mês:\n\n'
+          + pix.copiaECola
+          + '\n\nO acesso só será renovado depois da confirmação do pagamento.',
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  if (!resposta.ok) throw new Error('Resend recusou o envio da renovacao: ' + resposta.status + ' ' + await resposta.text());
+}
+
 // Primeira cobranca de uma assinatura nova.
 app.post('/api/assinar', limiteApiIA, async (req, res) => {
   const email = (req.body && req.body.email || '').trim();
@@ -452,6 +480,9 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     if (detalhes.status === 'approved') {
       registro.ativa = true;
       registro.cobrancaRenovacaoGerada = false; // libera gerar a cobranca do proximo ciclo
+      delete registro.renovacaoPaymentId;
+      delete registro.renovacaoCopiaECola;
+      delete registro.renovacaoEmailEnviado;
       registro.ultimoPaymentId = paymentId; // pra saber o que estornar se ela pedir reembolso
       if (!registro.primeiroPagamentoEm) {
         registro.primeiroPagamentoEm = new Date().toISOString(); // marca o inicio da janela de 7 dias do CDC Art. 49
@@ -752,13 +783,33 @@ async function processarRenovacoes() {
     }
     if (registro.renovacaoCancelada) continue; // cancelou - so deixa o acesso expirar sozinho, sem gerar Pix novo
 
-    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO && !registro.cobrancaRenovacaoGerada) {
+    if (diasAteVencer <= DIAS_ANTECEDENCIA_RENOVACAO) {
       try {
-        await criarCobrancaPix(chave, registro.email);
-        registro.cobrancaRenovacaoGerada = true;
-        await salvarLicenca(chave, registro);
+        let pix;
+        if (!registro.cobrancaRenovacaoGerada || !registro.renovacaoCopiaECola) {
+          pix = await criarCobrancaPix(chave, registro.email);
+          registro.cobrancaRenovacaoGerada = true;
+          registro.renovacaoPaymentId = pix.paymentId;
+          registro.renovacaoCopiaECola = pix.copiaECola;
+          registro.renovacaoEmailEnviado = false;
+          // Salva antes do e-mail: se o provedor falhar, a proxima rotina
+          // reutiliza o mesmo Pix em vez de criar varias cobrancas.
+          await salvarLicenca(chave, registro);
+        } else {
+          pix = {
+            paymentId: registro.renovacaoPaymentId,
+            copiaECola: registro.renovacaoCopiaECola,
+          };
+        }
+
+        if (!registro.renovacaoEmailEnviado) {
+          await enviarCobrancaRenovacaoPorEmail(registro.email, pix, registro.proximoPagamentoEm);
+          registro.renovacaoEmailEnviado = true;
+          registro.atualizadoEm = new Date().toISOString();
+          await salvarLicenca(chave, registro);
+        }
       } catch (err) {
-        console.error('Falha ao gerar cobranca de renovacao para', chave, err);
+        console.error('Falha ao preparar ou enviar cobranca de renovacao para', chave, err);
       }
     }
   }
