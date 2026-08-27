@@ -347,6 +347,23 @@ app.post('/share-target', limiteApiIA, upload.single('receipt'), async (req, res
 const VALOR_ASSINATURA = 19.90;
 const DIAS_ANTECEDENCIA_RENOVACAO = 3; // gera o Pix do proximo mes com alguns dias de folga
 
+// Soma um mes de calendario sem o overflow nativo de Date.setMonth(). Ex.:
+// 31/jan vira 28/fev (ou 29 em ano bissexto), nunca uma data em marco.
+function adicionarUmMesCalendario(dataBase) {
+  const origem = new Date(dataBase);
+  const diaOriginal = origem.getUTCDate();
+  const resultado = new Date(origem);
+  resultado.setUTCDate(1);
+  resultado.setUTCMonth(resultado.getUTCMonth() + 1);
+  const ultimoDiaDoMes = new Date(Date.UTC(
+    resultado.getUTCFullYear(),
+    resultado.getUTCMonth() + 1,
+    0
+  )).getUTCDate();
+  resultado.setUTCDate(Math.min(diaOriginal, ultimoDiaDoMes));
+  return resultado;
+}
+
 // Gera uma cobranca Pix avulsa (nao e assinatura do Mercado Pago - o produto
 // de Assinaturas deles nao oferece Pix, so cartao, confirmado testando de
 // verdade). external_reference carrega a chave de licenca pra o webhook
@@ -487,9 +504,19 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
       if (!registro.primeiroPagamentoEm) {
         registro.primeiroPagamentoEm = new Date().toISOString(); // marca o inicio da janela de 7 dias do CDC Art. 49
       }
-      const proximo = new Date();
-      proximo.setMonth(proximo.getMonth() + 1);
-      registro.proximoPagamentoEm = proximo.toISOString();
+      const agora = new Date();
+      const vencimentoAtual = registro.proximoPagamentoEm
+        ? new Date(registro.proximoPagamentoEm)
+        : null;
+      // Renovacao paga antes do vencimento estende a partir do fim do periodo
+      // ja pago, para a pessoa nao perder os dias restantes. Primeira compra
+      // (ou pagamento atrasado) inicia um novo mes a partir da aprovacao.
+      const baseDoNovoCiclo = vencimentoAtual
+        && !Number.isNaN(vencimentoAtual.getTime())
+        && vencimentoAtual > agora
+        ? vencimentoAtual
+        : agora;
+      registro.proximoPagamentoEm = adicionarUmMesCalendario(baseDoNovoCiclo).toISOString();
     } else if (detalhes.status === 'refunded' || detalhes.status === 'charged_back') {
       // So eventos que desfazem dinheiro ja aprovado cortam o acesso agora.
       // Pending/in_process/rejected/cancelled nao podem remover dias de um
