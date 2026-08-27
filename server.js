@@ -30,6 +30,13 @@ function gerarChaveLicenca() {
 async function salvarLicenca(chave, registro) {
   await redis.set(`licenca:${chave}`, registro);
   await redis.sadd(CHAVE_LICENCAS_KEY, chave);
+  // O indice acelera recuperacao, mas nunca pode transformar uma licenca ja
+  // salva em falha de pagamento/cancelamento se o atalho estiver indisponivel.
+  try {
+    await atualizarIndiceLicencaPorEmail(chave, registro);
+  } catch (err) {
+    console.error('Falha ao atualizar indice de recuperacao da licenca', err);
+  }
 }
 
 async function buscarLicenca(chave) {
@@ -368,9 +375,9 @@ async function criarCobrancaPix(chave, email) {
 
 // Primeira cobranca de uma assinatura nova.
 app.post('/api/assinar', limiteApiIA, async (req, res) => {
-  const email = (req.body && req.body.email || '').trim();
-  if (!email) {
-    return res.status(400).json({ erro: 'E-mail obrigatório' });
+  const email = normalizarEmail(req.body && req.body.email);
+  if (!emailValido(email)) {
+    return res.status(400).json({ erro: 'E-mail inválido' });
   }
   try {
     const chave = gerarChaveLicenca();
@@ -478,19 +485,81 @@ function normalizarEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function emailValido(email) {
+  const normalizado = normalizarEmail(email);
+  return normalizado.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizado);
+}
+
 function hashCodigoRecuperacao(email, codigo) {
   return crypto.createHash('sha256').update(email + ':' + codigo).digest('hex');
 }
 
+function chaveIndiceLicencaPorEmail(email) {
+  // O e-mail nao aparece no nome da chave do Redis nem em logs operacionais.
+  const hashEmail = crypto.createHash('sha256').update(normalizarEmail(email)).digest('hex');
+  return `licenca:indice-email:${hashEmail}`;
+}
+
+function registroLicencaTemPrioridade(candidata, atual) {
+  if (!atual) return true;
+  // Uma assinatura paga/ativa sempre vence uma tentativa de Pix mais nova
+  // que ainda nao foi paga.
+  if (!!candidata.ativa !== !!atual.ativa) return !!candidata.ativa;
+  return new Date(candidata.atualizadoEm || 0) > new Date(atual.atualizadoEm || 0);
+}
+
+async function atualizarIndiceLicencaPorEmail(chave, registro) {
+  const email = normalizarEmail(registro && registro.email);
+  if (!email) return;
+  const indiceKey = chaveIndiceLicencaPorEmail(email);
+  const chaveAtual = await redis.get(indiceKey);
+
+  // Se a licenca que sustentava o indice acabou de ser desativada, removemos
+  // o atalho. A proxima recuperacao faz uma varredura unica e encontra outra
+  // ativa, se existir, em vez de devolver uma assinatura cancelada.
+  if (String(chaveAtual || '') === String(chave) && !registro.ativa) {
+    await redis.del(indiceKey);
+    return;
+  }
+  // Licencas inativas novas nao podem substituir uma assinatura paga.
+  if (!registro.ativa) return;
+  if (!chaveAtual || String(chaveAtual) === String(chave)) {
+    await redis.set(indiceKey, chave);
+    return;
+  }
+
+  const registroAtual = await buscarLicenca(chaveAtual);
+  if (!registroAtual || registroLicencaTemPrioridade(registro, registroAtual)) {
+    await redis.set(indiceKey, chave);
+  }
+}
+
 async function encontrarLicencaMaisRecentePorEmail(email) {
+  const indiceKey = chaveIndiceLicencaPorEmail(email);
+  const chaveIndexada = await redis.get(indiceKey);
+  if (chaveIndexada) {
+    const registroIndexado = await buscarLicenca(chaveIndexada);
+    if (registroIndexado
+      && registroIndexado.ativa
+      && normalizarEmail(registroIndexado.email) === email) {
+      return { chave: chaveIndexada, ...registroIndexado };
+    }
+  }
+
+  // Compatibilidade/migracao: licencas criadas antes do indice sao
+  // localizadas uma vez pela lista antiga. O resultado correto fica indexado
+  // para as proximas recuperacoes.
   const chaves = await todasAsChavesDeLicenca();
   let encontrada = null;
   for (const chave of chaves) {
     const registro = await buscarLicenca(chave);
     if (registro && normalizarEmail(registro.email) === email) {
-      if (!encontrada || new Date(registro.atualizadoEm || 0) > new Date(encontrada.atualizadoEm || 0)) encontrada = { chave, ...registro };
+      const candidata = { chave, ...registro };
+      if (registroLicencaTemPrioridade(candidata, encontrada)) encontrada = candidata;
     }
   }
+  if (encontrada) await redis.set(indiceKey, encontrada.chave);
   return encontrada;
 }
 
@@ -513,14 +582,20 @@ async function enviarCodigoRecuperacao(email, codigo) {
 
 app.post('/api/licenca/recuperar', limiteApiIA, async (req, res) => {
   const email = normalizarEmail(req.body && req.body.email);
-  if (!email || !email.includes('@')) return res.status(400).json({ erro: 'E-mail inválido' });
+  if (!emailValido(email)) return res.status(400).json({ erro: 'E-mail inválido' });
   try {
     const encontrada = await encontrarLicencaMaisRecentePorEmail(email);
-    if (!encontrada) return res.json({ codigoEnviado: true });
     const codigo = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const token = crypto.randomBytes(24).toString('hex');
-    await redis.set('recuperacao:' + token, { email, chave: encontrada.chave, codigoHash: hashCodigoRecuperacao(email, codigo), tentativas: 0 }, { ex: RECUPERACAO_TTL_SEGUNDOS });
-    await enviarCodigoRecuperacao(email, codigo);
+    await redis.set('recuperacao:' + token, {
+      email,
+      chave: encontrada ? encontrada.chave : null,
+      codigoHash: hashCodigoRecuperacao(email, codigo),
+      tentativas: 0,
+    }, { ex: RECUPERACAO_TTL_SEGUNDOS });
+    // A resposta tem o mesmo formato exista ou nao uma conta para o e-mail.
+    // Isso impede enumeracao de assinantes pela presenca do token.
+    if (encontrada) await enviarCodigoRecuperacao(email, codigo);
     res.json({ codigoEnviado: true, token });
   } catch (err) {
     console.error('Falha ao iniciar recuperação', err);
@@ -705,7 +780,7 @@ app.post('/api/suporte', limiteSuporte, async (req, res) => {
   if (!descricao || descricao.length > 2000) {
     return res.status(400).json({ erro: 'Descreva o problema (até 2000 caracteres).' });
   }
-  if (!email || !email.includes('@') || email.length > 200) {
+  if (!emailValido(email)) {
     return res.status(400).json({ erro: 'Informe um e-mail válido.' });
   }
 
