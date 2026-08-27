@@ -659,17 +659,28 @@ Plataforma: ${dados.plataforma}
 Commit em produção: ${commitEmProducao}
 Recebido em: ${new Date().toISOString()}`;
 
-  const resposta = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: remetente,
-      to: ['contato@sifiaapp.com'],
-      reply_to: [dados.email],
-      subject: `[Suporte Sifia] ${dados.protocolo} — ${dados.assunto}`,
-      text: corpoTexto,
-    }),
-  });
+  // Nao deixa o formulario ficar preso indefinidamente se o provedor de
+  // e-mail aceitar a conexao mas parar de responder. O cliente recebe erro
+  // real e libera o botao para uma nova tentativa.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let resposta;
+  try {
+    resposta = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: remetente,
+        to: ['contato@sifiaapp.com'],
+        reply_to: [dados.email],
+        subject: `[Suporte Sifia] ${dados.protocolo} — ${dados.assunto}`,
+        text: corpoTexto,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!resposta.ok) throw new Error('Resend recusou o envio: ' + resposta.status + ' ' + await resposta.text());
 }
 
