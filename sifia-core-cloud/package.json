@@ -1,0 +1,13 @@
+{
+  "name": "sifia-core-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Persistent orchestration layer for the Sifia ecosystem",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
