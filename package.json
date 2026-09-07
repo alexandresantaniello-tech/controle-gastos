@@ -4,7 +4,8 @@
   "description": "App de controle de gastos por leitura de comprovante",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:integracao": "node scripts/test-integracao-lancamento.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
