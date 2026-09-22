@@ -416,7 +416,9 @@ function assinaturaWebhookValida(req, paymentId) {
     .update(manifesto)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(assinaturaCalculada), Buffer.from(assinaturaRecebida));
+  const calculada = Buffer.from(assinaturaCalculada, 'utf8');
+  const recebida = Buffer.from(assinaturaRecebida, 'utf8');
+  return calculada.length === recebida.length && crypto.timingSafeEqual(calculada, recebida);
 }
 
 // Aviso automatico do Mercado Pago a cada evento de pagamento. Reage ja na
@@ -473,7 +475,7 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     res.sendStatus(200);
   } catch (err) {
     console.error(err);
-    res.sendStatus(200); // sempre 200 pro Mercado Pago nao ficar reenviando o mesmo evento
+    // Falha interna/transitoria precisa ser reenviada pelo Mercado Pago.\n    // Responder 200 aqui poderia perder definitivamente um pagamento aprovado.\n    res.sendStatus(500);
   }
 });
 
