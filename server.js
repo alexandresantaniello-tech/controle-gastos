@@ -572,6 +572,13 @@ app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => 
   await redis.del(redisKey);
   const registro = await buscarLicenca(tentativa.chave);
   if (!registro) return res.status(404).json({ erro: 'Assinatura não encontrada.' });
+  if (normalizarEmail(tentativa.email) === EMAIL_PROPRIETARIO_SEM_COBRANCA) {
+    registro.email = EMAIL_PROPRIETARIO_SEM_COBRANCA;
+    registro.ativa = true;
+    registro.renovacaoCancelada = true;
+    registro.atualizadoEm = new Date().toISOString();
+    await salvarLicenca(tentativa.chave, registro);
+  }
   res.json({ chaveDeLicenca: tentativa.chave, ativa: licencaEhDoProprietario(registro) || !!registro.ativa });
 });
 
