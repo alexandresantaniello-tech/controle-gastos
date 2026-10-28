@@ -46,6 +46,21 @@ jobs:
           RUBY
       - name: Compile iOS app without signing
         run: xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - name: Build unsigned device app for remote-device packaging
+        run: |
+          rm -rf build-device Payload Sifia-unsigned.ipa
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphoneos -configuration Debug -derivedDataPath build-device CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          APP_PATH="build-device/Build/Products/Debug-iphoneos/App.app"
+          test -d "$APP_PATH"
+          test -d "$APP_PATH/PlugIns/SifiaShare.appex"
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/Sifia.app
+          zip -qry Sifia-unsigned.ipa Payload
+          unzip -l Sifia-unsigned.ipa | grep -E 'Payload/Sifia.app/|SifiaShare.appex' | head -40
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sifia-ios-unsigned-ipa
+          path: Sifia-unsigned.ipa
       - uses: actions/upload-artifact@v4
         with:
           name: sifia-ios-generated
