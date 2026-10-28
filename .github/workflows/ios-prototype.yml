@@ -18,6 +18,30 @@ jobs:
       - run: npm install
       - run: npx cap add ios
       - run: npx cap sync ios
+      - name: Install Share Extension into Xcode project
+        run: |
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project_path = 'ios/App/App.xcodeproj'
+          project = Xcodeproj::Project.open(project_path)
+          app = project.targets.find { |t| t.name == 'App' }
+          ext = project.new_target(:app_extension, 'SifiaShare', :ios, app.deployment_target)
+          group = project.main_group.new_group('SifiaShare', 'SifiaShare')
+          FileUtils.mkdir_p('ios/App/SifiaShare')
+          FileUtils.cp('ios-share/ShareViewController.swift', 'ios/App/SifiaShare/ShareViewController.swift')
+          FileUtils.cp('ios-share/Info.plist', 'ios/App/SifiaShare/Info.plist')
+          swift = group.new_file('ShareViewController.swift')
+          group.new_file('Info.plist')
+          ext.add_file_references([swift])
+          ext.build_configurations.each do |c|
+            c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.sifia.app.share'
+            c.build_settings['INFOPLIST_FILE'] = 'SifiaShare/Info.plist'
+            c.build_settings['SWIFT_VERSION'] = '5.0'
+            c.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+          end
+          app.add_dependency(ext)
+          project.save
+          RUBY
       - name: Compile iOS app without signing
         run: xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
       - uses: actions/upload-artifact@v4
