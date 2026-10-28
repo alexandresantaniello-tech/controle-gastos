@@ -35,6 +35,8 @@ jobs:
           ext.add_file_references([swift])
           ext.build_configurations.each do |c|
             c.build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = 'com.sifia.app.share'
+            c.build_settings['PRODUCT_NAME'] = 'SifiaShare'
+            c.build_settings['WRAPPER_EXTENSION'] = 'appex'
             c.build_settings['INFOPLIST_FILE'] = 'SifiaShare/Info.plist'
             c.build_settings['SWIFT_VERSION'] = '5.0'
             c.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
