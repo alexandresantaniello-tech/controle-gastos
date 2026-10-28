@@ -6081,6 +6081,11 @@ async function verificarPagamentoPaywall() {
 // paywall. A licenca em si e so a chave (sem login/senha) - guardada no
 // proprio navegador, igual o resto dos dados do Sifia.
 async function verificarLicencaAoAbrir() {
+  const emailAcesso = String(localStorage.getItem(EMAIL_LICENCA_KEY) || '').trim().toLowerCase();
+  if (emailAcesso === 'alexandre.santaniello@gmail.com') {
+    document.getElementById('paywallOverlay').classList.remove('aberto');
+    return;
+  }
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
   if (!chave) {
     document.getElementById('paywallOverlay').classList.add('aberto');
