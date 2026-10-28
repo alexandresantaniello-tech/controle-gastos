@@ -42,6 +42,10 @@ jobs:
             c.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
           end
           app.add_dependency(ext)
+          embed = app.copy_files_build_phases.find { |p| p.name == 'Embed App Extensions' } || app.new_copy_files_build_phase('Embed App Extensions')
+          embed.dst_subfolder_spec = '13'
+          build_file = embed.add_file_reference(ext.product_reference, true)
+          build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
           project.save
           RUBY
       - name: Compile iOS app without signing
