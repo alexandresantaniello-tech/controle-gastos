@@ -6081,47 +6081,10 @@ async function verificarPagamentoPaywall() {
 // paywall. A licenca em si e so a chave (sem login/senha) - guardada no
 // proprio navegador, igual o resto dos dados do Sifia.
 async function verificarLicencaAoAbrir() {
-  const emailAcesso = String(localStorage.getItem(EMAIL_LICENCA_KEY) || '').trim().toLowerCase();
-  if (emailAcesso === 'alexandre.santaniello@gmail.com') {
-    document.getElementById('paywallOverlay').classList.remove('aberto');
-    document.getElementById('paywallPasso1').style.display = 'none';
-    document.getElementById('paywallPasso2').style.display = 'none';
-    document.getElementById('blocoAssinatura').style.display = 'block';
-    return;
-  }
-  const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
-  if (!chave) {
-    document.getElementById('paywallOverlay').classList.add('aberto');
-    return;
-  }
-  try {
-    const resp = await fetch(`/api/licenca/${chave}`);
-    const dados = await resp.json();
-    if (dados.ativa) {
-      document.getElementById('blocoAssinatura').style.display = 'block';
-      document.getElementById('blocoReembolso').style.display = dados.podeReembolsar ? 'block' : 'none';
-      if (dados.renovacaoCancelada) {
-        const dataFim = dados.proximoPagamentoEm ? new Date(dados.proximoPagamentoEm).toLocaleDateString(configIdioma().locale) : '';
-        document.getElementById('textoCancelarRenovacao').textContent = t('assinaturaJaCanceladaTexto', { dataFim });
-        document.getElementById('btnCancelarRenovacao').style.display = 'none';
-      }
-      return; // licenca ok, nao mostra o paywall
-    }
-  } catch (err) {
-    // se a verificacao falhar (ex: sem internet), nao bloqueia o acesso -
-    // melhor deixar usar do que travar por causa de uma checagem de rede
-    return;
-  }
-  // chave existe mas nao esta ativa: pula direto pro passo 2. O QR/codigo
-  // de uma cobranca anterior nao fica salvo (so a chave fica no
-  // localStorage) - por isso gera um Pix novo automaticamente aqui, senao
-  // a tela reabre com o quadro do QR vazio.
-  document.getElementById('paywallPasso1').style.display = 'none';
-  document.getElementById('paywallPasso2').style.display = 'block';
-  document.getElementById('paywallOverlay').classList.add('aberto');
-  if (localStorage.getItem(EMAIL_LICENCA_KEY)) {
-    gerarNovaCobrancaPaywall();
-  }
+  // Assinatura temporariamente liberada para todos os usuarios.
+  // O fluxo de cobranca permanece no codigo para ser reativado depois.
+  document.getElementById('paywallOverlay').classList.remove('aberto');
+  return;
 }
 verificarLicencaAoAbrir();
 
