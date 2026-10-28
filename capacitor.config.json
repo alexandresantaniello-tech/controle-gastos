@@ -1,0 +1,12 @@
+{
+  "appId": "com.sifia.app",
+  "appName": "Sifia",
+  "webDir": "public",
+  "server": {
+    "url": "https://app.sifiaapp.com",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}
