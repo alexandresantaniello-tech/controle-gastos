@@ -23,6 +23,15 @@ const redis = Redis.fromEnv();
 // cada licenca em si fica numa chave separada (licenca:<chave>).
 const CHAVE_LICENCAS_KEY = 'licencas:todas';
 
+// Excecao temporaria do proprietario: mantem acesso ao proprio Sifia sem
+// participar da cobranca/expiracao enquanto esta regra existir. Nao afeta
+// nenhuma outra licenca e pode ser removida sem migracao de dados.
+const EMAIL_PROPRIETARIO_SEM_COBRANCA = 'alexandre.santaniello@gmail.com';
+
+function licencaEhDoProprietario(registro) {
+  return String(registro && registro.email || '').trim().toLowerCase() === EMAIL_PROPRIETARIO_SEM_COBRANCA;
+}
+
 function gerarChaveLicenca() {
   return crypto.randomBytes(16).toString('hex');
 }
@@ -563,7 +572,7 @@ app.post('/api/licenca/confirmar-recuperacao', limiteApiIA, async (req, res) => 
   await redis.del(redisKey);
   const registro = await buscarLicenca(tentativa.chave);
   if (!registro) return res.status(404).json({ erro: 'Assinatura não encontrada.' });
-  res.json({ chaveDeLicenca: tentativa.chave, ativa: !!registro.ativa });
+  res.json({ chaveDeLicenca: tentativa.chave, ativa: licencaEhDoProprietario(registro) || !!registro.ativa });
 });
 
 // O app consulta isso periodicamente pra saber se libera os recursos pagos.
@@ -575,7 +584,7 @@ app.get('/api/licenca/:chave', async (req, res) => {
   const dentroDoPrazoDeArrependimento = !!registro.primeiroPagamentoEm &&
     (Date.now() - new Date(registro.primeiroPagamentoEm).getTime()) / (1000 * 60 * 60 * 24) <= DIAS_DIREITO_ARREPENDIMENTO;
   res.json({
-    ativa: registro.ativa,
+    ativa: licencaEhDoProprietario(registro) || !!registro.ativa,
     podeReembolsar: dentroDoPrazoDeArrependimento,
     renovacaoCancelada: !!registro.renovacaoCancelada,
     proximoPagamentoEm: registro.proximoPagamentoEm || null,
@@ -759,7 +768,11 @@ async function processarRenovacoes() {
   const chaves = await todasAsChavesDeLicenca();
   for (const chave of chaves) {
     const registro = await buscarLicenca(chave);
-    if (!registro || !registro.ativa || !registro.proximoPagamentoEm) continue;
+    if (!registro) continue;
+    // O proprietario usa a propria instalacao sem cobranca temporariamente:
+    // nao expira, nao gera Pix e nao recebe e-mail de renovacao.
+    if (licencaEhDoProprietario(registro)) continue;
+    if (!registro.ativa || !registro.proximoPagamentoEm) continue;
     const vencimento = new Date(registro.proximoPagamentoEm);
     const diasAteVencer = (vencimento - agora) / (1000 * 60 * 60 * 24);
 
