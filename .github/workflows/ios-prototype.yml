@@ -3,6 +3,8 @@ name: Build Sifia iOS Prototype
 on:
   push:
     branches: [ios-share-extension]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
