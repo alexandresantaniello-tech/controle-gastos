@@ -6084,6 +6084,9 @@ async function verificarLicencaAoAbrir() {
   const emailAcesso = String(localStorage.getItem(EMAIL_LICENCA_KEY) || '').trim().toLowerCase();
   if (emailAcesso === 'alexandre.santaniello@gmail.com') {
     document.getElementById('paywallOverlay').classList.remove('aberto');
+    document.getElementById('paywallPasso1').style.display = 'none';
+    document.getElementById('paywallPasso2').style.display = 'none';
+    document.getElementById('blocoAssinatura').style.display = 'block';
     return;
   }
   const chave = localStorage.getItem(CHAVE_LICENCA_KEY);
