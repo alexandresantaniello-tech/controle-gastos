@@ -49,8 +49,19 @@ jobs:
           build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
           project.save
           RUBY
-      - name: Compile iOS app without signing
-        run: xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      - name: Build simulator app without signing
+        run: |
+          rm -rf build-simulator Sifia-simulator.zip
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build-simulator CODE_SIGNING_ALLOWED=NO build
+          SIM_APP="build-simulator/Build/Products/Debug-iphonesimulator/App.app"
+          test -d "$SIM_APP"
+          test -d "$SIM_APP/PlugIns/SifiaShare.appex"
+          ditto -c -k --sequesterRsrc --keepParent "$SIM_APP" Sifia-simulator.zip
+          unzip -l Sifia-simulator.zip | grep -E 'App.app/|SifiaShare.appex' | head -40
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sifia-ios-simulator-app
+          path: Sifia-simulator.zip
       - name: Build unsigned device app for remote-device packaging
         run: |
           rm -rf build-device Payload Sifia-unsigned.ipa
