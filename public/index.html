@@ -485,7 +485,8 @@
 
   /* Home compacta equilibrada: sem rolagem, preservando presenca visual e toque confortavel. */
   @media (max-width: 479px) {
-    body { padding: 13px 16px 10px; }
+    html { background: var(--background); }
+    body { padding: 13px 16px max(10px, env(safe-area-inset-bottom)); border-bottom: 0 !important; outline: 0; }
     .header-logo { margin-top: 8px !important; margin-bottom: 8px; }
     .header-logo img { height: 42px !important; width: auto; }
     p.subtitle { margin-bottom: 11px; font-size: 0.78rem; line-height: 1.2; }
