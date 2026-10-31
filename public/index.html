@@ -1606,6 +1606,19 @@ function calcularPerfilFinanceiroSifia() {
     .filter(r => r.tipo === 'saida')
     .reduce((s, r) => s + (Number(r.valor || 0) * 30 / Math.max(Number(r.periodicidade && r.periodicidade.dias || 30), 1)), 0);
 
+  const evolucao = meses.map(chave => {
+    const [ano, mes] = chave.split('-').map(Number);
+    const entradas = porMes[chave].entradas;
+    const saidas = porMes[chave].saidas;
+    return {
+      chave,
+      label: new Date(ano, mes - 1, 1).toLocaleDateString(configIdioma().locale, { month: 'short', year: '2-digit' }),
+      entradas,
+      saidas,
+      saldo: entradas - saidas
+    };
+  });
+
   return {
     mesesAnalisados: n,
     mediaEntradas,
@@ -1614,8 +1627,30 @@ function calcularPerfilFinanceiroSifia() {
     custoFixoMensal,
     mesesPositivos,
     percentualPositivos: meses.length ? (mesesPositivos / meses.length) * 100 : 0,
-    registros: reais.length
+    registros: reais.length,
+    evolucao
   };
+}
+
+function analisarTendenciaFinanceira(evolucao) {
+  if (!evolucao || evolucao.length < 2) return null;
+  const completos = evolucao.slice(0, -1);
+  const base = completos.length >= 2 ? completos : evolucao;
+  const metade = Math.max(1, Math.floor(base.length / 2));
+  const antigos = base.slice(0, metade);
+  const recentes = base.slice(-metade);
+  const media = (lista, campo) => lista.reduce((s, x) => s + x[campo], 0) / Math.max(lista.length, 1);
+  const saldoAntigo = media(antigos, 'saldo');
+  const saldoRecente = media(recentes, 'saldo');
+  const rendaAntiga = media(antigos, 'entradas');
+  const rendaRecente = media(recentes, 'entradas');
+  const gastoAntigo = media(antigos, 'saidas');
+  const gastoRecente = media(recentes, 'saidas');
+  const tolerancia = Math.max(Math.abs(saldoAntigo) * 0.1, 50);
+  let situacao = 'estável';
+  if (saldoRecente > saldoAntigo + tolerancia) situacao = 'melhorando';
+  if (saldoRecente < saldoAntigo - tolerancia) situacao = 'piorando';
+  return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente };
 }
 
 function renderizarPerfilFinanceiro() {
@@ -1630,6 +1665,37 @@ function renderizarPerfilFinanceiro() {
       <span>${rotulo}</span>
       <strong class="${classe || ''}">${valor}</strong>
     </div>`;
+  const tendencia = analisarTendenciaFinanceira(p.evolucao);
+  const maiorAbs = Math.max(1, ...p.evolucao.map(m => Math.max(m.entradas, m.saidas)));
+  const mesesHtml = p.evolucao.map(m => {
+    const larguraEntrada = Math.max(2, (m.entradas / maiorAbs) * 100);
+    const larguraSaida = Math.max(2, (m.saidas / maiorAbs) * 100);
+    return `<div style="padding:10px 0; border-bottom:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:7px;">
+        <strong style="text-transform:capitalize;">${escapeHtml(m.label)}</strong>
+        <strong class="${m.saldo >= 0 ? 'entrada' : 'saida'}">${formatarMoeda(m.saldo)}</strong>
+      </div>
+      <div style="display:grid; grid-template-columns:62px 1fr auto; gap:7px; align-items:center; font-size:.78rem;">
+        <span>Entradas</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:${larguraEntrada}%;height:100%;background:var(--success);"></span></span><span>${formatarMoeda(m.entradas)}</span>
+        <span>Saídas</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:${larguraSaida}%;height:100%;background:var(--destructive);"></span></span><span>${formatarMoeda(m.saidas)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  let tendenciaHtml = '<p class="aviso-backup" style="margin:8px 0 0;">Precisamos de pelo menos dois meses de registros para identificar uma tendência.</p>';
+  if (tendencia) {
+    const classe = tendencia.situacao === 'melhorando' ? 'entrada' : (tendencia.situacao === 'piorando' ? 'saida' : '');
+    const frase = tendencia.situacao === 'melhorando'
+      ? 'Seu saldo médio recente está melhor que no início do período observado.'
+      : tendencia.situacao === 'piorando'
+        ? 'Seu saldo médio recente está abaixo do início do período observado.'
+        : 'Seu saldo médio recente está próximo do início do período observado.';
+    tendenciaHtml = `<div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);">
+      <div style="display:flex;justify-content:space-between;gap:12px;"><span>Tendência observada</span><strong class="${classe}" style="text-transform:capitalize;">${tendencia.situacao}</strong></div>
+      <p class="aviso-backup" style="margin:6px 0 0;">${frase} É uma leitura do seu histórico registrado, não uma previsão.</p>
+    </div>`;
+  }
+
   el.innerHTML = `
     <div style="margin-top:14px;">
       ${linha('Período observado', p.mesesAnalisados + (p.mesesAnalisados === 1 ? ' mês' : ' meses'))}
@@ -1639,6 +1705,12 @@ function renderizarPerfilFinanceiro() {
       ${linha('Saldo médio mensal', formatarMoeda(p.saldoMedio), p.saldoMedio >= 0 ? 'entrada' : 'saida')}
       ${linha('Despesas fixas mensais estimadas', formatarMoeda(p.custoFixoMensal))}
       ${linha('Meses com saldo não negativo', p.mesesPositivos + ' de ' + p.mesesAnalisados + ' (' + p.percentualPositivos.toFixed(0) + '%)')}
+    </div>
+    <div style="margin-top:22px;">
+      <div class="grupo-dia" style="margin:0;">Evolução financeira</div>
+      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês com base no que você registrou.</p>
+      ${tendenciaHtml}
+      <div style="margin-top:8px;">${mesesHtml}</div>
     </div>
     <div style="margin-top:18px; padding:14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--secondary);">
       <strong>Clareza hoje. Histórico para o futuro.</strong>
