@@ -2,11 +2,13 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Sifia — Controle da sua Renda</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
+<meta name="theme-color" content="#000919" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#000919">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -39,19 +41,28 @@
     --radius-lg: 12px;
   }
   * { box-sizing: border-box; }
+  html {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: #000919;
+    overscroll-behavior: none;
+  }
   body {
     font-family: var(--font-sans);
     background-color: var(--background);
     background-image: var(--gradient-surface);
     background-attachment: fixed;
     color: var(--foreground);
-    margin: 0;
+    margin: 0 auto;
     padding: 16px;
+    min-height: 100dvh;
     max-width: 720px;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
     margin-inline: auto;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     -webkit-font-smoothing: antialiased;
   }
   input, textarea {
@@ -485,8 +496,14 @@
 
   /* Home compacta equilibrada: sem rolagem, preservando presenca visual e toque confortavel. */
   @media (max-width: 479px) {
-    html { background: var(--background); }
-    body { padding: 13px 16px max(10px, env(safe-area-inset-bottom)); border-bottom: 0 !important; outline: 0; }
+    html { background: #000919; }
+    body {
+      padding: 13px 16px max(10px, env(safe-area-inset-bottom));
+      min-height: 100dvh;
+      border: 0 !important;
+      outline: 0;
+      background-color: #000919;
+    }
     .header-logo { margin-top: 8px !important; margin-bottom: 8px; }
     .header-logo img { height: 42px !important; width: auto; }
     p.subtitle { margin-bottom: 11px; font-size: 0.78rem; line-height: 1.2; }
