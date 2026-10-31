@@ -482,6 +482,40 @@
     color: var(--foreground);
     margin: 0;
   }
+
+  /* Home compacta: cabe a navegacao principal em uma tela de celular sem remover funcoes. */
+  @media (max-width: 479px) {
+    body { padding: 10px 14px 8px; }
+    .header-logo { margin-top: 4px !important; margin-bottom: 5px; }
+    .header-logo img { height: 36px !important; width: auto; }
+    p.subtitle { margin-bottom: 8px; font-size: 0.72rem; line-height: 1.15; }
+    .dica-habito { margin-bottom: 8px; padding-top: 6px; padding-bottom: 6px; }
+    .summary { gap: 8px; margin-bottom: 8px; flex-wrap: nowrap; }
+    .summary .box { min-width: 0; padding: 8px 12px; }
+    .summary .box .label { font-size: 0.72rem; }
+    .summary .box .value { font-size: 1.12rem; margin-top: 2px; }
+    .saldo-card { padding: 7px 14px; margin-bottom: 8px; }
+    .saldo-linha .label { font-size: 0.72rem; }
+    .cristal-toggle { width: 28px; height: 28px; }
+    .saldo-card .value { font-size: 1rem; }
+    .saldo-card > div:last-child { margin-top: 4px !important; }
+    #seletorMoeda { padding: 2px 7px !important; font-size: 0.7rem !important; }
+    .mes-nav { margin-bottom: 8px; }
+    .mes-nav button.nav { width: 32px; height: 32px; }
+    .mes-nav .titulo { font-size: 0.95rem; }
+    .btn-adicionar-principal { padding: 11px 14px; margin-bottom: 6px; font-size: 0.95rem; }
+    .btn-adicionar-principal .icone-toggle { width: 18px; height: 18px; }
+    #rotuloColarTexto { font-size: 0.7rem !important; }
+    #statusVoz:empty { display:none; }
+    #statusVoz { margin-top: 3px; min-height: 0; }
+    #btnAdicionarPrincipal { padding: 7px 12px; margin-top: 5px !important; margin-bottom: 8px !important; font-size: 0.86rem; }
+    .toggles-linha { gap: 5px; margin-bottom: 7px; }
+    .toggles-linha .upload-toggle { min-height: 36px; padding: 6px 3px; font-size: 0.67rem; gap: 3px; }
+    .toggles-linha .icone-toggle { width: 13px; height: 13px; }
+    .rodape-links-linha { gap: 2px 12px; margin-bottom: 3px; }
+    .rodape-link { font-size: 0.68rem; margin-bottom: 5px; gap: 4px; }
+    .rodape-link .icone-toggle { width: 13px; height: 13px; }
+  }
 </style>
 </head>
 <body>
