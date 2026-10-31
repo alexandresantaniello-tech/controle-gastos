@@ -1611,6 +1611,38 @@ async function compartilharCsv() {
 // estivesse aberta, pra pagina nunca empilhar varios cards longos ao mesmo
 // tempo.
 
+function interpretarObservacoesPerfil(transacoes) {
+  const categorias = {
+    trabalho: { rotulo: 'Relacionadas ao trabalho', termos: ['uber','99','trabalho','cliente','corrida','combustivel','gasolina','etanol','pedagio','estacionamento'] },
+    transferencia: { rotulo: 'Possíveis transferências entre contas', termos: ['transferencia entre','entre minhas contas','minha conta','conta propria','conta própria'] },
+    emprestimo: { rotulo: 'Possíveis empréstimos/crédito', termos: ['emprestimo','empréstimo','dinheiro emprestado','credito recebido','crédito recebido'] },
+    essencial: { rotulo: 'Possíveis despesas essenciais', termos: ['aluguel','mercado','supermercado','energia','luz','agua','água','gas','gás','farmacia','farmácia','remedio','remédio','pensao','pensão'] },
+    investimento: { rotulo: 'Possíveis investimentos/aportes', termos: ['investimento','aporte','investir','aplicacao','aplicação'] }
+  };
+  const normalizar = texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const resultado = { comObservacao: 0, valorComObservacao: 0, sinais: {} };
+  Object.keys(categorias).forEach(k => resultado.sinais[k] = { quantidade: 0, valor: 0, entradas: 0, saidas: 0 });
+  transacoes.forEach(t => {
+    const obsOriginal = String(t.observacao || '').trim();
+    if (!obsOriginal) return;
+    resultado.comObservacao++;
+    const valor = Number(t.valor || 0);
+    resultado.valorComObservacao += valor;
+    const obs = normalizar(obsOriginal);
+    Object.entries(categorias).forEach(([chave, cat]) => {
+      const encontrou = cat.termos.some(termo => obs.includes(normalizar(termo)));
+      if (!encontrou) return;
+      const s = resultado.sinais[chave];
+      s.quantidade++;
+      s.valor += valor;
+      if (t.tipo === 'entrada') s.entradas += valor;
+      if (t.tipo === 'saida') s.saidas += valor;
+    });
+  });
+  resultado.categorias = categorias;
+  return resultado;
+}
+
 function calcularPerfilFinanceiroSifia() {
   const reais = carregarTransacoes().filter(t => dataDaTransacao(t));
   if (!reais.length) return null;
@@ -1641,6 +1673,8 @@ function calcularPerfilFinanceiroSifia() {
     .filter(r => r.tipo === 'saida')
     .reduce((s, r) => s + (Number(r.valor || 0) * 30 / Math.max(Number(r.periodicidade && r.periodicidade.dias || 30), 1)), 0);
 
+  const leituraObservacoes = interpretarObservacoesPerfil(reais);
+
   const evolucao = meses.map(chave => {
     const [ano, mes] = chave.split('-').map(Number);
     const entradas = porMes[chave].entradas;
@@ -1663,6 +1697,7 @@ function calcularPerfilFinanceiroSifia() {
     mesesPositivos,
     percentualPositivos: meses.length ? (mesesPositivos / meses.length) * 100 : 0,
     registros: reais.length,
+    leituraObservacoes,
     evolucao
   };
 }
@@ -1748,6 +1783,23 @@ function renderizarPerfilFinanceiro() {
     </div>`;
   }
 
+  const obs = p.leituraObservacoes;
+  const coberturaObs = p.registros ? (obs.comObservacao / p.registros) * 100 : 0;
+  const sinaisObsHtml = Object.entries(obs.sinais)
+    .filter(([, s]) => s.quantidade > 0)
+    .sort((a, b) => b[1].valor - a[1].valor)
+    .map(([chave, s]) => {
+      const rotulo = obs.categorias[chave].rotulo;
+      return linha(rotulo, s.quantidade + (s.quantidade === 1 ? ' registro' : ' registros') + ' · ' + formatarMoeda(s.valor));
+    }).join('');
+  const leituraObsHtml = `
+    <div style="margin-top:22px;">
+      <div class="grupo-dia" style="margin:0;">Contexto das Observações</div>
+      <p class="aviso-backup" style="margin:5px 0 8px;">O Sifia agora usa suas Observações como contexto para compreender melhor as movimentações. O texto original não é alterado e estes sinais são hipóteses, não classificações definitivas.</p>
+      ${linha('Registros com Observação', obs.comObservacao + ' de ' + p.registros + ' (' + coberturaObs.toFixed(0) + '%)')}
+      ${sinaisObsHtml || '<p class="aviso-backup" style="margin:8px 0 0;">Ainda não encontramos padrões suficientes nas Observações registradas.</p>'}
+    </div>`;
+
   el.innerHTML = `
     <div style="margin-top:14px;">
       ${linha('Período observado', p.mesesAnalisados + (p.mesesAnalisados === 1 ? ' mês' : ' meses'))}
@@ -1758,6 +1810,7 @@ function renderizarPerfilFinanceiro() {
       ${linha('Despesas fixas mensais estimadas', formatarMoeda(p.custoFixoMensal))}
       ${linha('Meses com saldo não negativo', p.mesesPositivos + ' de ' + p.mesesAnalisados + ' (' + p.percentualPositivos.toFixed(0) + '%)')}
     </div>
+    ${leituraObsHtml}
     <div style="margin-top:22px;">
       <div class="grupo-dia" style="margin:0;">Evolução financeira</div>
       <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês com base nas movimentações efetivamente registradas. O painel principal também pode considerar recorrências conhecidas, por isso os totais podem ser diferentes.</p>
