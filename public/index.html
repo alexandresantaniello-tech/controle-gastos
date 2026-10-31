@@ -1634,11 +1634,14 @@ function calcularPerfilFinanceiroSifia() {
 
 function analisarTendenciaFinanceira(evolucao) {
   if (!evolucao || evolucao.length < 2) return null;
-  const completos = evolucao.slice(0, -1);
+  const agora = new Date();
+  const chaveAtual = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
+  const completos = evolucao.filter(m => m.chave !== chaveAtual);
   const base = completos.length >= 2 ? completos : evolucao;
-  const metade = Math.max(1, Math.floor(base.length / 2));
-  const antigos = base.slice(0, metade);
-  const recentes = base.slice(-metade);
+  if (base.length < 2) return null;
+  const tamanho = Math.min(3, Math.floor(base.length / 2));
+  const antigos = base.slice(-(tamanho * 2), -tamanho);
+  const recentes = base.slice(-tamanho);
   const media = (lista, campo) => lista.reduce((s, x) => s + x[campo], 0) / Math.max(lista.length, 1);
   const saldoAntigo = media(antigos, 'saldo');
   const saldoRecente = media(recentes, 'saldo');
@@ -1650,7 +1653,21 @@ function analisarTendenciaFinanceira(evolucao) {
   let situacao = 'estável';
   if (saldoRecente > saldoAntigo + tolerancia) situacao = 'melhorando';
   if (saldoRecente < saldoAntigo - tolerancia) situacao = 'piorando';
-  return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente };
+  const deltaEntradas = rendaRecente - rendaAntiga;
+  const deltaSaidas = gastoRecente - gastoAntigo;
+  let explicacao = 'Entradas, saídas e saldo permaneceram relativamente próximos entre os períodos comparados.';
+  if (situacao === 'melhorando') {
+    if (deltaEntradas > 0 && deltaSaidas < 0) explicacao = 'A melhora combina aumento das entradas com redução das saídas.';
+    else if (deltaSaidas < 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A melhora veio principalmente da redução das saídas.';
+    else if (deltaEntradas > 0) explicacao = 'A melhora veio principalmente do aumento das entradas.';
+    else explicacao = 'O saldo recente melhorou pela combinação das movimentações registradas.';
+  } else if (situacao === 'piorando') {
+    if (deltaEntradas < 0 && deltaSaidas > 0) explicacao = 'A mudança combina redução das entradas com aumento das saídas.';
+    else if (deltaSaidas > 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A mudança veio principalmente do aumento das saídas.';
+    else if (deltaEntradas < 0) explicacao = 'A mudança veio principalmente da redução das entradas.';
+    else explicacao = 'O saldo recente diminuiu pela combinação das movimentações registradas.';
+  }
+  return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente, explicacao, mesesPorGrupo: tamanho };
 }
 
 function renderizarPerfilFinanceiro() {
@@ -1692,7 +1709,7 @@ function renderizarPerfilFinanceiro() {
         : 'Seu saldo médio recente está próximo do início do período observado.';
     tendenciaHtml = `<div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);">
       <div style="display:flex;justify-content:space-between;gap:12px;"><span>Tendência observada</span><strong class="${classe}" style="text-transform:capitalize;">${tendencia.situacao}</strong></div>
-      <p class="aviso-backup" style="margin:6px 0 0;">${frase} É uma leitura do seu histórico registrado, não uma previsão.</p>
+      <p class="aviso-backup" style="margin:6px 0 0;">${frase}</p><p class="aviso-backup" style="margin:6px 0 0;"><strong>O que mudou:</strong> ${tendencia.explicacao}</p><p class="aviso-backup" style="margin:6px 0 0;">Saldo médio recente: <strong>${formatarMoeda(tendencia.saldoRecente)}</strong> · período anterior: <strong>${formatarMoeda(tendencia.saldoAntigo)}</strong>. Leitura histórica, não previsão.</p>
     </div>`;
   }
 
