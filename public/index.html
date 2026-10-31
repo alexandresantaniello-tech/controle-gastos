@@ -1634,11 +1634,14 @@ function calcularPerfilFinanceiroSifia() {
 
 function analisarTendenciaFinanceira(evolucao) {
   if (!evolucao || evolucao.length < 2) return null;
-  const completos = evolucao.slice(0, -1);
+  const agora = new Date();
+  const chaveAtual = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
+  const completos = evolucao.filter(m => m.chave !== chaveAtual);
   const base = completos.length >= 2 ? completos : evolucao;
-  const metade = Math.max(1, Math.floor(base.length / 2));
-  const antigos = base.slice(0, metade);
-  const recentes = base.slice(-metade);
+  if (base.length < 2) return null;
+  const tamanho = Math.min(3, Math.floor(base.length / 2));
+  const antigos = base.slice(-(tamanho * 2), -tamanho);
+  const recentes = base.slice(-tamanho);
   const media = (lista, campo) => lista.reduce((s, x) => s + x[campo], 0) / Math.max(lista.length, 1);
   const saldoAntigo = media(antigos, 'saldo');
   const saldoRecente = media(recentes, 'saldo');
@@ -1650,7 +1653,21 @@ function analisarTendenciaFinanceira(evolucao) {
   let situacao = 'estável';
   if (saldoRecente > saldoAntigo + tolerancia) situacao = 'melhorando';
   if (saldoRecente < saldoAntigo - tolerancia) situacao = 'piorando';
-  return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente };
+  const deltaEntradas = rendaRecente - rendaAntiga;
+  const deltaSaidas = gastoRecente - gastoAntigo;
+  let explicacao = 'Entradas, saídas e saldo permaneceram relativamente próximos entre os períodos comparados.';
+  if (situacao === 'melhorando') {
+    if (deltaEntradas > 0 && deltaSaidas < 0) explicacao = 'A melhora combina aumento das entradas com redução das saídas.';
+    else if (deltaSaidas < 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A melhora veio principalmente da redução das saídas.';
+    else if (deltaEntradas > 0) explicacao = 'A melhora veio principalmente do aumento das entradas.';
+    else explicacao = 'O saldo recente melhorou pela combinação das movimentações registradas.';
+  } else if (situacao === 'piorando') {
+    if (deltaEntradas < 0 && deltaSaidas > 0) explicacao = 'A mudança combina redução das entradas com aumento das saídas.';
+    else if (deltaSaidas > 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A mudança veio principalmente do aumento das saídas.';
+    else if (deltaEntradas < 0) explicacao = 'A mudança veio principalmente da redução das entradas.';
+    else explicacao = 'O saldo recente diminuiu pela combinação das movimentações registradas.';
+  }
+  return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente, explicacao, mesesPorGrupo: tamanho };
 }
 
 function renderizarPerfilFinanceiro() {
@@ -1692,7 +1709,7 @@ function renderizarPerfilFinanceiro() {
         : 'Seu saldo médio recente está próximo do início do período observado.';
     tendenciaHtml = `<div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);">
       <div style="display:flex;justify-content:space-between;gap:12px;"><span>Tendência observada</span><strong class="${classe}" style="text-transform:capitalize;">${tendencia.situacao}</strong></div>
-      <p class="aviso-backup" style="margin:6px 0 0;">${frase} É uma leitura do seu histórico registrado, não uma previsão.</p>
+      <p class="aviso-backup" style="margin:6px 0 0;">${frase}</p><p class="aviso-backup" style="margin:6px 0 0;"><strong>O que mudou:</strong> ${tendencia.explicacao}</p><p class="aviso-backup" style="margin:6px 0 0;">Saldo médio recente: <strong>${formatarMoeda(tendencia.saldoRecente)}</strong> · período anterior: <strong>${formatarMoeda(tendencia.saldoAntigo)}</strong>. Leitura histórica, não previsão.</p>
     </div>`;
   }
 
@@ -1700,7 +1717,7 @@ function renderizarPerfilFinanceiro() {
     <div style="margin-top:14px;">
       ${linha('Período observado', p.mesesAnalisados + (p.mesesAnalisados === 1 ? ' mês' : ' meses'))}
       ${linha('Registros analisados', String(p.registros))}
-      ${linha('Renda média mensal registrada', formatarMoeda(p.mediaEntradas), 'entrada')}
+      ${linha('Entradas médias mensais registradas', formatarMoeda(p.mediaEntradas), 'entrada')}
       ${linha('Gastos médios mensais registrados', formatarMoeda(p.mediaSaidas), 'saida')}
       ${linha('Saldo médio mensal', formatarMoeda(p.saldoMedio), p.saldoMedio >= 0 ? 'entrada' : 'saida')}
       ${linha('Despesas fixas mensais estimadas', formatarMoeda(p.custoFixoMensal))}
@@ -1708,7 +1725,7 @@ function renderizarPerfilFinanceiro() {
     </div>
     <div style="margin-top:22px;">
       <div class="grupo-dia" style="margin:0;">Evolução financeira</div>
-      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês com base no que você registrou.</p>
+      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês com base nas movimentações efetivamente registradas. O painel principal também pode considerar recorrências conhecidas, por isso os totais podem ser diferentes.</p>
       ${tendenciaHtml}
       <div style="margin-top:8px;">${mesesHtml}</div>
     </div>
@@ -2347,7 +2364,7 @@ async function marcarItemPlanejamentoComoPago(id) {
     local: descricao,
     data: dataLancamentoBR,
     observacao: descricao,
-  });
+  }, 'planejamento_confirmado');
   lembrarObservacao(descricao);
   const novaTransacao = carregarTransacoes()[0];
 
@@ -3027,7 +3044,7 @@ async function processarPaginasHistorico(arquivo, senha, paginasParaProcessar, s
         pdf.destroy();
         return null;
       }
-      transacoes.forEach(dados => adicionarTransacao(dados));
+      transacoes.forEach(dados => adicionarTransacao(dados, 'extrato'));
       totalTransacoes += transacoes.length;
       salvarPaginaFeita(i);
     } catch (err) {
@@ -3121,7 +3138,7 @@ sendBtn.addEventListener('click', async () => {
     // dia e dava a impressao de travar e "voltar" pro botao fechado.
     resetForm();
     alternarUpload();
-    await registrarTransacoesRecebidas(transacoes);
+    await registrarTransacoesRecebidas(transacoes, 'comprovante');
   } catch (err) {
     status.textContent = err.name === 'AbortError'
       ? t('semRespostaServidorInstabilidade')
@@ -3184,9 +3201,13 @@ function limparPrefixoLocalAntigo() {
   localStorage.setItem(LIMPEZA_PREFIXO_LOCAL_KEY, '1');
 }
 
-function adicionarTransacao(dados) {
+function adicionarTransacao(dados, origemRegistro = 'nao_identificada') {
   const lista = carregarTransacoes();
-  const transacao = { ...dados, id: Date.now() };
+  // Guarda a procedencia da informacao, nao o comprovante ou PDF original.
+  // Registros antigos continuam validos sem estes metadados.
+  const origem = dados.origemRegistro || origemRegistro;
+  const naturezaOrigem = dados.naturezaOrigem || (['comprovante', 'extrato', 'compartilhamento_documento'].includes(origem) ? 'extraida_de_documento' : 'informada_pelo_usuario');
+  const transacao = { ...dados, origemRegistro: origem, naturezaOrigem, criadoEm: dados.criadoEm || new Date().toISOString(), id: Date.now() };
   lista.unshift(transacao);
   salvarTransacoes(lista);
   renderizar();
@@ -3285,7 +3306,7 @@ function transacoesVirtuaisDoMes(ano, mes) {
 // manual, compartilhamento Android e Atalho do iOS) - se a IA nao conseguiu
 // reconhecer a data, pergunta na hora em vez de deixar cair silenciosamente
 // na lista "Sem data reconhecida" pra corrigir depois.
-async function registrarTransacoesRecebidas(transacoes) {
+async function registrarTransacoesRecebidas(transacoes, origemRegistro = 'comprovante') {
   let adicionadas = 0;
   let ultimaComData = null;
 
@@ -3348,7 +3369,7 @@ async function registrarTransacoesRecebidas(transacoes) {
       dadosFinais = await confirmarTransacaoAntesSalvar(dados);
       if (!dadosFinais) continue; // usuario cancelou essa transacao especifica
     }
-    adicionarTransacao(dadosFinais);
+    adicionarTransacao(dadosFinais, origemRegistro);
     adicionadas++;
     if (parseData(dadosFinais.data)) ultimaComData = dadosFinais;
   }
@@ -5249,7 +5270,7 @@ function salvarDinheiro() {
       local: localDinheiroAtual || 'desconhecido',
       data: `${dia}/${mes}/${ano}`,
       observacao: observacaoDinheiroAtual,
-    });
+    }, 'manual');
   }
   // Diferente do lancamento via IA, o Manual nunca abria a lista do dia
   // sozinho - a pessoa salvava e nao via nada mudar na tela, e nem achava
@@ -5694,7 +5715,7 @@ async function apagarTodasTransacoes() {
 
 function fazerBackup() {
   const dados = {
-    versao: 2,
+    versao: 3,
     exportadoEm: new Date().toISOString(),
     transacoes: carregarTransacoes(),
     planejamento: carregarPlanejamento(),
@@ -5957,7 +5978,7 @@ async function processarComprovanteCompartilhado() {
       status.className = 'status error';
       return;
     }
-    const adicionadas = await registrarTransacoesRecebidas(validas);
+    const adicionadas = await registrarTransacoesRecebidas(validas, 'compartilhamento_documento');
     status.textContent = adicionadas > 1
       ? `${adicionadas} transações compartilhadas adicionadas.`
       : 'Transação compartilhada adicionada.';
@@ -5993,7 +6014,7 @@ function textoInstrucaoVoz() {
 // texto livre - manda pro mesmo /api/parse-texto que ja interpreta frase
 // falada, so que aceitando qualquer texto (ex: colado de uma confirmacao
 // de Pix copiada do WhatsApp), nao so o que foi dito em voz alta.
-async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido) {
+async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido, origemRegistro = 'texto') {
   try {
     const resp = await fetch('/api/parse-texto', {
       method: 'POST',
@@ -6012,7 +6033,7 @@ async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido) {
     // aparecendo no dia (abrirRegistroNoDia, dentro de
     // registrarTransacoesRecebidas) ja e confirmacao visual suficiente.
     statusEl.textContent = '';
-    await registrarTransacoesRecebidas(validas);
+    await registrarTransacoesRecebidas(validas, origemRegistro);
     return true;
   } catch (err) {
     statusEl.textContent = t('naoConseguimosProcessarTexto');
@@ -6027,7 +6048,7 @@ async function colarTextoTransacao() {
   if (!texto || !texto.trim()) return;
   statusEl.textContent = t('analisandoReticencias');
   statusEl.className = 'status';
-  await processarTextoTransacao(texto.trim(), statusEl);
+  await processarTextoTransacao(texto.trim(), statusEl, null, 'texto');
 }
 
 let reconhecimentoVozAtual = null;
@@ -6059,7 +6080,7 @@ function iniciarGravacaoVoz(ev) {
     const texto = event.results[0][0].transcript;
     btn.disabled = true;
     textoBtn.textContent = t('analisandoReticencias');
-    await processarTextoTransacao(texto, statusEl, `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`);
+    await processarTextoTransacao(texto, statusEl, `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`, 'voz');
     btn.disabled = false;
     textoBtn.textContent = t('btnFalarTransacaoTexto');
   };
