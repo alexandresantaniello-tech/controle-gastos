@@ -5548,9 +5548,10 @@ function renderizarTransacaoVirtual(transacao) {
     transacao.formaPagamento === 'especie' ? '' : `<span onclick="editarInstituicaoRecorrencia(${transacao.recorrenciaId})">${instituicaoTexto}</span>`,
     `<span onclick="editarPeriodoRecorrenciaExistente(${transacao.recorrenciaId})">${rotuloPeriodoDespesaFixa(transacao.periodicidade)}</span>`,
   ].filter(Boolean);
-  // Mostra quanto a despesa fixa equivale por dia, como contexto - o valor
-  // principal exibido continua sendo o periodico (transacao.valorPeriodico).
-  // transacao.valor ja e o equivalente diario (ver transacoesVirtuaisDoMes).
+  // Mostra o equivalente por dia da recorrencia como contexto, tanto para
+  // receita quanto para despesa. O valor principal continua sendo o valor
+  // periodico (transacao.valorPeriodico); transacao.valor e o equivalente
+  // diario (ver transacoesVirtuaisDoMes).
   if (transacao.periodicidade && transacao.periodicidade.dias) {
     segmentosDetalhes.push(`<span>≈ ${formatarMoeda(transacao.valor)}${t('porDiaSufixo')}</span>`);
   }
@@ -5911,6 +5912,17 @@ function atualizarFormaPagamentoDinheiro() {
   if (!el) return;
   el.textContent = formaPagamentoDinheiroAtual ? rotuloFormaPagamento(formaPagamentoDinheiroAtual) : t('formaPagamentoPlaceholder').toUpperCase();
   el.classList.toggle('vazio', !formaPagamentoDinheiroAtual);
+
+  // Dinheiro em especie nao passa por instituicao financeira. O Manual
+  // segue a mesma regra das demais formas de registro do Sifia: ao escolher
+  // Especie, limpa qualquer instituicao anterior e tira o campo da tela.
+  const campoInstituicao = document.getElementById('instituicaoDinheiro');
+  const emEspecie = formaPagamentoDinheiroAtual === 'especie';
+  if (emEspecie && instituicaoDinheiroAtual) {
+    instituicaoDinheiroAtual = '';
+    atualizarInstituicaoDinheiro();
+  }
+  if (campoInstituicao) campoInstituicao.style.display = emEspecie ? 'none' : 'flex';
 }
 
 async function editarFormaPagamentoDinheiro() {
@@ -6018,7 +6030,7 @@ function salvarDinheiro() {
       tipo: tipoDinheiroSelecionado,
       descricao: localDinheiroAtual,
       formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
-      instituicao: instituicaoDinheiroAtual || 'desconhecido',
+      instituicao: formaPagamentoDinheiroAtual === 'especie' ? '' : (instituicaoDinheiroAtual || 'desconhecido'),
       observacao: observacaoDinheiroAtual,
       periodicidade: periodoDespesaFixaAtual,
       dataInicioISO: dataISO,
@@ -6027,7 +6039,7 @@ function salvarDinheiro() {
     adicionarTransacao({
       valor,
       tipo: tipoDinheiroSelecionado,
-      instituicao: instituicaoDinheiroAtual || 'desconhecido',
+      instituicao: formaPagamentoDinheiroAtual === 'especie' ? '' : (instituicaoDinheiroAtual || 'desconhecido'),
       formaPagamento: formaPagamentoDinheiroAtual || 'desconhecido',
       local: localDinheiroAtual || 'desconhecido',
       data: `${dia}/${mes}/${ano}`,
@@ -6055,9 +6067,9 @@ function salvarDinheiro() {
   setTimeout(alternarDinheiro, 1200);
 }
 
-// ---------- Despesas Fixas: mesma logica de "manual", mas guarda tambem o
-// periodo que ela cobre (diario/semanal/mensal), pra mostrar quanto
-// equivale por dia junto do lancamento (t.periodicidade). ----------
+// ---------- Recorrencias do Manual: guardam tambem o periodo que cada
+// receita ou despesa cobre (diario/semanal/mensal), para mostrar o
+// equivalente por dia junto do lancamento (t.periodicidade). ----------
 let periodoDespesaFixaAtual = null; // { tipo: 'diario'|'semanal'|'mensal', dias: N }
 
 function rotuloPeriodoDespesaFixa(p) {
@@ -6074,7 +6086,7 @@ function atualizarApresentacaoRecorrenciaManual() {
   const entrada = tipoDinheiroSelecionado === 'entrada';
   titulo.textContent = entrada ? 'RECEITA RECORRENTE' : 'DESPESA RECORRENTE';
   explicacao.textContent = entrada
-    ? 'Use para uma entrada que se repete. O Sifia acompanha o valor ao longo do tempo.'
+    ? 'Use para uma entrada que se repete. O Sifia acompanha o valor e mostra também o equivalente por dia.'
     : 'Use para uma despesa que se repete. O Sifia acompanha o valor e mostra também o equivalente por dia.';
 }
 
