@@ -1538,7 +1538,12 @@ function dadosEvolucaoRelatorio(transacoes, inicio, fim) {
       ordem = new Date(d.getFullYear(),d.getMonth(),1).getTime();
     } else if (modo === 'semana') {
       const ini = new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
-      chave = ini.toISOString().slice(0,10); label = String(ini.getDate()).padStart(2,'0'); ordem=ini.getTime();
+      const fimSemana = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate()+6);
+      const inicioVisivel = ini < inicio ? inicio : ini;
+      const fimVisivel = fimSemana > fim ? fim : fimSemana;
+      chave = ini.toISOString().slice(0,10);
+      label = String(inicioVisivel.getDate()).padStart(2,'0') + '–' + String(fimVisivel.getDate()).padStart(2,'0');
+      ordem=ini.getTime();
     } else {
       chave = d.toISOString().slice(0,10); label = String(d.getDate()).padStart(2,'0'); ordem=d.getTime();
     }
