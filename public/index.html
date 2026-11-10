@@ -2849,7 +2849,7 @@ async function marcarItemPlanejamentoComoPago(id) {
   adicionarTransacao({
     valor,
     tipo,
-    instituicao: 'desconhecido',
+    instituicao: formaPagamento === 'especie' ? '' : 'desconhecido',
     formaPagamento,
     local: descricao,
     data: dataLancamentoBR,
@@ -3724,7 +3724,16 @@ function carregarTransacoes() {
   }
 }
 
+function normalizarInstituicaoPorFormaPagamento(dados) {
+  if (!dados) return dados;
+  if (formaPagamentoDaTransacao(dados) === 'especie') {
+    dados.instituicao = '';
+  }
+  return dados;
+}
+
 function salvarTransacoes(lista) {
+  lista.forEach(normalizarInstituicaoPorFormaPagamento);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
 }
 
@@ -3763,7 +3772,7 @@ function adicionarTransacao(dados, origemRegistro = 'nao_identificada') {
   // Registros antigos continuam validos sem estes metadados.
   const origem = dados.origemRegistro || origemRegistro;
   const naturezaOrigem = dados.naturezaOrigem || (['comprovante', 'extrato', 'compartilhamento_documento'].includes(origem) ? 'extraida_de_documento' : 'informada_pelo_usuario');
-  const transacao = { ...dados, origemRegistro: origem, naturezaOrigem, criadoEm: dados.criadoEm || new Date().toISOString(), id: Date.now() };
+  const transacao = normalizarInstituicaoPorFormaPagamento({ ...dados, origemRegistro: origem, naturezaOrigem, criadoEm: dados.criadoEm || new Date().toISOString(), id: Date.now() });
   lista.unshift(transacao);
   salvarTransacoes(lista);
   renderizar();
@@ -4291,7 +4300,14 @@ function renderizarConfirmacao() {
   const formaPagamentoAtual = formaPagamentoDaTransacao(d);
   document.getElementById('confFormaPagamento').textContent = formaPagamentoAtual !== 'desconhecido' ? `via ${rotuloFormaPagamento(formaPagamentoAtual)}` : t('formaPagamentoPlaceholder');
   document.getElementById('confLocal').textContent = (d.local && d.local !== 'desconhecido') ? d.local : t('localPlaceholder');
-  document.getElementById('confInstituicao').textContent = (d.instituicao && d.instituicao !== 'desconhecido') ? d.instituicao : t('instituicaoPlaceholder');
+  const confInstituicaoCampo = document.getElementById('confInstituicao').closest('.campo-clicavel');
+  if (formaPagamentoAtual === 'especie') {
+    d.instituicao = '';
+    confInstituicaoCampo.style.display = 'none';
+  } else {
+    confInstituicaoCampo.style.display = '';
+    document.getElementById('confInstituicao').textContent = (d.instituicao && d.instituicao !== 'desconhecido') ? d.instituicao : t('instituicaoPlaceholder');
+  }
   document.getElementById('confObservacao').textContent = d.observacao ? d.observacao : t('observacaoPlaceholder');
 }
 
@@ -4317,11 +4333,15 @@ async function confEditarCampo(campo) {
   } else if (campo === 'formaPagamento') {
     const opcoes = [['pix', t('pagamentoPix')], ['debito', t('pagamentoDebito')], ['credito', t('pagamentoCredito')], ['especie', t('pagamentoEspecie')]];
     const nova = await modalSelecionar(t('formaPagamentoModal'), opcoes, formaPagamentoDaTransacao(d));
-    if (nova !== null) d.formaPagamento = nova;
+    if (nova !== null) {
+      d.formaPagamento = nova;
+      if (nova === 'especie') d.instituicao = '';
+    }
   } else if (campo === 'local') {
     const novo = await modalPrompt(t('localModal'), d.local && d.local !== 'desconhecido' ? d.local : '');
     if (novo !== null) d.local = novo.trim() || 'desconhecido';
   } else if (campo === 'instituicao') {
+    if (formaPagamentoDaTransacao(d) === 'especie') return renderizarConfirmacao();
     const nova = await modalPrompt(t('instituicaoModal'), d.instituicao && d.instituicao !== 'desconhecido' ? d.instituicao : '');
     if (nova !== null) d.instituicao = nova.trim() || 'desconhecido';
   } else if (campo === 'observacao') {
@@ -4358,7 +4378,7 @@ function aplicarCorrecaoVozLocal(texto) {
   if (/\b(pagamento|paguei|foi)\b.*\bpix\b/i.test(original)) { confirmacaoDados.formaPagamento='pix'; alterou=true; }
   if (/\b(pagamento|paguei|foi)\b.*\bd[eé]bito\b/i.test(original)) { confirmacaoDados.formaPagamento='debito'; alterou=true; }
   if (/\b(pagamento|paguei|foi)\b.*\bcr[eé]dito\b/i.test(original)) { confirmacaoDados.formaPagamento='credito'; alterou=true; }
-  if (/\b(pagamento|paguei|foi)\b.*\b(dinheiro|esp[eé]cie)\b/i.test(original)) { confirmacaoDados.formaPagamento='especie'; alterou=true; }
+  if (/\b(pagamento|paguei|foi)\b.*\b(dinheiro|esp[eé]cie)\b/i.test(original)) { confirmacaoDados.formaPagamento='especie'; confirmacaoDados.instituicao=''; alterou=true; }
 
   if (/\bontem\b/i.test(original) && /\b(data|foi|era|muda|corrige)\b/i.test(original)) {
     const d=new Date(); d.setDate(d.getDate()-1);
@@ -4543,6 +4563,7 @@ async function editarFormaPagamento(id) {
   const nova = await modalSelecionar(t('formaPagamentoModal'), opcoes, formaPagamentoDaTransacao(transacao));
   if (nova === null) return;
   transacao.formaPagamento = nova;
+  if (nova === 'especie') transacao.instituicao = '';
   salvarTransacoes(lista);
   renderizar();
 }
@@ -4551,6 +4572,7 @@ async function editarInstituicao(id) {
   const lista = carregarTransacoes();
   const transacao = lista.find(x => x.id === id);
   if (!transacao) return;
+  if (formaPagamentoDaTransacao(transacao) === 'especie') return;
   const nova = await modalPrompt(t('instituicaoModal'), transacao.instituicao && transacao.instituicao !== 'desconhecido' ? transacao.instituicao : '');
   if (nova === null) return;
   transacao.instituicao = nova.trim() || 'desconhecido';
@@ -5441,9 +5463,9 @@ function renderizarTransacaoVirtual(transacao) {
     `<span onclick="editarDataRecorrencia(${transacao.recorrenciaId})">${escapeHtml(transacao.data) || '-'}</span>`,
     `<span onclick="editarFormaPagamentoRecorrencia(${transacao.recorrenciaId})">${formaPagamentoTexto}</span>`,
     `<span onclick="editarLocalRecorrencia(${transacao.recorrenciaId})">${localTexto}</span>`,
-    `<span onclick="editarInstituicaoRecorrencia(${transacao.recorrenciaId})">${instituicaoTexto}</span>`,
+    transacao.formaPagamento === 'especie' ? '' : `<span onclick="editarInstituicaoRecorrencia(${transacao.recorrenciaId})">${instituicaoTexto}</span>`,
     `<span onclick="editarPeriodoRecorrenciaExistente(${transacao.recorrenciaId})">${rotuloPeriodoDespesaFixa(transacao.periodicidade)}</span>`,
-  ];
+  ].filter(Boolean);
   // Mostra quanto a despesa fixa equivale por dia, como contexto - o valor
   // principal exibido continua sendo o periodico (transacao.valorPeriodico).
   // transacao.valor ja e o equivalente diario (ver transacoesVirtuaisDoMes).
@@ -5514,6 +5536,7 @@ async function editarInstituicaoRecorrencia(id) {
   const lista = carregarRecorrencias();
   const rec = lista.find(r => r.id === id);
   if (!rec) return;
+  if ((rec.formaPagamento || 'desconhecido') === 'especie') return;
   const nova = await modalPrompt(t('instituicaoModal'), rec.instituicao && rec.instituicao !== 'desconhecido' ? rec.instituicao : '');
   if (nova === null) return;
   atualizarRecorrencia(id, { instituicao: nova.trim() || 'desconhecido' });
@@ -5526,7 +5549,7 @@ async function editarFormaPagamentoRecorrencia(id) {
   const opcoes = [['pix', t('pagamentoPix')], ['debito', t('pagamentoDebito')], ['credito', t('pagamentoCredito')], ['especie', t('pagamentoEspecie')]];
   const nova = await modalSelecionar(t('formaPagamentoModal'), opcoes, rec.formaPagamento || 'desconhecido');
   if (nova === null) return;
-  atualizarRecorrencia(id, { formaPagamento: nova });
+  atualizarRecorrencia(id, nova === 'especie' ? { formaPagamento: nova, instituicao: '' } : { formaPagamento: nova });
 }
 
 async function editarPeriodoRecorrenciaExistente(id) {
@@ -5632,7 +5655,7 @@ function renderizarTransacao(transacao) {
     `<span onclick="editarData(${transacao.id})">${escapeHtml(transacao.data) || '-'}</span>`,
     `<span onclick="editarFormaPagamento(${transacao.id})">${formaPagamentoTexto}</span>`,
     `<span onclick="editarLocal(${transacao.id})">${localTexto}</span>`,
-    `<span onclick="editarInstituicao(${transacao.id})">${instituicaoTexto}</span>`,
+    formaPagamento === 'especie' ? '' : `<span onclick="editarInstituicao(${transacao.id})">${instituicaoTexto}</span>`,
   ].filter(Boolean);
   div.innerHTML = `
     <div class="info">
@@ -5653,7 +5676,7 @@ function renderizarTransacao(transacao) {
   // Transacao com campo "desconhecido" (comum em registro por voz, que tem
   // menos informacao que uma foto de comprovante) - reforca aqui que da
   // pra tocar e completar, mesmo aviso do topo da lista.
-  const temDesconhecido = transacao.local === 'desconhecido' || transacao.instituicao === 'desconhecido';
+  const temDesconhecido = transacao.local === 'desconhecido' || (formaPagamento !== 'especie' && transacao.instituicao === 'desconhecido');
   if (temDesconhecido && !localStorage.getItem(DICA_EDITAVEL_FECHADA_KEY)) {
     div.appendChild(criarDicaEditavel());
   }
