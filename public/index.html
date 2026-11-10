@@ -834,39 +834,33 @@
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   </div>
 
-  <label class="campo" style="margin-top:14px;">Forma de pagamento</label>
-  <div class="campo-clicavel" id="formaPagamentoDinheiro" onclick="editarFormaPagamentoDinheiro()">
+    <div class="campo-clicavel" id="formaPagamentoDinheiro" onclick="editarFormaPagamentoDinheiro()" style="margin-top:14px;">
     <span id="textoFormaPagamentoDinheiro" class="vazio" data-i18n-upper="formaPagamentoPlaceholder">FORMA DE PAGAMENTO</span>
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
-  <label class="campo" style="margin-top:14px;">Local</label>
-  <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()">
+  <div class="campo-clicavel" id="localDinheiro" onclick="editarLocalDinheiro()" style="margin-top:14px;">
     <span id="textoLocalDinheiro" class="vazio" data-i18n-upper="localPlaceholder">LOCAL</span>
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
   <div id="grupoInstituicaoDinheiro">
-    <label class="campo" style="margin-top:14px;">Instituição</label>
-    <div class="campo-clicavel" id="instituicaoDinheiro" onclick="editarInstituicaoDinheiro()">
+    <div class="campo-clicavel" id="instituicaoDinheiro" onclick="editarInstituicaoDinheiro()" style="margin-top:14px;">
       <span id="textoInstituicaoDinheiro" class="vazio" data-i18n-upper="instituicaoPlaceholder">INSTITUIÇÃO</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
     </div>
   </div>
 
-  <label class="campo" style="margin-top:14px;">Observação</label>
-  <div class="campo-clicavel" id="notaDinheiro" onclick="editarObservacaoDinheiro()">
+  <div class="campo-clicavel" id="notaDinheiro" onclick="editarObservacaoDinheiro()" style="margin-top:14px;">
     <span id="textoNotaDinheiro" class="vazio" data-i18n="observacaoPlaceholder">OBSERVAÇÃO</span>
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
   <div id="blocoDespesaRecorrente" style="margin-top:14px;display:none;">
-    <label class="campo" id="tituloRecorrenciaManual">Recorrência</label>
     <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()">
-      <span id="textoPeriodoDespesaFixa" class="vazio">Não</span>
+      <span id="textoPeriodoDespesaFixa" class="vazio">RECORRÊNCIA · NÃO</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
     </div>
-    <div id="explicacaoRecorrenciaManual" style="display:none;font-size:.82em;color:var(--muted-foreground);line-height:1.35;margin-top:6px;"></div>
   </div>
 
   <div style="text-align:center; margin-top:16px;">
@@ -5928,7 +5922,7 @@ function atualizarFormaPagamentoDinheiro() {
     instituicaoDinheiroAtual = '';
     atualizarInstituicaoDinheiro();
   }
-  if (campoInstituicao) campoInstituicao.style.display = emEspecie ? 'none' : 'flex';
+  if (campoInstituicao) campoInstituicao.style.display = emEspecie ? 'none' : 'block';
 }
 
 async function editarFormaPagamentoDinheiro() {
@@ -6086,27 +6080,21 @@ function rotuloPeriodoDespesaFixa(p) {
 }
 
 function atualizarApresentacaoRecorrenciaManual() {
-  const titulo = document.getElementById('tituloRecorrenciaManual');
-  const explicacao = document.getElementById('explicacaoRecorrenciaManual');
-  if (!titulo || !explicacao) return;
-  const entrada = tipoDinheiroSelecionado === 'entrada';
-  titulo.textContent = periodoDespesaFixaAtual
-    ? (entrada ? 'Receita recorrente' : 'Despesa recorrente')
-    : 'Recorrência';
-  explicacao.textContent = periodoDespesaFixaAtual ? 'Equivalente por dia será mostrado no histórico.' : '';
-  explicacao.style.display = periodoDespesaFixaAtual ? 'block' : 'none';
+  // Mantido como ponto unico para futuras traducoes/ajustes visuais.
+  atualizarTextoPeriodoDespesaFixa(false);
 }
 
-function atualizarTextoPeriodoDespesaFixa() {
+function atualizarTextoPeriodoDespesaFixa(atualizarApresentacao = true) {
   const el = document.getElementById('textoPeriodoDespesaFixa');
+  if (!el) return;
   if (periodoDespesaFixaAtual) {
-    el.textContent = rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual);
+    const tipo = tipoDinheiroSelecionado === 'entrada' ? 'RECEITA' : 'DESPESA';
+    el.textContent = tipo + ' RECORRENTE · ' + rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual).toUpperCase();
     el.classList.remove('vazio');
   } else {
-    el.textContent = 'Não';
+    el.textContent = 'RECORRÊNCIA · NÃO';
     el.classList.add('vazio');
   }
-  atualizarApresentacaoRecorrenciaManual();
 }
 
 async function editarPeriodoDespesaFixa() {
