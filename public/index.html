@@ -3865,6 +3865,17 @@ function confirmarTransacaoAntesSalvar(dados) {
     }
 
     renderizarConfirmacao();
+
+    // A disponibilidade do reconhecimento de voz pode ser definida pelo
+    // navegador depois do carregamento inicial. Revalida a cada abertura da
+    // revisão para manter a correção por voz em qualquer origem do registro
+    // (voz, texto, comprovante/imagem etc.).
+    const btnCorrecaoVoz = document.getElementById('btnCorrecaoVoz');
+    const reconhecimentoVozDisponivel = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (btnCorrecaoVoz) {
+      btnCorrecaoVoz.style.display = reconhecimentoVozDisponivel ? 'block' : 'none';
+    }
+
     document.getElementById('confirmarTransacaoOverlay').classList.add('aberto');
   });
 }
