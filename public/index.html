@@ -2904,6 +2904,7 @@ function renderizarPlanejamento() {
   const [anoHoje, mesHoje, diaHoje] = hojeLocalISO().split('-').map(Number);
   const ehMesAtual = ano === anoHoje && mes === mesHoje - 1;
   let html = '';
+
   if (itens.length) {
     const entradas = itens.filter(i => (i.tipo || 'saida') === 'entrada');
     const saidas = itens.filter(i => (i.tipo || 'saida') === 'saida');
@@ -2913,6 +2914,7 @@ function renderizarPlanejamento() {
     const pago = saidas.filter(i=>i.pago).reduce((s,i)=>s+(i.valor||0),0);
     const aReceber = totalEntradas - recebido, aPagar = totalSaidas - pago;
     const saldoProjetado = totalEntradas - totalSaidas;
+
     html += `<div style="margin-bottom:14px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--secondary);">
       <div style="font-size:.8em;color:var(--muted-foreground);margin-bottom:8px;">VISÃO DO MÊS</div>
       <div class="relatorio-resumo-linha"><span>Entradas previstas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
@@ -2923,26 +2925,39 @@ function renderizarPlanejamento() {
     <div class="relatorio-resumo-linha"><span>A receber</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Já pago</span><strong class="entrada">${formatarMoeda(pago)}</strong></div>
     <div class="relatorio-resumo-linha"><span>Falta pagar</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>`;
+
     if (itens.some(i=>!i.valor)) html += '<p class="dica-observacao" style="margin-top:6px;">Itens sem valor informado não entram nos totais.</p>';
-    html += '<p class="dica-observacao" style="margin-top:14px;">Previsto para este mês:</p>';
     const transacoes = carregarTransacoes();
-    itens.forEach(item => {
-      const tipoItem=item.tipo||'saida', ehEntrada=tipoItem==='entrada';
-      const atrasado=!item.pago&&ehMesAtual&&item.dia<diaHoje;
-      const corDia=item.pago?' style="color:var(--entrada);"':(atrasado?' style="color:var(--saida);"':'');
-      const valorTexto=item.valor?formatarMoeda(item.valor):t('valorNaoInformado');
-      const tagTipo=` <span style="font-size:.72em;color:${ehEntrada?'var(--entrada)':'var(--saida)'};">(${ehEntrada?'entrada':'saída'})</span>`;
-      const tagRecorrente=item.recorrenciaId?` <span style="font-size:.75em;color:var(--muted-foreground);">(${t('recorrenteLabel')})</span>`:'';
-      const acao=ehEntrada?'Marcar como recebido':t('marcarComoPago');
-      const acoes=`<span style="display:flex;gap:8px;flex-shrink:0;">${item.pago?'':`<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">${acao}</button>`}<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="editarItemPlanejamento('${item.id}')"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="secondary perigo" style="padding:6px 10px;font-size:.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button></span>`;
-      const descricaoHtml=`<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
-      const valorHtml=`<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${valorTexto}</span>`;
-      let forma='';
-      if(item.pago&&item.transacaoId!=null){const tr=transacoes.find(t=>t.id===item.transacaoId);const fp=tr&&tr.formaPagamento&&tr.formaPagamento!=='desconhecido'?rotuloFormaPagamento(tr.formaPagamento):t('formaPagamentoPlaceholder');forma=` · <span onclick="editarFormaPagamentoItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${fp}</span>`;}
-      html+=`<div class="relatorio-resumo-linha" style="flex-direction:column;align-items:stretch;gap:6px;"><div${corDia}>${t('dia')} ${item.dia} — ${descricaoHtml}${tagTipo}${tagRecorrente}${item.pago?' ✓':''}</div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span style="font-size:.85em;color:var(--muted-foreground);">${valorHtml}${forma}</span>${acoes}</div></div>`;
-    });
-  } else html='<p class="dica-observacao">Nada planejado para este mês.</p>';
-  document.getElementById('listaPlanejamento').innerHTML=html;
+
+    function renderGrupoPlanejamento(lista, titulo, ehEntrada) {
+      if (!lista.length) return '';
+      let grupo = `<div style="margin-top:20px;margin-bottom:6px;font-size:.88em;font-weight:600;color:${ehEntrada?'var(--entrada)':'var(--muted-foreground)'};">${titulo}</div>`;
+      lista.forEach(item => {
+        const atrasadoSaida = !ehEntrada && !item.pago && ehMesAtual && item.dia < diaHoje;
+        const corDia = item.pago ? ' style="color:var(--entrada);"' : (atrasadoSaida ? ' style="color:var(--saida);"' : '');
+        const valorTexto = item.valor ? formatarMoeda(item.valor) : t('valorNaoInformado');
+        const tagRecorrente = item.recorrenciaId ? ` <span style="font-size:.75em;color:var(--muted-foreground);">(${t('recorrenteLabel')})</span>` : '';
+        const acao = ehEntrada ? 'Marcar como recebido' : t('marcarComoPago');
+        const acoes = `<span style="display:flex;gap:8px;flex-shrink:0;">${item.pago?'':`<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">${acao}</button>`}<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="editarItemPlanejamento('${item.id}')"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="secondary perigo" style="padding:6px 10px;font-size:.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button></span>`;
+        const descricaoHtml = `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
+        const valorHtml = `<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${valorTexto}</span>`;
+        let forma = '';
+        if (item.pago && item.transacaoId != null) {
+          const tr = transacoes.find(t=>t.id===item.transacaoId);
+          const fp = tr&&tr.formaPagamento&&tr.formaPagamento!=='desconhecido' ? rotuloFormaPagamento(tr.formaPagamento) : t('formaPagamentoPlaceholder');
+          forma = ` · <span onclick="editarFormaPagamentoItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${fp}</span>`;
+        }
+        grupo += `<div class="relatorio-resumo-linha" style="flex-direction:column;align-items:stretch;gap:6px;"><div${corDia}>${t('dia')} ${item.dia} — ${descricaoHtml}${tagRecorrente}${item.pago?' ✓':''}</div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span style="font-size:.85em;color:var(--muted-foreground);">${valorHtml}${forma}</span>${acoes}</div></div>`;
+      });
+      return grupo;
+    }
+
+    html += renderGrupoPlanejamento(entradas, 'A RECEBER ESTE MÊS', true);
+    html += renderGrupoPlanejamento(saidas, 'A PAGAR ESTE MÊS', false);
+  } else {
+    html = '<p class="dica-observacao">Nada planejado para este mês.</p>';
+  }
+  document.getElementById('listaPlanejamento').innerHTML = html;
 }
 
 function alternarPlanejamento() {
