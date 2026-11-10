@@ -1,9 +1,16 @@
+const VERSION = '20261110-2';
+
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', () => self.clients.claim());
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('fetch', (event) => {
-  // So intercepta GET (navegacao/paginas). POST (upload de comprovante, share-target)
-  // passa direto pra rede sem passar pelo service worker, evitando falha ao
-  // repassar corpo de upload de arquivo (FormData) em alguns navegadores.
   if (event.request.method !== 'GET') return;
-  event.respondWith(fetch(event.request));
+
+  // O Sifia nao usa cache offline pelo Service Worker. Para navegacoes e
+  // arquivos do app, sempre pede a versao atual ao servidor, evitando que
+  // Chrome/PWA fique preso a HTML/JS antigo depois de um deploy.
+  event.respondWith(fetch(event.request, { cache: 'no-store' }));
 });
