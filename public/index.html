@@ -6638,7 +6638,23 @@ window.addEventListener('pageshow', (e) => {
 });
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  // Evita que o PWA permaneça preso a uma versão antiga após atualização.
+  // O query string versiona o registro e updateViaCache:none força a checagem
+  // do service worker na rede.
+  navigator.serviceWorker.register('/sw.js?v=20261110-1', { updateViaCache: 'none' })
+    .then((registration) => {
+      registration.update().catch(() => {});
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'activated' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+    })
+    .catch(() => {});
 }
 
 // Captura qualquer erro que hoje passaria em silencio, pra ficar visivel na tela
