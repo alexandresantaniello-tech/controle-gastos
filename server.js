@@ -2,6 +2,7 @@ require('dotenv').config();
 const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
+const sharp = require('sharp');
 const Anthropic = require('@anthropic-ai/sdk');
 const rateLimit = require('express-rate-limit');
 const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
@@ -217,12 +218,40 @@ async function lerComprovante(buffer, mediaType, tipo, dataReferenciaPagina) {
   return lista;
 }
 
+async function otimizarImagemParaIA(buffer, mediaType) {
+  // A API de visão limita a imagem codificada em base64 a 10 MB.
+  // Base64 aumenta o tamanho em cerca de 33%, então uma imagem aceita pelo
+  // upload (até 10 MB em binário) ainda pode ultrapassar o limite da IA.
+  // Otimizamos automaticamente apenas quando necessário, preservando
+  // resolução suficiente para leitura de comprovantes e extratos.
+  if (mediaType === 'application/pdf' || buffer.toString('base64').length <= 9.5 * 1024 * 1024) {
+    return { buffer, mediaType };
+  }
+
+  let otimizada = await sharp(buffer)
+    .rotate()
+    .resize({ width: 2200, height: 2200, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85, mozjpeg: true })
+    .toBuffer();
+
+  // Segunda redução de segurança para imagens excepcionalmente densas.
+  if (otimizada.toString('base64').length > 9.5 * 1024 * 1024) {
+    otimizada = await sharp(otimizada)
+      .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 75, mozjpeg: true })
+      .toBuffer();
+  }
+
+  return { buffer: otimizada, mediaType: 'image/jpeg' };
+}
+
 async function chamarIaComPrompt(buffer, mediaType, tipo, dataReferenciaPagina) {
-  const base64Data = buffer.toString('base64');
   const isPdf = mediaType === 'application/pdf';
+  const arquivo = isPdf ? { buffer, mediaType } : await otimizarImagemParaIA(buffer, mediaType);
+  const base64Data = arquivo.buffer.toString('base64');
   const conteudo = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
-    : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } };
+    : { type: 'image', source: { type: 'base64', media_type: arquivo.mediaType, data: base64Data } };
   const prompt = tipo === 'extrato' ? getExtractionPromptExtrato(dataReferenciaPagina) : getExtractionPrompt();
 
   const message = await anthropic.messages.create({
@@ -287,6 +316,10 @@ async function chamarIaComPrompt(buffer, mediaType, tipo, dataReferenciaPagina) 
 // credito) - nao tem nada a ver com a foto que o usuario mandou. So os erros sem
 // "status" (ex: resposta que nao deu pra interpretar) sao realmente sobre a imagem.
 function mensagemErroAmigavel(err) {
+  const detalhe = String(err && (err.message || err.error?.error?.message) || '');
+  if (/image exceeds .*MB maximum|too large|request too large/i.test(detalhe)) {
+    return 'A imagem ficou grande demais para análise. Tente novamente ou envie uma captura menor.';
+  }
   return err.status
     ? 'Nosso serviço está temporariamente indisponível. Tente novamente em alguns minutos.'
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
