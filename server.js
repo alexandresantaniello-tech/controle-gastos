@@ -53,7 +53,18 @@ async function todasAsChavesDeLicenca() {
 }
 
 app.use(express.static('public', {
-  setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, must-revalidate'),
+  etag: true,
+  setHeaders: (res, filePath) => {
+    // Arquivos que controlam a versao do PWA nunca devem ficar armazenados
+    // pelo Chrome/CDN. Os demais tambem precisam revalidar a cada uso.
+    if (filePath.endsWith('index.html') || filePath.endsWith('sw.js') || filePath.endsWith('manifest.json')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return;
+    }
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
 }));
 app.use(express.json());
 
