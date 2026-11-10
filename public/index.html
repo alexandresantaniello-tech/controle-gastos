@@ -2717,6 +2717,7 @@ function atualizarIndicadorUso() {
 }
 
 let imagemSelecionada = null;
+let previewObjectUrl = null;
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
@@ -2772,14 +2773,15 @@ function handleFile(file) {
     dropText.innerHTML = '<svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ';
     dropText.appendChild(document.createTextNode(file.name));
   } else {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      preview.src = e.target.result;
-      preview.style.display = 'block';
-      dicaZoom.style.display = 'block';
-      dropText.textContent = file.name;
-    };
-    reader.readAsDataURL(file);
+    // Não converte a imagem inteira para base64 no navegador. Em celulares,
+    // readAsDataURL duplica o arquivo em memória e pode fazer o Android
+    // encerrar o PWA por insuficiência de memória em comprovantes grandes.
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = URL.createObjectURL(file);
+    preview.src = previewObjectUrl;
+    preview.style.display = 'block';
+    dicaZoom.style.display = 'block';
+    dropText.textContent = file.name;
   }
   sendBtn.disabled = false;
   status.textContent = '';
@@ -3306,6 +3308,11 @@ function resetForm() {
   imagemSelecionada = null;
   preview.style.display = 'none';
   preview.src = '';
+  document.getElementById('zoomImagem').src = '';
+  if (previewObjectUrl) {
+    URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+  }
   dropText.innerHTML = TEXTO_PADRAO_DROPZONE;
   fileInput.value = '';
   sendBtn.disabled = true;
