@@ -855,8 +855,8 @@
   </div>
 
   <div id="blocoDespesaRecorrente" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);display:none;">
-    <div style="font-size:.78em;color:var(--muted-foreground);margin-bottom:5px;">DESPESA RECORRENTE</div>
-    <div style="font-size:.86em;color:var(--muted-foreground);line-height:1.4;margin-bottom:10px;">Use para uma despesa que se repete. O Sifia acompanha o valor e mostra também o equivalente por dia.</div>
+    <div id="tituloRecorrenciaManual" style="font-size:.78em;color:var(--muted-foreground);margin-bottom:5px;">RECORRÊNCIA</div>
+    <div id="explicacaoRecorrenciaManual" style="font-size:.86em;color:var(--muted-foreground);line-height:1.4;margin-bottom:10px;"></div>
     <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()">
       <span id="textoPeriodoDespesaFixa" class="vazio">NÃO RECORRENTE</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -5851,15 +5851,11 @@ function selecionarTipoDinheiro(tipo) {
   document.getElementById('btnEntradaDinheiro').classList.toggle('ativo-entrada', tipo === 'entrada');
   document.getElementById('btnSaidaDinheiro').classList.toggle('ativo-saida', tipo === 'saida');
 
-  // Despesa recorrente e um conceito de SAIDA. Em Entrada, esconder o bloco
-  // evita que a recorrencia pareca uma propriedade generica de qualquer
-  // lancamento manual e mantem o formulario mais limpo.
+  // Recorrencia vale para os dois lados da vida financeira:
+  // Entrada = receita recorrente; Saida = despesa recorrente.
   const blocoRecorrente = document.getElementById('blocoDespesaRecorrente');
-  if (blocoRecorrente) blocoRecorrente.style.display = tipo === 'saida' ? 'block' : 'none';
-  if (tipo !== 'saida' && periodoDespesaFixaAtual) {
-    periodoDespesaFixaAtual = null;
-    atualizarTextoPeriodoDespesaFixa();
-  }
+  if (blocoRecorrente) blocoRecorrente.style.display = 'block';
+  atualizarApresentacaoRecorrenciaManual();
   atualizarNotaLocalDinheiro();
 }
 
@@ -6016,7 +6012,7 @@ function salvarDinheiro() {
   // Recorrente: nao gera uma transacao unica de hoje - vira uma regra que
   // gera a soma diaria sozinha (ver transacoesVirtuaisDoMes), a partir da
   // data escolhida aqui como inicio, sem fim ate ser encerrada.
-  if (periodoDespesaFixaAtual && tipoDinheiroSelecionado === 'saida') {
+  if (periodoDespesaFixaAtual) {
     adicionarRecorrencia({
       valor,
       tipo: tipoDinheiroSelecionado,
@@ -6071,6 +6067,17 @@ function rotuloPeriodoDespesaFixa(p) {
   return t('periodoMensal');
 }
 
+function atualizarApresentacaoRecorrenciaManual() {
+  const titulo = document.getElementById('tituloRecorrenciaManual');
+  const explicacao = document.getElementById('explicacaoRecorrenciaManual');
+  if (!titulo || !explicacao) return;
+  const entrada = tipoDinheiroSelecionado === 'entrada';
+  titulo.textContent = entrada ? 'RECEITA RECORRENTE' : 'DESPESA RECORRENTE';
+  explicacao.textContent = entrada
+    ? 'Use para uma entrada que se repete. O Sifia acompanha o valor ao longo do tempo.'
+    : 'Use para uma despesa que se repete. O Sifia acompanha o valor e mostra também o equivalente por dia.';
+}
+
 function atualizarTextoPeriodoDespesaFixa() {
   const el = document.getElementById('textoPeriodoDespesaFixa');
   if (periodoDespesaFixaAtual) {
@@ -6083,8 +6090,10 @@ function atualizarTextoPeriodoDespesaFixa() {
 }
 
 async function editarPeriodoDespesaFixa() {
-  if (tipoDinheiroSelecionado !== 'saida') return;
-  const recorrente = await modalSelecionar('Esta é uma despesa recorrente?', [['nao', t('naoOpcao')], ['sim', t('simOpcao')]], periodoDespesaFixaAtual ? 'sim' : 'nao');
+  const pergunta = tipoDinheiroSelecionado === 'entrada'
+    ? 'Esta é uma receita recorrente?'
+    : 'Esta é uma despesa recorrente?';
+  const recorrente = await modalSelecionar(pergunta, [['nao', t('naoOpcao')], ['sim', t('simOpcao')]], periodoDespesaFixaAtual ? 'sim' : 'nao');
   if (recorrente === null) return;
   if (recorrente === 'nao') {
     periodoDespesaFixaAtual = null;
