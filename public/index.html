@@ -549,18 +549,33 @@
     .rodape-link .icone-toggle { width: 14px; height: 14px; }
   }
 
-  /* Ritmo vertical progressivo da tela inicial */
-  .header-logo { margin-top: 14px !important; margin-bottom: 18px !important; }
-  .summary { margin-bottom: 24px !important; }
-  .saldo-card { margin-bottom: 26px !important; }
-  .mes-nav { margin-bottom: 28px !important; }
-  #btnFalarTransacao { margin-top: 0 !important; margin-bottom: 20px !important; }
-  #rotuloColarTexto { display:inline-block; margin: 0 0 20px !important; }
-  #btnAdicionarPrincipal { margin-top: 0 !important; margin-bottom: 26px !important; }
-  .toggles-linha { column-gap: 12px !important; row-gap: 20px !important; margin-bottom: 30px !important; }
-  .toggles-linha .upload-toggle { min-height: 60px !important; padding-top: 11px !important; padding-bottom: 11px !important; }
-  .rodape-links-linha { row-gap: 14px !important; margin-bottom: 0 !important; }
-  #termosToggle { margin-top: 8px !important; margin-bottom: 18px !important; }
+  /* Ritmo vertical progressivo, sempre cabendo em uma tela */
+  .header-logo { margin-top: 10px !important; margin-bottom: clamp(10px, 1.5vh, 18px) !important; }
+  .summary { margin-bottom: clamp(12px, 1.8vh, 22px) !important; }
+  .saldo-card { margin-bottom: clamp(13px, 2vh, 24px) !important; }
+  .mes-nav { margin-bottom: clamp(14px, 2.1vh, 25px) !important; }
+  #btnFalarTransacao { margin-top: 0 !important; margin-bottom: clamp(10px, 1.5vh, 18px) !important; }
+  #rotuloColarTexto { display:inline-block; margin: 0 0 clamp(10px, 1.5vh, 18px) !important; }
+  #btnAdicionarPrincipal { margin-top: 0 !important; margin-bottom: clamp(12px, 1.8vh, 22px) !important; }
+  .toggles-linha { column-gap: 12px !important; row-gap: clamp(10px, 1.5vh, 18px) !important; margin-bottom: clamp(14px, 2vh, 24px) !important; }
+  .toggles-linha .upload-toggle { min-height: 52px !important; padding-top: 9px !important; padding-bottom: 9px !important; }
+  .rodape-links-linha { row-gap: clamp(6px, 1vh, 12px) !important; margin-bottom: 0 !important; }
+  #termosToggle { margin-top: clamp(4px, .7vh, 8px) !important; margin-bottom: 6px !important; }
+
+  /* Na tela inicial, comprime proporcionalmente em alturas menores para eliminar rolagem. */
+  @media (max-height: 780px) {
+    .header-logo { margin-top: 4px !important; margin-bottom: 8px !important; }
+    .summary { margin-bottom: 10px !important; }
+    .saldo-card { margin-bottom: 11px !important; }
+    .mes-nav { margin-bottom: 12px !important; }
+    #btnFalarTransacao { margin-bottom: 8px !important; }
+    #rotuloColarTexto { margin-bottom: 8px !important; }
+    #btnAdicionarPrincipal { margin-bottom: 10px !important; }
+    .toggles-linha { row-gap: 8px !important; margin-bottom: 10px !important; }
+    .toggles-linha .upload-toggle { min-height: 48px !important; padding-top: 7px !important; padding-bottom: 7px !important; }
+    .rodape-link { margin-bottom: 4px !important; }
+    #termosToggle { margin-top: 2px !important; margin-bottom: 2px !important; }
+  }
 </style>
 </head>
 <body>
