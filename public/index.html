@@ -6729,20 +6729,24 @@ window.addEventListener('pageshow', (e) => {
 });
 
 if ('serviceWorker' in navigator) {
-  // Evita que o PWA permaneça preso a uma versão antiga após atualização.
-  // O query string versiona o registro e updateViaCache:none força a checagem
-  // do service worker na rede.
-  navigator.serviceWorker.register('/sw.js?v=20261110-1', { updateViaCache: 'none' })
+  let recarregandoPorAtualizacao = false;
+
+  // Quando uma versao nova assume o controle, recarrega uma unica vez para
+  // que o HTML/JS atual entre em uso sem o usuario limpar o cache do Chrome.
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (recarregandoPorAtualizacao) return;
+    recarregandoPorAtualizacao = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register('/sw.js?v=20261110-2', { updateViaCache: 'none' })
     .then((registration) => {
       registration.update().catch(() => {});
-      registration.addEventListener('updatefound', () => {
-        const worker = registration.installing;
-        if (!worker) return;
-        worker.addEventListener('statechange', () => {
-          if (worker.state === 'activated' && navigator.serviceWorker.controller) {
-            window.location.reload();
-          }
-        });
+
+      // Ao voltar ao Sifia depois de ele ficar em segundo plano, procura uma
+      // versao nova. Isso cobre PWA instalado e aba do Chrome.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') registration.update().catch(() => {});
       });
     })
     .catch(() => {});
