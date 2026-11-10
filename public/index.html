@@ -790,6 +790,11 @@
     <img id="preview" onclick="event.stopPropagation(); abrirZoomImagem()">
     <p class="aviso-backup" id="dicaZoom" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> <span data-i18n="dicaZoomTexto">Toque na imagem pra ampliar e conferir antes de analisar</span></p>
     <input type="file" id="fileInput" accept="image/*">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button type="button" id="btnCameraComprovante" style="flex:1;">📷 Tirar foto</button>
+      <button type="button" id="btnGaleriaComprovante" style="flex:1;">🖼️ Escolher da galeria</button>
+    </div>
   </div>
   <p class="aviso-backup" id="dicaIphone" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> <span data-i18n="avisoIphoneCompartilhamento">No iOS, o compartilhamento direto de outros apps pro Sifia ainda não é possível (incompatibilidade entre os sistemas). Salve a imagem do comprovante e escolha ela aqui em cima.</span></p>
   <button id="sendBtn" disabled data-i18n="analisarComprovanteBotao">Analisar comprovante</button>
@@ -2732,7 +2737,22 @@ if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
   if (dicaIphone) dicaIphone.style.display = 'block';
 }
 
-dropZone.addEventListener('click', () => fileInput.click());
+const cameraInput = document.getElementById('cameraInput');
+const btnCameraComprovante = document.getElementById('btnCameraComprovante');
+const btnGaleriaComprovante = document.getElementById('btnGaleriaComprovante');
+
+dropZone.addEventListener('click', (e) => {
+  if (e.target.closest('#btnCameraComprovante') || e.target.closest('#btnGaleriaComprovante')) return;
+  fileInput.click();
+});
+btnCameraComprovante.addEventListener('click', (e) => {
+  e.stopPropagation();
+  cameraInput.click();
+});
+btnGaleriaComprovante.addEventListener('click', (e) => {
+  e.stopPropagation();
+  fileInput.click();
+});
 dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
@@ -2741,6 +2761,9 @@ dropZone.addEventListener('drop', (e) => {
   if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+cameraInput.addEventListener('change', (e) => {
   if (e.target.files.length) handleFile(e.target.files[0]);
 });
 document.addEventListener('paste', (e) => {
