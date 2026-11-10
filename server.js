@@ -144,26 +144,30 @@ function getExtractionPromptTexto() {
   ontem.setDate(ontem.getDate() - 1);
   const ontemStr = String(ontem.getDate()).padStart(2, '0') + '/' + String(ontem.getMonth() + 1).padStart(2, '0') + '/' + ontem.getFullYear();
 
-  return `Você recebe uma frase falada (transcrita por voz) ou digitada por um usuário brasileiro descrevendo UMA transação financeira que ele fez ou recebeu, ex: "gastei 40 reais no posto de gasolina", "recebi 200 de pix do Fernando", "paguei 30 de comida ontem".
-A data de HOJE é ${hojeStr}. Se a frase não mencionar quando foi, use ${hojeStr}. Se disser "ontem", use ${ontemStr}.
-Responda APENAS com um JSON válido, sem nenhum texto antes ou depois: um ARRAY com um item, no formato:
+  return `Você recebe uma fala ou texto livre de um usuário brasileiro descrevendo UMA OU MAIS transações financeiras.
+A data de HOJE é ${hojeStr}. Se uma transação não mencionar quando foi, use ${hojeStr}. Se disser "ontem", use ${ontemStr}.
+Entenda linguagem natural e frases curtas. Não exija uma ordem fixa de campos.
+Separe cada movimentação em um item próprio. Exemplo: "fiz 480 na Uber, 90 na 99, coloquei 120 de gasolina e gastei 35 no almoço" deve gerar QUATRO itens.
+Nunca invente instituição, local, forma de pagamento ou observação que não tenham sido informados; use "desconhecido" ou "" conforme o campo.
+Responda APENAS com JSON válido, sem texto antes/depois: um ARRAY com um item por transação, no formato:
 {
-  "valor": (número, ex: 40.00 - extraia o valor mencionado),
-  "tipo": ("entrada" se a pessoa RECEBEU o dinheiro, "saida" se ela GASTOU/PAGOU/ENVIOU. Palavras como "gastei", "paguei", "comprei" = saida; "recebi", "ganhei", "me pagaram" = entrada),
-  "categoria": (categoria curta inferida do contexto, ex: "Transporte", "Combustível", "Comida na rua", "Mercado", "Lazer", "Salário", "Transferência entre contas", "Outros"),
-  "instituicao": (nome do banco/fintech mencionado pela pessoa, transcrito exatamente como ela falou (ex: se disser "pelo banco X", responda "banco X"). Se não for mencionado, "desconhecido"),
-  "local": (nome do estabelecimento/pessoa mencionado, ou "desconhecido" se não foi dito),
-  "forma_pagamento": (se a pessoa mencionar a forma de pagamento, use EXATAMENTE um destes valores: "debito", "credito", "pix", "especie" (dinheiro/espécie). Ex: "no crédito"/"no cartão de crédito" = "credito"; "no débito" = "debito"; "de pix"/"por pix" = "pix"; "em dinheiro"/"em espécie" = "especie". Se não for mencionado, "desconhecido"),
-  "observacao": (se a pessoa mencionar uma nota/categoria pessoal pra essa transação, geralmente no final da frase, ex: "observação combustível", "marca como comida na rua" = "combustível"/"comida na rua". Se não for mencionado, deixe vazio ""),
-  "data": (formato EXATO DD/MM/AAAA)
+  "valor": número,
+  "tipo": "entrada" ou "saida",
+  "categoria": categoria curta inferida do contexto,
+  "instituicao": nome mencionado exatamente ou "desconhecido",
+  "local": estabelecimento/pessoa mencionado ou "desconhecido",
+  "forma_pagamento": "debito", "credito", "pix", "especie" ou "desconhecido",
+  "observacao": contexto/nota pessoal explicitamente informado ou "",
+  "data": "DD/MM/AAAA"
 }
-Se a frase não descrever nenhuma transação financeira reconhecível (valor + direção do dinheiro), responda com {"erro": "não conseguimos entender essa transação, tente descrever de novo"} (sem array, só esse objeto).`;
+Direção: recebeu/ganhou/me pagaram = entrada; gastou/pagou/comprou/enviou = saida.
+Se não houver nenhuma transação reconhecível com valor e direção, responda {"erro":"não conseguimos entender essa transação, tente descrever de novo"}.`;
 }
 
 async function lerTextoTransacao(texto) {
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
+    max_tokens: 1800,
     temperature: 0,
     messages: [
       { role: 'user', content: [{ type: 'text', text: `${getExtractionPromptTexto()}\n\nFrase do usuário: "${texto}"` }] },
