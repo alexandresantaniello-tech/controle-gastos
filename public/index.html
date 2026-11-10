@@ -264,6 +264,23 @@
   .relatorio-acoes button { flex: 1; min-width: 140px; }
   .relatorio-resumo-linha { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.9rem; border-bottom: 1px solid var(--border); }
   .relatorio-resumo-linha:last-child { border-bottom: none; }
+  .relatorio-inteligencia { margin: 12px 0 4px; padding: 12px; background: var(--secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .relatorio-comparacao-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .relatorio-metrica { min-width:0; }
+  .relatorio-metrica small { display:block; color:var(--muted-foreground); font-size:0.68rem; line-height:1.2; }
+  .relatorio-metrica strong { display:block; margin-top:3px; font-size:0.82rem; }
+  .relatorio-grafico { display:flex; gap:5px; align-items:flex-end; height:120px; padding-top:12px; overflow:hidden; }
+  .relatorio-grafico-coluna { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:2px; }
+  .relatorio-grafico-barras { flex:1; display:flex; gap:2px; align-items:flex-end; justify-content:center; min-height:0; }
+  .relatorio-grafico-barra { width:42%; min-height:2px; border-radius:3px 3px 0 0; }
+  .relatorio-grafico-barra.entrada { background:var(--entrada); }
+  .relatorio-grafico-barra.saida { background:var(--saida); }
+  .relatorio-grafico-label { text-align:center; color:var(--muted-foreground); font-size:0.58rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .relatorio-filtros { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 4px; }
+  .relatorio-filtros button { width:auto; margin:0; padding:6px 10px; border-radius:18px; font-size:0.72rem; background:var(--card); color:var(--muted-foreground); border:1px solid var(--border); }
+  .relatorio-filtros button.ativo { background:var(--gradient-crystal); color:var(--primary-foreground); border-color:var(--primary); }
+  @media (max-width:420px) { .relatorio-comparacao-grid { grid-template-columns:1fr; } }
+
   input[type="text"], input[type="number"], input[type="date"], input[type="email"], textarea {
     width: 100%;
     background: var(--input);
@@ -855,6 +872,16 @@
     <div class="titulo" id="tituloPeriodo">-</div>
     <button class="nav" onclick="mudarPeriodo(1)">›</button>
   </div>
+  <div class="relatorio-filtros" id="filtrosRelatorio">
+    <button class="ativo" data-filtro-tipo="todos" onclick="definirFiltroRelatorio('tipo','todos')">Todos</button>
+    <button data-filtro-tipo="entrada" onclick="definirFiltroRelatorio('tipo','entrada')">Entradas</button>
+    <button data-filtro-tipo="saida" onclick="definirFiltroRelatorio('tipo','saida')">Saídas</button>
+    <button data-filtro-pagamento="todos" onclick="definirFiltroRelatorio('pagamento','todos')">Pagamento: todos</button>
+    <button data-filtro-pagamento="pix" onclick="definirFiltroRelatorio('pagamento','pix')">Pix</button>
+    <button data-filtro-pagamento="debito" onclick="definirFiltroRelatorio('pagamento','debito')">Débito</button>
+    <button data-filtro-pagamento="credito" onclick="definirFiltroRelatorio('pagamento','credito')">Crédito</button>
+    <button data-filtro-pagamento="especie" onclick="definirFiltroRelatorio('pagamento','especie')">Espécie</button>
+  </div>
   <div id="resumoRelatorio"></div>
   <div class="relatorio-acoes">
     <button data-i18n="compartilharResumo" onclick="compartilharResumo()">Compartilhar resumo</button>
@@ -1431,14 +1458,109 @@ function transacoesVirtuaisNoIntervalo(inicio, fim) {
   return virtuais;
 }
 
-function transacoesDoPeriodo() {
-  const { inicio, fim } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+let filtroRelatorioTipo = 'todos';
+let filtroRelatorioPagamento = 'todos';
+
+function transacoesNoIntervalo(inicio, fim) {
   const todas = [...carregarTransacoes(), ...transacoesVirtuaisNoIntervalo(inicio, fim)];
   return todas.filter(t => {
     const d = dataDaTransacao(t);
     if (!d) return false;
     return d >= inicio && d <= fim;
   });
+}
+
+function transacoesDoPeriodo(aplicarFiltros = true) {
+  const { inicio, fim } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  let lista = transacoesNoIntervalo(inicio, fim);
+  if (!aplicarFiltros) return lista;
+  if (filtroRelatorioTipo !== 'todos') lista = lista.filter(t => t.tipo === filtroRelatorioTipo);
+  if (filtroRelatorioPagamento !== 'todos') lista = lista.filter(t => formaPagamentoDaTransacao(t) === filtroRelatorioPagamento);
+  return lista;
+}
+
+function definirFiltroRelatorio(campo, valor) {
+  if (campo === 'tipo') filtroRelatorioTipo = valor;
+  if (campo === 'pagamento') filtroRelatorioPagamento = valor;
+  renderizarRelatorio();
+}
+
+function atualizarBotoesFiltroRelatorio() {
+  document.querySelectorAll('#filtrosRelatorio [data-filtro-tipo]').forEach(b => b.classList.toggle('ativo', b.dataset.filtroTipo === filtroRelatorioTipo));
+  document.querySelectorAll('#filtrosRelatorio [data-filtro-pagamento]').forEach(b => b.classList.toggle('ativo', b.dataset.filtroPagamento === filtroRelatorioPagamento));
+}
+
+function ancoraPeriodoAnterior() {
+  const anterior = new Date(ancoraPeriodo.getTime());
+  if (tipoPeriodo === 'dia') anterior.setDate(anterior.getDate() - 1);
+  else if (tipoPeriodo === 'semana') anterior.setDate(anterior.getDate() - 7);
+  else if (tipoPeriodo === 'mes') anterior.setMonth(anterior.getMonth() - 1);
+  else if (tipoPeriodo === 'trimestre') anterior.setMonth(anterior.getMonth() - 3);
+  else if (tipoPeriodo === 'semestre') anterior.setMonth(anterior.getMonth() - 6);
+  else anterior.setFullYear(anterior.getFullYear() - 1);
+  return anterior;
+}
+
+function resumoFinanceiro(lista) {
+  const entradas = lista.filter(t => t.tipo === 'entrada').reduce((s,t) => s + Number(t.valor || 0), 0);
+  const saidas = lista.filter(t => t.tipo === 'saida').reduce((s,t) => s + Number(t.valor || 0), 0);
+  return { entradas, saidas, saldo: entradas - saidas };
+}
+
+function variacaoPercentual(atual, anterior) {
+  if (!anterior) return null;
+  return ((atual - anterior) / Math.abs(anterior)) * 100;
+}
+
+function textoVariacao(atual, anterior) {
+  const v = variacaoPercentual(atual, anterior);
+  if (v === null || !Number.isFinite(v)) return 'sem base anterior';
+  const seta = v > 0 ? '↑' : v < 0 ? '↓' : '→';
+  return `${seta} ${formatarPercentual(Math.abs(v))}`;
+}
+
+function diasDoIntervalo(inicio, fim) {
+  return Math.max(1, Math.round((fim - inicio) / 86400000) + 1);
+}
+
+function dadosEvolucaoRelatorio(transacoes, inicio, fim) {
+  const dias = diasDoIntervalo(inicio, fim);
+  let modo = 'dia';
+  if (dias > 62) modo = 'mes';
+  else if (dias > 14) modo = 'semana';
+  const grupos = {};
+  transacoes.forEach(t => {
+    const d = dataDaTransacao(t); if (!d) return;
+    let chave, label, ordem;
+    if (modo === 'mes') {
+      chave = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      label = d.toLocaleDateString(configIdioma().locale,{month:'short'});
+      ordem = new Date(d.getFullYear(),d.getMonth(),1).getTime();
+    } else if (modo === 'semana') {
+      const ini = new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+      chave = ini.toISOString().slice(0,10); label = String(ini.getDate()).padStart(2,'0'); ordem=ini.getTime();
+    } else {
+      chave = d.toISOString().slice(0,10); label = String(d.getDate()).padStart(2,'0'); ordem=d.getTime();
+    }
+    if(!grupos[chave]) grupos[chave]={label,ordem,entradas:0,saidas:0};
+    grupos[chave][t.tipo === 'entrada' ? 'entradas':'saidas'] += Number(t.valor||0);
+  });
+  return Object.values(grupos).sort((a,b)=>a.ordem-b.ordem);
+}
+
+function graficoEvolucaoHtml(transacoes, inicio, fim) {
+  const dados = dadosEvolucaoRelatorio(transacoes,inicio,fim);
+  if (!dados.length) return '';
+  const max = Math.max(...dados.flatMap(x=>[x.entradas,x.saidas]),1);
+  return `<div class="grupo-dia">Evolução no período</div>
+    <div class="relatorio-grafico">${dados.map(x=>`<div class="relatorio-grafico-coluna" title="${escapeHtml(x.label)} · Entradas ${formatarMoeda(x.entradas)} · Saídas ${formatarMoeda(x.saidas)}">
+      <div class="relatorio-grafico-barras">
+        <div class="relatorio-grafico-barra entrada" style="height:${Math.max(2,x.entradas/max*100)}%"></div>
+        <div class="relatorio-grafico-barra saida" style="height:${Math.max(2,x.saidas/max*100)}%"></div>
+      </div>
+      <div class="relatorio-grafico-label">${escapeHtml(x.label)}</div>
+    </div>`).join('')}</div>
+    <div style="font-size:0.68rem;color:var(--muted-foreground);text-align:center;margin-bottom:8px;"><span class="entrada">■ Entradas</span> &nbsp; <span class="saida">■ Saídas</span></div>`;
 }
 
 // So agrupa/soma quem TEM observacao de verdade (ex: "Uber", "Combustivel")
@@ -1619,38 +1741,61 @@ function renderizarRelatorio() {
   tiposEl.innerHTML = TIPOS_PERIODO.map(tp =>
     `<button class="${tp.chave === tipoPeriodo ? 'ativo' : ''}" onclick="selecionarTipoPeriodo('${tp.chave}')">${t(tp.chaveTraducao)}</button>`
   ).join('');
+  atualizarBotoesFiltroRelatorio();
 
-  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const intervalo = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const { inicio, fim, label } = intervalo;
   document.getElementById('tituloPeriodo').textContent = label;
 
   const transacoes = transacoesDoPeriodo();
-  const saidas = transacoes.filter(t => t.tipo === 'saida');
-  const entradas = transacoes.filter(t => t.tipo === 'entrada');
-  const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
-  const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
-
-  const temSemObservacao = saidas.some(t => !chaveAgrupamentoTransacao(t));
+  const transacoesSemFiltro = transacoesDoPeriodo(false);
+  const totais = resumoFinanceiro(transacoes);
+  const anteriorAncora = ancoraPeriodoAnterior();
+  const intervaloAnterior = calcularIntervalo(tipoPeriodo, anteriorAncora);
+  let transacoesAnterior = transacoesNoIntervalo(intervaloAnterior.inicio, intervaloAnterior.fim);
+  if (filtroRelatorioTipo !== 'todos') transacoesAnterior = transacoesAnterior.filter(t => t.tipo === filtroRelatorioTipo);
+  if (filtroRelatorioPagamento !== 'todos') transacoesAnterior = transacoesAnterior.filter(t => formaPagamentoDaTransacao(t) === filtroRelatorioPagamento);
+  const totaisAnterior = resumoFinanceiro(transacoesAnterior);
+  const dias = diasDoIntervalo(inicio,fim);
+  const temSemObservacao = transacoes.some(t => t.tipo === 'saida' && !chaveAgrupamentoTransacao(t));
 
   document.getElementById('resumoRelatorio').innerHTML = `
-    <div class="relatorio-resumo-linha"><span>${t('transacoesLabel')}</span><strong>${transacoes.length}</strong></div>
-    <div class="relatorio-resumo-linha"><span>${t('rotuloEntradas')}</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
-    <div class="relatorio-resumo-linha"><span>${t('rotuloSaidas')}</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
-    <div class="relatorio-resumo-linha"><span>${t('saldoLabel')}</span><strong>${formatarMoeda(totalEntradas - totalSaidas)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('transacoesLabel')}</span><strong>${transacoes.length}${transacoes.length !== transacoesSemFiltro.length ? ' de '+transacoesSemFiltro.length : ''}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('rotuloEntradas')}</span><strong class="entrada">${formatarMoeda(totais.entradas)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('rotuloSaidas')}</span><strong class="saida">${formatarMoeda(totais.saidas)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('saldoLabel')}</span><strong>${formatarMoeda(totais.saldo)}</strong></div>
+
+    <div class="relatorio-inteligencia">
+      <div class="grupo-dia" style="margin-top:0;">Comparação com o período anterior</div>
+      <div style="font-size:0.7rem;color:var(--muted-foreground);margin-bottom:8px;">${escapeHtml(intervaloAnterior.label)}</div>
+      <div class="relatorio-comparacao-grid">
+        <div class="relatorio-metrica"><small>Entradas</small><strong class="entrada">${textoVariacao(totais.entradas,totaisAnterior.entradas)}</strong></div>
+        <div class="relatorio-metrica"><small>Saídas</small><strong class="saida">${textoVariacao(totais.saidas,totaisAnterior.saidas)}</strong></div>
+        <div class="relatorio-metrica"><small>Saldo</small><strong>${textoVariacao(totais.saldo,totaisAnterior.saldo)}</strong></div>
+      </div>
+      <div class="grupo-dia">Médias por dia</div>
+      <div class="relatorio-comparacao-grid">
+        <div class="relatorio-metrica"><small>Entradas/dia</small><strong class="entrada">${formatarMoeda(totais.entradas/dias)}</strong></div>
+        <div class="relatorio-metrica"><small>Saídas/dia</small><strong class="saida">${formatarMoeda(totais.saidas/dias)}</strong></div>
+        <div class="relatorio-metrica"><small>Saldo/dia</small><strong>${formatarMoeda(totais.saldo/dias)}</strong></div>
+      </div>
+    </div>
+    ${graficoEvolucaoHtml(transacoes,inicio,fim)}
     <div class="grupo-dia">${t('porFormaPagamento')}</div>
     ${transacoes.length > 0 ? linhasFormaPagamentoHtml(transacoes) : `<div class="relatorio-resumo-linha"><span>${t('nenhumaLabel')}</span></div>`}
-    ${temSemObservacao ? `<p class="dica-observacao"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> ${t('dicaObservacaoRelatorio')}</p>` : ''}
+    ${temSemObservacao ? `<p class="dica-observacao">${t('dicaObservacaoRelatorio')}</p>` : ''}
     <div class="grupo-dia">${t('transacoesDoPeriodo')}</div>
     ${linhasAgrupadasHtml(transacoes)}
   `;
 
   const btnApagarPeriodo = document.getElementById('btnApagarPeriodo');
-  btnApagarPeriodo.style.display = transacoes.length > 0 ? '' : 'none';
+  btnApagarPeriodo.style.display = transacoesSemFiltro.length > 0 ? '' : 'none';
   document.getElementById('btnApagarPeriodoTexto').textContent = t('apagarTransacoesDe', { label });
 }
 
 async function apagarTransacoesDoPeriodo() {
   const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
-  const doPeriodo = transacoesDoPeriodo();
+  const doPeriodo = transacoesDoPeriodo(false);
   if (doPeriodo.length === 0) return;
   if (!(await modalConfirmar(t('confirmarApagarTransacoesPeriodo', { qtd: doPeriodo.length, label })))) return;
   const idsParaApagar = new Set(doPeriodo.map(t => t.id));
@@ -1661,48 +1806,50 @@ async function apagarTransacoesDoPeriodo() {
 }
 
 function textoResumoRelatorio() {
-  const { label } = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const intervalo = calcularIntervalo(tipoPeriodo, ancoraPeriodo);
+  const { inicio, fim, label } = intervalo;
   const transacoes = transacoesDoPeriodo();
-  const saidas = transacoes.filter(t => t.tipo === 'saida');
-  const entradas = transacoes.filter(t => t.tipo === 'entrada');
-  const totalEntradas = entradas.reduce((s, t) => s + Number(t.valor || 0), 0);
-  const totalSaidas = saidas.reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totais = resumoFinanceiro(transacoes);
   const tipoLabel = t(TIPOS_PERIODO.find(tp => tp.chave === tipoPeriodo).chaveTraducao);
+  const anteriorAncora = ancoraPeriodoAnterior();
+  const intAnt = calcularIntervalo(tipoPeriodo, anteriorAncora);
+  let ant = transacoesNoIntervalo(intAnt.inicio,intAnt.fim);
+  if (filtroRelatorioTipo !== 'todos') ant=ant.filter(t=>t.tipo===filtroRelatorioTipo);
+  if (filtroRelatorioPagamento !== 'todos') ant=ant.filter(t=>formaPagamentoDaTransacao(t)===filtroRelatorioPagamento);
+  const totaisAnt=resumoFinanceiro(ant);
+  const dias=diasDoIntervalo(inicio,fim);
 
   let texto = `${t('relatorioLabel')} ${tipoLabel} — ${label}\n\n`;
   texto += `${t('transacoesLabel')}: ${transacoes.length}\n`;
-  texto += `${t('rotuloEntradas')}: ${formatarMoeda(totalEntradas)}\n`;
-  texto += `${t('rotuloSaidas')}: ${formatarMoeda(totalSaidas)}\n`;
-  texto += `${t('saldoLabel')}: ${formatarMoeda(totalEntradas - totalSaidas)}\n`;
+  texto += `${t('rotuloEntradas')}: ${formatarMoeda(totais.entradas)}\n`;
+  texto += `${t('rotuloSaidas')}: ${formatarMoeda(totais.saidas)}\n`;
+  texto += `${t('saldoLabel')}: ${formatarMoeda(totais.saldo)}\n`;
+  texto += `\nComparação com ${intAnt.label}:\n`;
+  texto += `- Entradas: ${textoVariacao(totais.entradas,totaisAnt.entradas)}\n- Saídas: ${textoVariacao(totais.saidas,totaisAnt.saidas)}\n- Saldo: ${textoVariacao(totais.saldo,totaisAnt.saldo)}\n`;
+  texto += `\nMédias por dia:\n- Entradas: ${formatarMoeda(totais.entradas/dias)}\n- Saídas: ${formatarMoeda(totais.saidas/dias)}\n- Saldo: ${formatarMoeda(totais.saldo/dias)}\n`;
 
   if (transacoes.length > 0) {
     texto += `\n${t('porFormaPagamento')}:\n`;
     const totaisPagamento = {};
-    transacoes.forEach(t => {
-      const fp = formaPagamentoDaTransacao(t);
-      if (!totaisPagamento[fp]) totaisPagamento[fp] = { entrada: 0, saida: 0 };
-      totaisPagamento[fp][t.tipo === 'entrada' ? 'entrada' : 'saida'] += Number(t.valor || 0);
+    transacoes.forEach(tx => {
+      const fp=formaPagamentoDaTransacao(tx);
+      if(!totaisPagamento[fp]) totaisPagamento[fp]={entrada:0,saida:0};
+      totaisPagamento[fp][tx.tipo==='entrada'?'entrada':'saida']+=Number(tx.valor||0);
     });
-    ['pix', 'debito', 'credito', 'especie', 'desconhecido'].filter(fp => totaisPagamento[fp]).forEach(fp => {
-      const { entrada, saida } = totaisPagamento[fp];
-      const partes = [];
-      if (entrada > 0) partes.push(`+${formatarMoeda(entrada)}`);
-      if (saida > 0) partes.push(`-${formatarMoeda(saida)}`);
+    ['pix','debito','credito','especie','desconhecido'].filter(fp=>totaisPagamento[fp]).forEach(fp=>{
+      const x=totaisPagamento[fp], partes=[];
+      if(x.entrada>0) partes.push(`+${formatarMoeda(x.entrada)} (${formatarPercentual(totais.entradas ? x.entrada/totais.entradas*100:0)})`);
+      if(x.saida>0) partes.push(`-${formatarMoeda(x.saida)} (${formatarPercentual(totais.saidas ? x.saida/totais.saidas*100:0)})`);
       texto += `- ${rotuloFormaPagamento(fp)}: ${partes.join(' / ')}\n`;
     });
     texto += `\n${t('transacoesDoPeriodo')}:\n`;
-    const { grupos, semObservacao } = agruparPorObservacao(transacoes);
-    grupos.forEach(g => {
-      const sinal = g.tipo === 'entrada' ? '+' : '-';
-      texto += `- ${g.descricao}: ${sinal}${formatarMoeda(g.total)}\n`;
+    const {grupos,semObservacao}=agruparPorObservacao(transacoes);
+    grupos.forEach(g=>{
+      const sinal=g.tipo==='entrada'?'+':'-';
+      texto += `- ${g.descricao} (${g.quantidade}): ${sinal}${formatarMoeda(g.total)} · ${formatarPercentual(percentualDoTipo(g.total,g.tipo,transacoes))}\n`;
     });
-    semObservacao.forEach(transacao => {
-      const sinal = transacao.tipo === 'entrada' ? '+' : '-';
-      const descricao = transacao.local || '-';
-      texto += `- ${transacao.data || t('semDataLabel')} — ${descricao}: ${sinal}${formatarMoeda(transacao.valor)}\n`;
-    });
+    semObservacao.forEach(tx=>{const sinal=tx.tipo==='entrada'?'+':'-'; texto+=`- ${tx.data||t('semDataLabel')} — ${tx.local||'-'}: ${sinal}${formatarMoeda(tx.valor)}\n`;});
   }
-
   return texto;
 }
 
