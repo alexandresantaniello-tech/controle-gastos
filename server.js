@@ -13,7 +13,9 @@ const app = express();
 // todo mundo como o mesmo IP (o do proxy), em vez do IP real de cada
 // cliente.
 app.set('trust proxy', 1);
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// Fotos atuais de celular podem passar de 10 MB. Aceitamos até 25 MB na entrada
+// e reduzimos a imagem com Sharp antes de enviá-la para a IA.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const redis = Redis.fromEnv();
@@ -325,7 +327,17 @@ function mensagemErroAmigavel(err) {
     : 'Não conseguimos ler essa imagem. Tente novamente com uma foto mais nítida.';
 }
 
-app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, upload.single('receipt'), async (req, res) => {
+const receberComprovante = upload.single('receipt');
+
+app.post('/api/parse-receipt', limiteApiIA, exigirSegredoApp, (req, res, next) => {
+  receberComprovante(req, res, (err) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ erro: 'A foto ficou grande demais. Tire a foto novamente com uma resolução menor.' });
+    }
+    if (err) return next(err);
+    next();
+  });
+}, async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ erro: 'Nenhuma imagem enviada' });
   }
