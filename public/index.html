@@ -3871,10 +3871,9 @@ function confirmarTransacaoAntesSalvar(dados) {
     // revisão para manter a correção por voz em qualquer origem do registro
     // (voz, texto, comprovante/imagem etc.).
     const btnCorrecaoVoz = document.getElementById('btnCorrecaoVoz');
-    const reconhecimentoVozDisponivel = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (btnCorrecaoVoz) {
-      btnCorrecaoVoz.style.display = reconhecimentoVozDisponivel ? 'block' : 'none';
-    }
+    // A correção por voz faz parte da tela de revisão e não deve desaparecer
+    // conforme a origem do registro. Mantém o controle visível sempre.
+    if (btnCorrecaoVoz) btnCorrecaoVoz.style.display = 'block';
 
     document.getElementById('confirmarTransacaoOverlay').classList.add('aberto');
   });
@@ -3979,8 +3978,13 @@ function aplicarCorrecaoVozLocal(texto) {
 
 function iniciarCorrecaoVoz(ev) {
   if (ev) ev.preventDefault();
-  if (!SpeechRecognitionClasse || reconhecimentoCorrecaoVoz || !confirmacaoDados) return;
   const status=document.getElementById('statusCorrecaoVoz');
+  if (!confirmacaoDados || reconhecimentoCorrecaoVoz) return;
+  if (!SpeechRecognitionClasse) {
+    status.textContent='A correção por voz não está disponível neste navegador.';
+    status.className='status error';
+    return;
+  }
   const textoBtn=document.getElementById('textoCorrecaoVoz');
   const recognition=new SpeechRecognitionClasse();
   recognition.lang='pt-BR'; recognition.interimResults=false; recognition.maxAlternatives=1;
