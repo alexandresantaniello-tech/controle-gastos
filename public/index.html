@@ -314,16 +314,7 @@
     grid-column: span 4;
   }
 
-  /* Distribui melhor a tela inicial na vertical sem comprometer a área de toque */
-  .header-logo { margin-top: 22px !important; margin-bottom: 22px; }
-  .summary { margin-bottom: 22px; }
-  .saldo-card { margin-bottom: 22px; }
-  .mes-navegacao { margin-bottom: 20px; }
-  #btnFalarTransacao { margin-bottom: 10px !important; }
-  #btnAdicionarPrincipal { margin-top: 8px !important; margin-bottom: 20px !important; }
-  .toggles-linha { row-gap: 16px; margin-bottom: 22px; }
-  .toggles-linha .upload-toggle { min-height: 58px; }
-  .links-rodape { margin-top: 8px; }
+
   .toggles-linha .upload-toggle:hover { border-color: var(--primary); }
   .toggles-linha .icone-toggle { width: 15px; height: 15px; }
   .dia-header {
@@ -557,6 +548,17 @@
     .rodape-link { font-size: 0.74rem; margin-bottom: 7px; gap: 5px; }
     .rodape-link .icone-toggle { width: 14px; height: 14px; }
   }
+
+  /* Ajuste final da tela inicial: colocado no fim para vencer regras antigas do CSS */
+  .header-logo { margin-top: 22px !important; margin-bottom: 22px !important; }
+  .summary { margin-bottom: 22px !important; }
+  .saldo-card { margin-bottom: 22px !important; }
+  .mes-nav { margin-bottom: 22px !important; }
+  #btnFalarTransacao { margin-top: 4px !important; margin-bottom: 12px !important; }
+  #rotuloColarTexto { display:inline-block; margin: 4px 0 8px !important; }
+  #btnAdicionarPrincipal { margin-top: 6px !important; margin-bottom: 22px !important; }
+  .toggles-linha { column-gap: 10px !important; row-gap: 18px !important; margin-bottom: 26px !important; }
+  .toggles-linha .upload-toggle { min-height: 60px !important; padding-top: 11px !important; padding-bottom: 11px !important; }
 </style>
 </head>
 <body>
