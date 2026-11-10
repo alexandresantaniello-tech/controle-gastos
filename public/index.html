@@ -746,7 +746,7 @@
 
 <div class="card" id="perfilFinanceiroCard" style="display:none;">
   <div class="grupo-dia" style="margin-top:0;">Meu Perfil Financeiro Sifia</div>
-  <p class="aviso-backup" style="margin-top:6px;">Uma visão da sua vida financeira calculada no seu aparelho com base nos registros do Sifia.</p>
+  <p class="aviso-backup" style="margin-top:6px;">Uma visão histórica da sua vida financeira, calculada no seu aparelho com base nas movimentações efetivamente registradas no Sifia. Valores apenas previstos ou recorrências que ainda não foram registrados como movimentação não entram nas médias, saldos e evolução deste perfil.</p>
   <div id="perfilFinanceiroConteudo"></div>
   <p class="aviso-backup" style="margin-top:16px;">Este perfil é informativo. Não é score de crédito, promessa de aprovação ou recomendação de empréstimo.</p>
 </div>
@@ -2111,7 +2111,7 @@ function renderizarPerfilFinanceiro() {
     ${leituraObsHtml}
     <div style="margin-top:22px;">
       <div class="grupo-dia" style="margin:0;">Evolução financeira</div>
-      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês com base nas movimentações efetivamente registradas. O painel principal também pode considerar recorrências conhecidas, por isso os totais podem ser diferentes.</p>
+      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês mostram somente o que foi efetivamente registrado. Previsões e recorrências ainda não registradas não entram nesta evolução. Por isso, os valores podem ser diferentes do painel principal ou dos Relatórios, que podem considerar recorrências conhecidas.</p>
       ${tendenciaHtml}
       <div style="margin-top:8px;">${mesesHtml}</div>
     </div>
