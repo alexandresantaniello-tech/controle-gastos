@@ -616,6 +616,10 @@
       </div>
     </div>
     <div class="nota" id="confObservacao" onclick="confEditarCampo('observacao')" style="margin-top:10px; cursor:pointer;"></div>
+    <button id="btnCorrecaoVoz" class="secondary" style="display:none; width:100%; margin-top:10px; touch-action:none; user-select:none;" onpointerdown="iniciarCorrecaoVoz(event)" onpointerup="pararCorrecaoVoz(event)" onpointercancel="pararCorrecaoVoz(event)" onpointerleave="pararCorrecaoVoz(event)">
+      🎙 <span id="textoCorrecaoVoz">Segure para corrigir por voz</span>
+    </button>
+    <div class="status" id="statusCorrecaoVoz" style="min-height:0;"></div>
     <div class="status" id="confAvisoMemoria" style="display:none; color:var(--primary);"></div>
     <div style="display:flex; gap:10px; margin-top:16px;">
       <button class="secondary" data-i18n="cancelar" onclick="confCancelar()" style="flex:1; margin-top:0;">Cancelar</button>
@@ -3915,6 +3919,86 @@ async function confEditarCampo(campo) {
   renderizarConfirmacao();
 }
 
+let reconhecimentoCorrecaoVoz = null;
+let correcaoVozCapturou = false;
+
+function normalizarNumeroFalado(texto) {
+  const limpo = String(texto || '').replace(/\s/g, '').replace(/R\$/gi, '').replace(/reais?/gi, '').replace(/\./g, '').replace(',', '.');
+  const n = Number(limpo.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function aplicarCorrecaoVozLocal(texto) {
+  if (!confirmacaoDados) return false;
+  const original = String(texto || '').trim();
+  const s = original.toLowerCase();
+  let alterou = false;
+
+  const obs = original.match(/(?:observa[cç][aã]o|obs|nota)\s*[:,-]?\s*(.+)$/i);
+  if (obs && obs[1].trim()) { confirmacaoDados.observacao = obs[1].trim(); alterou = true; }
+
+  const valor = original.match(/(?:valor(?: correto)?|muda(?: o valor)? para|corrige(?: o valor)? para)\s*[:,-]?\s*(?:r\$\s*)?([\d.,]+)/i);
+  if (valor) { const n=normalizarNumeroFalado(valor[1]); if(n){ confirmacaoDados.valor=n; alterou=true; } }
+
+  if (/\b(muda|corrige|tipo)\b.*\bentrada\b/i.test(original)) { confirmacaoDados.tipo='entrada'; alterou=true; }
+  if (/\b(muda|corrige|tipo)\b.*\bsa[ií]da\b/i.test(original)) { confirmacaoDados.tipo='saida'; alterou=true; }
+
+  if (/\b(pagamento|paguei|foi)\b.*\bpix\b/i.test(original)) { confirmacaoDados.formaPagamento='pix'; alterou=true; }
+  if (/\b(pagamento|paguei|foi)\b.*\bd[eé]bito\b/i.test(original)) { confirmacaoDados.formaPagamento='debito'; alterou=true; }
+  if (/\b(pagamento|paguei|foi)\b.*\bcr[eé]dito\b/i.test(original)) { confirmacaoDados.formaPagamento='credito'; alterou=true; }
+  if (/\b(pagamento|paguei|foi)\b.*\b(dinheiro|esp[eé]cie)\b/i.test(original)) { confirmacaoDados.formaPagamento='especie'; alterou=true; }
+
+  if (/\bontem\b/i.test(original) && /\b(data|foi|era|muda|corrige)\b/i.test(original)) {
+    const d=new Date(); d.setDate(d.getDate()-1);
+    confirmacaoDados.data=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); alterou=true;
+  }
+  if (/\bhoje\b/i.test(original) && /\b(data|foi|era|muda|corrige)\b/i.test(original)) {
+    const d=new Date();
+    confirmacaoDados.data=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); alterou=true;
+  }
+
+  const local = original.match(/(?:local|estabelecimento)\s*[:,-]?\s*(.+?)(?=\s+(?:e\s+)?(?:institui[cç][aã]o|banco|observa[cç][aã]o|pagamento|valor)\b|$)/i);
+  if (local && local[1].trim()) { confirmacaoDados.local=local[1].trim(); alterou=true; }
+  const inst = original.match(/(?:institui[cç][aã]o|banco)\s*[:,-]?\s*(.+?)(?=\s+(?:e\s+)?(?:local|observa[cç][aã]o|pagamento|valor)\b|$)/i);
+  if (inst && inst[1].trim()) { confirmacaoDados.instituicao=inst[1].trim(); alterou=true; }
+
+  if (alterou) renderizarConfirmacao();
+  return alterou;
+}
+
+function iniciarCorrecaoVoz(ev) {
+  if (ev) ev.preventDefault();
+  if (!SpeechRecognitionClasse || reconhecimentoCorrecaoVoz || !confirmacaoDados) return;
+  const status=document.getElementById('statusCorrecaoVoz');
+  const textoBtn=document.getElementById('textoCorrecaoVoz');
+  const recognition=new SpeechRecognitionClasse();
+  recognition.lang='pt-BR'; recognition.interimResults=false; recognition.maxAlternatives=1;
+  reconhecimentoCorrecaoVoz=recognition; correcaoVozCapturou=false;
+  textoBtn.textContent='Ouvindo... solte para aplicar';
+  status.textContent='Diga o campo e a correção. Ex.: “Observação: TV Box”.';
+  status.className='status';
+  recognition.onresult=(event)=>{
+    correcaoVozCapturou=true;
+    const texto=event.results[0][0].transcript;
+    const ok=aplicarCorrecaoVozLocal(texto);
+    status.textContent=ok ? 'Correção aplicada. Confira antes de confirmar.' : 'Não entendi qual campo corrigir. Ex.: “Observação: TV Box”.';
+    status.className=ok ? 'status' : 'status error';
+    textoBtn.textContent='Segure para corrigir por voz';
+  };
+  recognition.onerror=(event)=>{
+    reconhecimentoCorrecaoVoz=null;
+    if(event.error!=='no-speech'&&event.error!=='aborted'){status.textContent='Não conseguimos ouvir. Tente novamente.';status.className='status error';}
+    textoBtn.textContent='Segure para corrigir por voz';
+  };
+  recognition.onend=()=>{reconhecimentoCorrecaoVoz=null;textoBtn.textContent='Segure para corrigir por voz';};
+  recognition.start();
+}
+
+function pararCorrecaoVoz(ev) {
+  if (ev) ev.preventDefault();
+  if (reconhecimentoCorrecaoVoz) reconhecimentoCorrecaoVoz.stop();
+}
+
 function confConfirmar() {
   document.getElementById('confirmarTransacaoOverlay').classList.remove('aberto');
   if (confirmacaoDados.observacao) lembrarObservacao(confirmacaoDados.observacao);
@@ -6146,6 +6230,8 @@ async function processarComprovanteCompartilhado() {
 const SpeechRecognitionClasse = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (SpeechRecognitionClasse) {
   document.getElementById('btnFalarTransacao').style.display = 'block';
+  const btnCorrecao = document.getElementById('btnCorrecaoVoz');
+  if (btnCorrecao) btnCorrecao.style.display = 'block';
 }
 
 // Texto de instrucao mostrado assim que o usuario aperta e segura o botao -
