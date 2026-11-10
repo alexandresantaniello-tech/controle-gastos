@@ -1139,6 +1139,20 @@
   </div>
 </div>
 
+<div class="modal-overlay centralizado" id="detalhesObservacaoOverlay">
+  <div class="modal-caixa" style="width:min(94vw,520px); max-height:82vh; display:flex; flex-direction:column;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:0.72rem; color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.05em;">Transações deste resumo</div>
+        <h3 id="detalhesObservacaoTitulo" style="margin:3px 0 0;"></h3>
+      </div>
+      <button type="button" class="secondary" onclick="fecharDetalhesObservacao()" style="width:auto; margin:0; padding:7px 12px;">Fechar</button>
+    </div>
+    <div id="detalhesObservacaoResumo" style="font-size:0.85rem; color:var(--muted-foreground); margin-bottom:8px;"></div>
+    <div id="detalhesObservacaoLista" style="overflow-y:auto; min-height:0;"></div>
+  </div>
+</div>
+
 <div class="modal-overlay centralizado" id="cameraOverlay">
   <div class="modal-caixa" style="width:min(94vw,520px);">
     <video id="cameraVideo" autoplay playsinline muted style="width:100%; max-height:65vh; background:#000; border-radius:var(--radius-sm);"></video>
@@ -1449,8 +1463,9 @@ function agruparPorObservacao(transacoes) {
   comObservacao.forEach(t => {
     const descricao = chaveAgrupamentoTransacao(t);
     const chave = `${t.tipo}|${descricao}`;
-    if (!grupos[chave]) grupos[chave] = { descricao, tipo: t.tipo, total: 0, editavel: false };
+    if (!grupos[chave]) grupos[chave] = { descricao, tipo: t.tipo, total: 0, quantidade: 0, editavel: false };
     grupos[chave].total += Number(t.valor || 0);
+    grupos[chave].quantidade += 1;
     // O grupo so pode ser renomeado em lote (renomearObservacaoEmGrupo) se
     // tiver pelo menos uma transacao real com observacao de verdade - grupo
     // 100% formado por recorrencia virtual nao tem o que renomear (nao fica
@@ -1458,8 +1473,8 @@ function agruparPorObservacao(transacoes) {
     if (t.observacao && !t.recorrenciaVirtual) grupos[chave].editavel = true;
   });
   const lista = Object.values(grupos);
-  const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'));
-  const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR'));
+  const entradas = lista.filter(g => g.tipo === 'entrada').sort((a, b) => b.total - a.total || a.descricao.localeCompare(b.descricao, 'pt-BR'));
+  const saidas = lista.filter(g => g.tipo === 'saida').sort((a, b) => b.total - a.total || a.descricao.localeCompare(b.descricao, 'pt-BR'));
 
   const semObservacaoOrdenadas = [...semObservacao].sort((a, b) => {
     const da = parseData(a.data), db = parseData(b.data);
@@ -1470,27 +1485,36 @@ function agruparPorObservacao(transacoes) {
   return { grupos: [...entradas, ...saidas], semObservacao: semObservacaoOrdenadas };
 }
 
+function percentualDoTipo(valor, tipo, transacoes) {
+  const totalTipo = transacoes
+    .filter(t => t.tipo === tipo)
+    .reduce((s, t) => s + Number(t.valor || 0), 0);
+  if (!totalTipo) return 0;
+  return (Number(valor || 0) / totalTipo) * 100;
+}
+
+function formatarPercentual(valor) {
+  return Number(valor || 0).toLocaleString(configIdioma().locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+
 function linhasAgrupadasHtml(transacoes) {
   if (transacoes.length === 0) return `<div class="relatorio-resumo-linha"><span>${t('nenhumaLabel')}</span></div>`;
   const { grupos, semObservacao } = agruparPorObservacao(transacoes);
-  // Grupo inteiro e tocavel pra renomear de uma vez - resolve caso tipo
-  // "Cigarro da Minha mãe" vs "Cigarro da minha mãe" (mesma categoria,
-  // maiuscula/minuscula diferente) numa unica acao, em vez de editar
-  // transacao por transacao. encodeURIComponent evita quebrar o HTML se a
-  // observacao tiver aspas ou outro caractere especial.
+
   const linhasGrupos = grupos.map(g => {
     const classeCor = g.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = g.tipo === 'entrada' ? '+' : '-';
-    const clique = g.editavel ? `onclick="renomearObservacaoEmGrupo('${encodeURIComponent(g.descricao)}')" style="cursor:pointer;"` : '';
+    const percentual = percentualDoTipo(g.total, g.tipo, transacoes);
     return `
-    <div class="relatorio-resumo-linha" ${clique}>
-      <span>${escapeHtml(g.descricao)}</span>
-      <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
+    <div class="relatorio-resumo-linha" onclick="abrirDetalhesObservacao('${encodeURIComponent(g.descricao)}','${g.tipo}')" style="cursor:pointer;">
+      <span>${escapeHtml(g.descricao)} <small style="color:var(--muted-foreground);">(${g.quantidade})</small></span>
+      <span style="text-align:right;">
+        <strong class="${classeCor}">${sinal}${formatarMoeda(g.total)}</strong>
+        <small style="display:block; color:var(--muted-foreground); margin-top:2px;">${formatarPercentual(percentual)}</small>
+      </span>
     </div>`;
   }).join('');
-  // Sem observacao ainda: a linha inteira e tocavel pra adicionar
-  // observacao na hora - foi o toque intuitivo que o proprio usuario tentou
-  // fazer aqui, direto na lista solta embaixo do resumo agrupado.
+
   const linhasIndividuais = semObservacao.map(t => {
     const classeCor = t.tipo === 'entrada' ? 'entrada' : 'saida';
     const sinal = t.tipo === 'entrada' ? '+' : '-';
@@ -1502,6 +1526,39 @@ function linhasAgrupadasHtml(transacoes) {
     </div>`;
   }).join('');
   return linhasGrupos + linhasIndividuais;
+}
+
+function abrirDetalhesObservacao(descricaoCodificada, tipo) {
+  const descricao = decodeURIComponent(descricaoCodificada);
+  const transacoes = transacoesDoPeriodo().filter(t =>
+    t.tipo === tipo && chaveAgrupamentoTransacao(t) === descricao
+  );
+  const total = transacoes.reduce((s, t) => s + Number(t.valor || 0), 0);
+  const sinal = tipo === 'entrada' ? '+' : '-';
+  const classeCor = tipo === 'entrada' ? 'entrada' : 'saida';
+  document.getElementById('detalhesObservacaoTitulo').textContent = descricao;
+  document.getElementById('detalhesObservacaoResumo').innerHTML =
+    `${transacoes.length} ${transacoes.length === 1 ? 'transação' : 'transações'} · <strong class="${classeCor}">${sinal}${formatarMoeda(total)}</strong>`;
+  document.getElementById('detalhesObservacaoLista').innerHTML = transacoes
+    .slice()
+    .sort((a, b) => {
+      const da = dataDaTransacao(a), db = dataDaTransacao(b);
+      return (db ? db.getTime() : 0) - (da ? da.getTime() : 0);
+    })
+    .map(t => {
+      const local = escapeHtml(t.local || '-');
+      const data = escapeHtml(t.data || '-');
+      const pagamento = escapeHtml(rotuloFormaPagamento(formaPagamentoDaTransacao(t)));
+      return `<div class="relatorio-resumo-linha">
+        <span><strong>${data}</strong><small style="display:block; color:var(--muted-foreground); margin-top:2px;">${local} · ${pagamento}</small></span>
+        <strong class="${classeCor}">${sinal}${formatarMoeda(t.valor)}</strong>
+      </div>`;
+    }).join('');
+  document.getElementById('detalhesObservacaoOverlay').classList.add('aberto');
+}
+
+function fecharDetalhesObservacao() {
+  document.getElementById('detalhesObservacaoOverlay').classList.remove('aberto');
 }
 
 // Rotulos fixos em portugues, usados como fallback antes do idioma carregar
@@ -1530,6 +1587,8 @@ function formaPagamentoDaTransacao(t) {
 
 function linhasFormaPagamentoHtml(transacoes) {
   const totais = {};
+  const totalEntradas = transacoes.filter(t => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const totalSaidas = transacoes.filter(t => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
   transacoes.forEach(t => {
     const fp = formaPagamentoDaTransacao(t);
     if (!totais[fp]) totais[fp] = { entrada: 0, saida: 0 };
@@ -1539,12 +1598,18 @@ function linhasFormaPagamentoHtml(transacoes) {
   return ordem.filter(fp => totais[fp]).map(fp => {
     const { entrada, saida } = totais[fp];
     const partes = [];
-    if (entrada > 0) partes.push(`<strong class="entrada">+${formatarMoeda(entrada)}</strong>`);
-    if (saida > 0) partes.push(`<strong class="saida">-${formatarMoeda(saida)}</strong>`);
+    if (entrada > 0) {
+      const pct = totalEntradas ? entrada / totalEntradas * 100 : 0;
+      partes.push(`<span style="text-align:right;"><strong class="entrada">+${formatarMoeda(entrada)}</strong><small style="display:block;color:var(--muted-foreground);">${formatarPercentual(pct)} das entradas</small></span>`);
+    }
+    if (saida > 0) {
+      const pct = totalSaidas ? saida / totalSaidas * 100 : 0;
+      partes.push(`<span style="text-align:right;"><strong class="saida">-${formatarMoeda(saida)}</strong><small style="display:block;color:var(--muted-foreground);">${formatarPercentual(pct)} das saídas</small></span>`);
+    }
     return `
     <div class="relatorio-resumo-linha">
       <span>${rotuloFormaPagamento(fp)}</span>
-      <span style="display:flex; gap:10px;">${partes.join('')}</span>
+      <span style="display:flex; gap:10px; align-items:flex-start;">${partes.join('')}</span>
     </div>`;
   }).join('');
 }
@@ -4596,7 +4661,7 @@ const TRADUCOES2 = {
   transacoesLabel: { pt:"Transações", es:"Transacciones", en:"Transactions", fr:"Transactions", de:"Transaktionen", it:"Transazioni", zh:"交易", ja:"取引", ko:"거래", ar:"المعاملات", hi:"लेनदेन", ru:"Транзакции", nl:"Transacties", pl:"Transakcje", tr:"İşlemler", vi:"Giao dịch", th:"ธุรกรรม", id:"Transaksi", tl:"Mga transaksyon", sw:"Miamala", he:"עסקאות", el:"Συναλλαγές", sv:"Transaktioner", no:"Transaksjoner", da:"Transaktioner", fi:"Tapahtumat", cs:"Transakce", ro:"Tranzacții", hu:"Tranzakciók", uk:"Транзакції", bn:"লেনদেন", ur:"لین دین", fa:"تراکنش‌ها", ms:"Transaksi", pa:"ਲੈਣ-ਦੇਣ", ta:"பரிவர்த்தனைகள்", gu:"વ્યવહારો", am:"ግብይቶች", ha:"Ciniki" },
   saldoLabel: { pt:"Saldo", es:"Saldo", en:"Balance", fr:"Solde", de:"Saldo", it:"Saldo", zh:"余额", ja:"残高", ko:"잔액", ar:"الرصيد", hi:"शेष राशि", ru:"Баланс", nl:"Saldo", pl:"Saldo", tr:"Bakiye", vi:"Số dư", th:"ยอดคงเหลือ", id:"Saldo", tl:"Balanse", sw:"Salio", he:"יתרה", el:"Υπόλοιπο", sv:"Saldo", no:"Saldo", da:"Saldo", fi:"Saldo", cs:"Zůstatek", ro:"Sold", hu:"Egyenleg", uk:"Баланс", bn:"ব্যালেন্স", ur:"بیلنس", fa:"موجودی", ms:"Baki", pa:"ਬਕਾਇਆ", ta:"மீதி", gu:"બેલેન્સ", am:"ቀሪ ሂሳብ", ha:"Ma'auni" },
   porFormaPagamento: { pt:"Por forma de pagamento", es:"Por forma de pago", en:"By payment method", fr:"Par mode de paiement", de:"Nach Zahlungsart", it:"Per metodo di pagamento", zh:"按付款方式", ja:"支払い方法別", ko:"결제 수단별", ar:"حسب طريقة الدفع", hi:"भुगतान के तरीके अनुसार", ru:"По способу оплаты", nl:"Per betaalmethode", pl:"Wg metody płatności", tr:"Ödeme yöntemine göre", vi:"Theo phương thức thanh toán", th:"ตามวิธีการชำระเงิน", id:"Berdasarkan metode pembayaran", tl:"Ayon sa paraan ng bayad", sw:"Kwa njia ya malipo", he:"לפי אמצעי תשלום", el:"Ανά τρόπο πληρωμής", sv:"Efter betalningsmetod", no:"Etter betalingsmåte", da:"Efter betalingsmetode", fi:"Maksutavan mukaan", cs:"Podle způsobu platby", ro:"După metoda de plată", hu:"Fizetési mód szerint", uk:"За способом оплати", bn:"পেমেন্ট পদ্ধতি অনুযায়ী", ur:"ادائیگی کے طریقے کے مطابق", fa:"بر اساس روش پرداخت", ms:"Mengikut kaedah pembayaran", pa:"ਭੁਗਤਾਨ ਦੇ ਤਰੀਕੇ ਅਨੁਸਾਰ", ta:"கட்டண முறை வாரியாக", gu:"ચુકવણી પદ્ધતિ પ્રમાણે", am:"በክፍያ ዘዴ", ha:"Ta hanyar biya" },
-  transacoesDoPeriodo: { pt:"Transações do período", es:"Transacciones del período", en:"Transactions in this period", fr:"Transactions de la période", de:"Transaktionen im Zeitraum", it:"Transazioni del periodo", zh:"该期间的交易", ja:"期間内の取引", ko:"기간 내 거래", ar:"معاملات هذه الفترة", hi:"इस अवधि के लेनदेन", ru:"Транзакции за период", nl:"Transacties in deze periode", pl:"Transakcje w tym okresie", tr:"Bu dönemdeki işlemler", vi:"Giao dịch trong kỳ", th:"ธุรกรรมในช่วงเวลานี้", id:"Transaksi periode ini", tl:"Mga transaksyon sa panahong ito", sw:"Miamala ya kipindi hiki", he:"עסקאות בתקופה זו", el:"Συναλλαγές αυτής της περιόδου", sv:"Transaktioner denna period", no:"Transaksjoner i denne perioden", da:"Transaktioner i denne periode", fi:"Tämän jakson tapahtumat", cs:"Transakce za období", ro:"Tranzacții din această perioadă", hu:"Ebben az időszakban végrehajtott tranzakciók", uk:"Транзакції за період", bn:"এই সময়ের লেনদেন", ur:"اس مدت کے لین دین", fa:"تراکنش‌های این دوره", ms:"Transaksi tempoh ini", pa:"ਇਸ ਸਮੇਂ ਦੌਰਾਨ ਲੈਣ-ਦੇਣ", ta:"இந்தக் காலகட்ட பரிவர்த்தனைகள்", gu:"આ ગાળાના વ્યવહારો", am:"የዚህ ጊዜ ግብይቶች", ha:"Ciniki na wannan lokaci" },
+  transacoesDoPeriodo: { pt:"Resumo por observação", es:"Transacciones del período", en:"Transactions in this period", fr:"Transactions de la période", de:"Transaktionen im Zeitraum", it:"Transazioni del periodo", zh:"该期间的交易", ja:"期間内の取引", ko:"기간 내 거래", ar:"معاملات هذه الفترة", hi:"इस अवधि के लेनदेन", ru:"Транзакции за период", nl:"Transacties in deze periode", pl:"Transakcje w tym okresie", tr:"Bu dönemdeki işlemler", vi:"Giao dịch trong kỳ", th:"ธุรกรรมในช่วงเวลานี้", id:"Transaksi periode ini", tl:"Mga transaksyon sa panahong ito", sw:"Miamala ya kipindi hiki", he:"עסקאות בתקופה זו", el:"Συναλλαγές αυτής της περιόδου", sv:"Transaktioner denna period", no:"Transaksjoner i denne perioden", da:"Transaktioner i denne periode", fi:"Tämän jakson tapahtumat", cs:"Transakce za období", ro:"Tranzacții din această perioadă", hu:"Ebben az időszakban végrehajtott tranzakciók", uk:"Транзакції за період", bn:"এই সময়ের লেনদেন", ur:"اس مدت کے لین دین", fa:"تراکنش‌های این دوره", ms:"Transaksi tempoh ini", pa:"ਇਸ ਸਮੇਂ ਦੌਰਾਨ ਲੈਣ-ਦੇਣ", ta:"இந்தக் காலகட்ட பரிவர்த்தனைகள்", gu:"આ ગાળાના વ્યવહારો", am:"የዚህ ጊዜ ግብይቶች", ha:"Ciniki na wannan lokaci" },
   nenhumaLabel: { pt:"Nenhuma", es:"Ninguna", en:"None", fr:"Aucune", de:"Keine", it:"Nessuna", zh:"无", ja:"なし", ko:"없음", ar:"لا يوجد", hi:"कोई नहीं", ru:"Нет", nl:"Geen", pl:"Brak", tr:"Yok", vi:"Không có", th:"ไม่มี", id:"Tidak ada", tl:"Wala", sw:"Hakuna", he:"אין", el:"Καμία", sv:"Ingen", no:"Ingen", da:"Ingen", fi:"Ei mitään", cs:"Žádná", ro:"Niciuna", hu:"Nincs", uk:"Немає", bn:"কোনোটি নয়", ur:"کوئی نہیں", fa:"هیچ‌کدام", ms:"Tiada", pa:"ਕੋਈ ਨਹੀਂ", ta:"எதுவும் இல்லை", gu:"કોઈ નહીં", am:"ምንም የለም", ha:"Babu" },
   dicaObservacaoRelatorio: { pt:'Adicione uma observação nas suas transações (ex: "combustível", "comida na rua") pra identificar melhor suas saídas.', es:'Agrega una observación a tus transacciones (ej: "combustible", "comida afuera") para identificar mejor tus gastos.', en:'Add a note to your transactions (e.g. "fuel", "eating out") to better identify your expenses.', fr:'Ajoutez une note à vos transactions (ex : « carburant », « restaurant ») pour mieux identifier vos dépenses.', de:'Fügen Sie Ihren Transaktionen eine Notiz hinzu (z. B. "Benzin", "Essen gehen"), um Ihre Ausgaben besser zu erkennen.', it:'Aggiungi una nota alle tue transazioni (es: "carburante", "mangiare fuori") per identificare meglio le tue uscite.', zh:'为交易添加备注（例如“油费”、“外食”），以便更好地识别您的支出。', ja:'取引にメモを追加すると（例：「ガソリン代」「外食」）、支出をより正確に把握できます。', ko:'거래에 메모를 추가하세요 (예: "주유비", "외식") 지출을 더 잘 파악할 수 있습니다.', ar:'أضف ملاحظة إلى معاملاتك (مثل "وقود"، "أكل بالخارج") لتحديد مصروفاتك بشكل أفضل.', hi:'अपने लेनदेन में एक टिप्पणी जोड़ें (जैसे "ईंधन", "बाहर खाना") ताकि आपके खर्च बेहतर पहचाने जा सकें।', ru:'Добавьте заметку к своим транзакциям (например, «топливо», «еда вне дома»), чтобы лучше отслеживать расходы.', nl:'Voeg een notitie toe aan je transacties (bijv. "brandstof", "buiten eten") om je uitgaven beter te herkennen.', pl:'Dodaj notatkę do swoich transakcji (np. "paliwo", "jedzenie na mieście"), aby lepiej identyfikować wydatki.', tr:'İşlemlerinize bir not ekleyin (örn. "yakıt", "dışarıda yemek") giderlerinizi daha iyi tanımlamak için.', vi:'Thêm ghi chú vào giao dịch của bạn (vd: "xăng", "ăn ngoài") để nhận diện chi tiêu tốt hơn.', th:'เพิ่มบันทึกในธุรกรรมของคุณ (เช่น "น้ำมัน", "กินข้าวนอกบ้าน") เพื่อระบุรายจ่ายได้ดีขึ้น', id:'Tambahkan catatan pada transaksi Anda (mis: "bensin", "makan di luar") untuk lebih mengenali pengeluaran Anda.', tl:'Magdagdag ng tala sa iyong mga transaksyon (hal: "gasolina", "kain sa labas") para mas makilala ang iyong mga gastos.', sw:'Ongeza maelezo kwenye miamala yako (mf: "mafuta", "kula nje") ili kutambua vyema matumizi yako.', he:'הוסף הערה לעסקאות שלך (למשל "דלק", "אוכל בחוץ") כדי לזהות טוב יותר את ההוצאות שלך.', el:'Προσθέστε μια σημείωση στις συναλλαγές σας (π.χ. "καύσιμα", "φαγητό έξω") για καλύτερη αναγνώριση των εξόδων σας.', sv:'Lägg till en anteckning i dina transaktioner (t.ex. "bränsle", "äta ute") för att bättre identifiera dina utgifter.', no:'Legg til et notat i transaksjonene dine (f.eks. "drivstoff", "spise ute") for å bedre identifisere utgiftene dine.', da:'Tilføj en note til dine transaktioner (f.eks. "brændstof", "spise ude") for bedre at identificere dine udgifter.', fi:'Lisää muistiinpano tapahtumiisi (esim. "polttoaine", "ulkona syöminen") tunnistaaksesi menosi paremmin.', cs:'Přidejte poznámku ke svým transakcím (např. "palivo", "jídlo mimo domov"), abyste lépe identifikovali své výdaje.', ro:'Adaugă o notă la tranzacțiile tale (ex: "combustibil", "mâncare în oraș") pentru a-ți identifica mai bine cheltuielile.', hu:'Adjon hozzá megjegyzést a tranzakcióihoz (pl. "üzemanyag", "étkezés étteremben"), hogy jobban azonosítsa kiadásait.', uk:'Додайте нотатку до своїх транзакцій (напр. "пальне", "їжа поза домом"), щоб краще визначати свої витрати.', bn:'আপনার লেনদেনে একটি নোট যোগ করুন (যেমন "জ্বালানি", "বাইরে খাওয়া") আপনার খরচ আরও ভালোভাবে চিহ্নিত করতে।', ur:'اپنے لین دین میں ایک نوٹ شامل کریں (مثلاً "ایندھن"، "باہر کھانا") اپنے اخراجات کو بہتر طور پر شناخت کرنے کے لیے۔', fa:'یادداشتی به تراکنش‌های خود اضافه کنید (مثلاً "سوخت"، "غذا بیرون") تا هزینه‌های خود را بهتر شناسایی کنید.', ms:'Tambah nota pada transaksi anda (cth: "minyak", "makan di luar") untuk mengenal pasti perbelanjaan anda dengan lebih baik.', pa:"ਆਪਣੇ ਲੈਣ-ਦੇਣ ਵਿੱਚ ਇੱਕ ਨੋਟ ਸ਼ਾਮਲ ਕਰੋ (ਜਿਵੇਂ \"ਬਾਲਣ\", \"ਬਾਹਰ ਖਾਣਾ\") ਆਪਣੇ ਖਰਚਿਆਂ ਦੀ ਬਿਹਤਰ ਪਛਾਣ ਲਈ।", ta:'உங்கள் பரிவர்த்தனைகளில் ஒரு குறிப்பைச் சேர்க்கவும் (எ.கா: "எரிபொருள்", "வெளியில் சாப்பிடுதல்") உங்கள் செலவுகளை சிறப்பாக அடையாளம் காண.', gu:'તમારા વ્યવહારોમાં નોંધ ઉમેરો (દા.ત. "ઇંધણ", "બહાર જમવું") તમારા ખર્ચને વધુ સારી રીતે ઓળખવા માટે.', am:'ወጪዎችዎን በተሻለ ለመለየት በግብይቶችዎ ላይ ማስታወሻ ይጨምሩ (ለምሳሌ "ነዳጅ"፣ "ውጭ መብላት")።', ha:'Ƙara bayani a kan cinikinku (misali: "man fetur", "cin abinci a waje") don gane kashe kuɗinku sosai.' },
   apagarTransacoesDe: { pt:"Apagar transações de {label}", es:"Borrar transacciones de {label}", en:"Delete transactions from {label}", fr:"Supprimer les transactions de {label}", de:"Transaktionen von {label} löschen", it:"Elimina transazioni di {label}", zh:"删除{label}的交易", ja:"{label}の取引を削除", ko:"{label}의 거래 삭제", ar:"حذف معاملات {label}", hi:"{label} के लेनदेन हटाएं", ru:"Удалить транзакции за {label}", nl:"Transacties van {label} verwijderen", pl:"Usuń transakcje z {label}", tr:"{label} işlemlerini sil", vi:"Xóa giao dịch của {label}", th:"ลบธุรกรรมของ {label}", id:"Hapus transaksi {label}", tl:"Burahin ang mga transaksyon ng {label}", sw:"Futa miamala ya {label}", he:"מחק עסקאות של {label}", el:"Διαγραφή συναλλαγών του {label}", sv:"Ta bort transaktioner från {label}", no:"Slett transaksjoner fra {label}", da:"Slet transaktioner fra {label}", fi:"Poista jakson {label} tapahtumat", cs:"Smazat transakce za {label}", ro:"Șterge tranzacțiile din {label}", hu:"{label} tranzakcióinak törlése", uk:"Видалити транзакції за {label}", bn:"{label} এর লেনদেন মুছুন", ur:"{label} کے لین دین حذف کریں", fa:"حذف تراکنش‌های {label}", ms:"Padam transaksi {label}", pa:"{label} ਦੇ ਲੈਣ-ਦੇਣ ਮਿਟਾਓ", ta:"{label} பரிவர்த்தனைகளை நீக்கு", gu:"{label} ના વ્યવહારો કાઢી નાખો", am:"የ{label} ግብይቶችን ሰርዝ", ha:"Goge cinikin {label}" },
