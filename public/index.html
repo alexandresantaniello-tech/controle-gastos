@@ -2954,8 +2954,9 @@ function renderizarPlanejamento() {
     <div class="relatorio-resumo-linha"><span>Falta pagar</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
     <div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md);">
       <div style="font-size:.78em;color:var(--muted-foreground);margin-bottom:5px;">DAQUI PARA FRENTE</div>
-      <div style="font-size:.9em;color:var(--muted-foreground);">Ainda previsto: <span class="entrada">+${formatarMoeda(aReceber)}</span> em entradas · <span class="saida">-${formatarMoeda(aPagar)}</span> em saídas</div>
-      <div style="margin-top:5px;">Diferença: <strong class="${saldoAindaPrevisto>=0?'entrada':'saida'}">${formatarMoeda(saldoAindaPrevisto)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>Ainda a receber</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>Ainda a pagar</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>Diferença</span><strong class="${saldoAindaPrevisto>=0?'entrada':'saida'}">${formatarMoeda(saldoAindaPrevisto)}</strong></div>
     </div>`;
 
     if (itens.some(i=>!i.valor)) html += '<p class="dica-observacao" style="margin-top:6px;">Itens sem valor informado não entram nos totais.</p>';
