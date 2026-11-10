@@ -860,13 +860,13 @@
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
   </div>
 
-  <div id="blocoDespesaRecorrente" style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);display:none;">
-    <div id="tituloRecorrenciaManual" style="font-size:.78em;color:var(--muted-foreground);margin-bottom:8px;">RECORRÊNCIA</div>
+  <div id="blocoDespesaRecorrente" style="margin-top:14px;display:none;">
+    <label class="campo" id="tituloRecorrenciaManual">Recorrência</label>
     <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()">
-      <span id="textoPeriodoDespesaFixa" class="vazio">NÃO RECORRENTE</span>
+      <span id="textoPeriodoDespesaFixa" class="vazio">Não</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
     </div>
-    <div id="explicacaoRecorrenciaManual" style="display:none;font-size:.86em;color:var(--muted-foreground);line-height:1.4;margin-top:8px;"></div>
+    <div id="explicacaoRecorrenciaManual" style="display:none;font-size:.82em;color:var(--muted-foreground);line-height:1.35;margin-top:6px;"></div>
   </div>
 
   <div style="text-align:center; margin-top:16px;">
@@ -6090,20 +6090,20 @@ function atualizarApresentacaoRecorrenciaManual() {
   const explicacao = document.getElementById('explicacaoRecorrenciaManual');
   if (!titulo || !explicacao) return;
   const entrada = tipoDinheiroSelecionado === 'entrada';
-  titulo.textContent = entrada ? 'RECEITA RECORRENTE' : 'DESPESA RECORRENTE';
-  explicacao.textContent = entrada
-    ? 'Entrada que se repete · equivalente por dia.'
-    : 'Despesa que se repete · equivalente por dia.';
+  titulo.textContent = periodoDespesaFixaAtual
+    ? (entrada ? 'Receita recorrente' : 'Despesa recorrente')
+    : 'Recorrência';
+  explicacao.textContent = periodoDespesaFixaAtual ? 'Equivalente por dia será mostrado no histórico.' : '';
   explicacao.style.display = periodoDespesaFixaAtual ? 'block' : 'none';
 }
 
 function atualizarTextoPeriodoDespesaFixa() {
   const el = document.getElementById('textoPeriodoDespesaFixa');
   if (periodoDespesaFixaAtual) {
-    el.textContent = 'RECORRENTE · ' + rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual);
+    el.textContent = rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual);
     el.classList.remove('vazio');
   } else {
-    el.textContent = 'NÃO RECORRENTE';
+    el.textContent = 'Não';
     el.classList.add('vazio');
   }
   atualizarApresentacaoRecorrenciaManual();
