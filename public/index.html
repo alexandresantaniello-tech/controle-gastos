@@ -2798,8 +2798,18 @@ async function marcarItemPlanejamentoComoPago(id) {
     // por cima; pergunta antes de lancar em vez de assumir o valor original.
     const atraso = diasDeAtraso(anoVencimento, mesVencimento, diaVencimento);
     if (atraso > 0) {
-      const diaLabel = atraso === 1 ? t('diaSingularLabel') : t('diasPluralLabel', { atraso });
-      const novoTexto = await modalPrompt(t('contaVencidaJurosMultaModal', { diaLabel, diaVencimento, valorFormatado: formatarMoeda(valor) }), String(valor).replace('.', ','), null, true);
+      let novoTexto;
+      if (tipo === 'entrada') {
+        novoTexto = await modalPrompt(
+          `Este recebimento estava previsto para o dia ${String(diaVencimento).padStart(2, '0')} e ainda não foi confirmado. O valor recebido continua sendo ${formatarMoeda(valor)}?`,
+          String(valor).replace('.', ','),
+          null,
+          true
+        );
+      } else {
+        const diaLabel = atraso === 1 ? t('diaSingularLabel') : t('diasPluralLabel', { atraso });
+        novoTexto = await modalPrompt(t('contaVencidaJurosMultaModal', { diaLabel, diaVencimento, valorFormatado: formatarMoeda(valor) }), String(valor).replace('.', ','), null, true);
+      }
       if (novoTexto === null) return;
       const novoValor = novoTexto.trim() ? parseFloat(novoTexto.replace(',', '.')) : valor;
       if (novoValor && novoValor > 0) valor = novoValor;
@@ -2934,9 +2944,11 @@ function renderizarPlanejamento() {
       let grupo = `<div style="margin-top:20px;margin-bottom:6px;font-size:.88em;font-weight:600;color:${ehEntrada?'var(--entrada)':'var(--muted-foreground)'};">${titulo}</div>`;
       lista.forEach(item => {
         const atrasadoSaida = !ehEntrada && !item.pago && ehMesAtual && item.dia < diaHoje;
+        const recebimentoPendente = ehEntrada && !item.pago && ehMesAtual && item.dia < diaHoje;
         const corDia = item.pago ? ' style="color:var(--entrada);"' : (atrasadoSaida ? ' style="color:var(--saida);"' : '');
         const valorTexto = item.valor ? formatarMoeda(item.valor) : t('valorNaoInformado');
         const tagRecorrente = item.recorrenciaId ? ` <span style="font-size:.75em;color:var(--muted-foreground);">(${t('recorrenteLabel')})</span>` : '';
+        const tagPendente = recebimentoPendente ? ' <span style="font-size:.75em;color:var(--muted-foreground);">(recebimento pendente)</span>' : '';
         const acao = ehEntrada ? 'Marcar como recebido' : t('marcarComoPago');
         const acoes = `<span style="display:flex;gap:8px;flex-shrink:0;">${item.pago?'':`<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">${acao}</button>`}<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="editarItemPlanejamento('${item.id}')"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="secondary perigo" style="padding:6px 10px;font-size:.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button></span>`;
         const descricaoHtml = `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
@@ -2947,7 +2959,7 @@ function renderizarPlanejamento() {
           const fp = tr&&tr.formaPagamento&&tr.formaPagamento!=='desconhecido' ? rotuloFormaPagamento(tr.formaPagamento) : t('formaPagamentoPlaceholder');
           forma = ` · <span onclick="editarFormaPagamentoItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${fp}</span>`;
         }
-        grupo += `<div class="relatorio-resumo-linha" style="flex-direction:column;align-items:stretch;gap:6px;"><div${corDia}>${t('dia')} ${item.dia} — ${descricaoHtml}${tagRecorrente}${item.pago?' ✓':''}</div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span style="font-size:.85em;color:var(--muted-foreground);">${valorHtml}${forma}</span>${acoes}</div></div>`;
+        grupo += `<div class="relatorio-resumo-linha" style="flex-direction:column;align-items:stretch;gap:6px;"><div${corDia}>${t('dia')} ${item.dia} — ${descricaoHtml}${tagRecorrente}${tagPendente}${item.pago?' ✓':''}</div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><span style="font-size:.85em;color:var(--muted-foreground);">${valorHtml}${forma}</span>${acoes}</div></div>`;
       });
       return grupo;
     }
