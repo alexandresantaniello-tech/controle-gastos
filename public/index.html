@@ -790,7 +790,6 @@
     <img id="preview" onclick="event.stopPropagation(); abrirZoomImagem()">
     <p class="aviso-backup" id="dicaZoom" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> <span data-i18n="dicaZoomTexto">Toque na imagem pra ampliar e conferir antes de analisar</span></p>
     <input type="file" id="fileInput" accept="image/*">
-    <input type="file" id="cameraInput" accept="image/*" capture="environment">
     <div style="display:flex; gap:8px; margin-top:10px;">
       <button type="button" id="btnCameraComprovante" style="flex:1;">📷 Tirar foto</button>
       <button type="button" id="btnGaleriaComprovante" style="flex:1;">🖼️ Escolher da galeria</button>
@@ -1137,6 +1136,17 @@
     <div class="modal-acoes" id="modalAcoes"></div>
     <div id="modalSugestoes" style="display:none; flex-wrap:wrap; align-content:flex-start; gap:6px; margin-top:12px; max-height:60vh; overflow-y:auto; transition:max-height 0.15s;"></div>
     <div id="modalListaOpcoes" style="display:none; max-height:50vh; overflow-y:auto; margin-top:8px; border-radius:var(--radius-sm); border:1px solid var(--border);"></div>
+  </div>
+</div>
+
+<div class="modal-overlay centralizado" id="cameraOverlay">
+  <div class="modal-caixa" style="width:min(94vw,520px);">
+    <video id="cameraVideo" autoplay playsinline muted style="width:100%; max-height:65vh; background:#000; border-radius:var(--radius-sm);"></video>
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button type="button" id="btnCapturarCamera" style="flex:1;">📷 Fotografar</button>
+      <button type="button" id="btnFecharCamera" class="secondary" style="flex:1;">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -2737,9 +2747,44 @@ if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
   if (dicaIphone) dicaIphone.style.display = 'block';
 }
 
-const cameraInput = document.getElementById('cameraInput');
 const btnCameraComprovante = document.getElementById('btnCameraComprovante');
 const btnGaleriaComprovante = document.getElementById('btnGaleriaComprovante');
+const cameraOverlay = document.getElementById('cameraOverlay');
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraCanvas = document.getElementById('cameraCanvas');
+const btnCapturarCamera = document.getElementById('btnCapturarCamera');
+const btnFecharCamera = document.getElementById('btnFecharCamera');
+let cameraStream = null;
+
+async function abrirCameraComprovante() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.textContent = 'A câmera direta não está disponível neste navegador. Use a galeria.';
+    status.className = 'status error';
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false
+    });
+    cameraVideo.srcObject = cameraStream;
+    cameraOverlay.classList.add('aberto');
+  } catch (err) {
+    status.textContent = err && err.name === 'NotAllowedError'
+      ? 'Permita o acesso à câmera para tirar a foto.'
+      : 'Não foi possível abrir a câmera. Você ainda pode escolher a foto da galeria.';
+    status.className = 'status error';
+  }
+}
+
+function fecharCameraComprovante() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  cameraVideo.srcObject = null;
+  cameraOverlay.classList.remove('aberto');
+}
 
 dropZone.addEventListener('click', (e) => {
   if (e.target.closest('#btnCameraComprovante') || e.target.closest('#btnGaleriaComprovante')) return;
@@ -2747,7 +2792,26 @@ dropZone.addEventListener('click', (e) => {
 });
 btnCameraComprovante.addEventListener('click', (e) => {
   e.stopPropagation();
-  cameraInput.click();
+  abrirCameraComprovante();
+});
+btnFecharCamera.addEventListener('click', (e) => {
+  e.stopPropagation();
+  fecharCameraComprovante();
+});
+btnCapturarCamera.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const largura = cameraVideo.videoWidth;
+  const altura = cameraVideo.videoHeight;
+  if (!largura || !altura) return;
+  cameraCanvas.width = largura;
+  cameraCanvas.height = altura;
+  cameraCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, largura, altura);
+  cameraCanvas.toBlob((blob) => {
+    if (!blob) return;
+    const foto = new File([blob], 'comprovante-camera.jpg', { type: 'image/jpeg' });
+    fecharCameraComprovante();
+    handleFile(foto);
+  }, 'image/jpeg', 0.88);
 });
 btnGaleriaComprovante.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2761,9 +2825,6 @@ dropZone.addEventListener('drop', (e) => {
   if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener('change', (e) => {
-  if (e.target.files.length) handleFile(e.target.files[0]);
-});
-cameraInput.addEventListener('change', (e) => {
   if (e.target.files.length) handleFile(e.target.files[0]);
 });
 document.addEventListener('paste', (e) => {
