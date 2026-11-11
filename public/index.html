@@ -2120,17 +2120,17 @@ function analisarTendenciaFinanceira(evolucao) {
   if (saldoRecente < saldoAntigo - tolerancia) situacao = 'piorando';
   const deltaEntradas = rendaRecente - rendaAntiga;
   const deltaSaidas = gastoRecente - gastoAntigo;
-  let explicacao = 'Entradas, saídas e saldo permaneceram relativamente próximos entre os períodos comparados.';
+  let explicacao = t('tendenciaExpEstavel');
   if (situacao === 'melhorando') {
-    if (deltaEntradas > 0 && deltaSaidas < 0) explicacao = 'A melhora combina aumento das entradas com redução das saídas.';
-    else if (deltaSaidas < 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A melhora veio principalmente da redução das saídas.';
-    else if (deltaEntradas > 0) explicacao = 'A melhora veio principalmente do aumento das entradas.';
-    else explicacao = 'O saldo recente melhorou pela combinação das movimentações registradas.';
+    if (deltaEntradas > 0 && deltaSaidas < 0) explicacao = t('tendenciaExpMelhoraAmbos');
+    else if (deltaSaidas < 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = t('tendenciaExpMelhoraSaidas');
+    else if (deltaEntradas > 0) explicacao = t('tendenciaExpMelhoraEntradas');
+    else explicacao = t('tendenciaExpMelhoraCombinacao');
   } else if (situacao === 'piorando') {
-    if (deltaEntradas < 0 && deltaSaidas > 0) explicacao = 'A mudança combina redução das entradas com aumento das saídas.';
-    else if (deltaSaidas > 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = 'A mudança veio principalmente do aumento das saídas.';
-    else if (deltaEntradas < 0) explicacao = 'A mudança veio principalmente da redução das entradas.';
-    else explicacao = 'O saldo recente diminuiu pela combinação das movimentações registradas.';
+    if (deltaEntradas < 0 && deltaSaidas > 0) explicacao = t('tendenciaExpPioraAmbos');
+    else if (deltaSaidas > 0 && Math.abs(deltaSaidas) >= Math.abs(deltaEntradas)) explicacao = t('tendenciaExpPioraSaidas');
+    else if (deltaEntradas < 0) explicacao = t('tendenciaExpPioraEntradas');
+    else explicacao = t('tendenciaExpPioraCombinacao');
   }
   return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente, explicacao, mesesPorGrupo: tamanho };
 }
@@ -5574,6 +5574,16 @@ const TRADUCOES2 = {
   planejamentoSifia: { pt:'Planejamento Sifia', en:'Sifia Planning', es:'Planificación Sifia' },
   aindaPrevistoFrente: { pt:'Ainda previsto daqui para frente', en:'Still projected from here forward', es:'Aún previsto de aquí en adelante' },
   planejamentoAvisoCompartilhar: { pt:'Valores previstos são planejamento. Entradas e saídas só passam a integrar as movimentações reais quando confirmadas.', en:'Projected amounts are planning only. Income and expenses become part of actual transactions only when confirmed.', es:'Los valores previstos son planificación. Las entradas y salidas solo pasan a formar parte de los movimientos reales cuando se confirman.' },
+
+  tendenciaExpEstavel: { pt:'Entradas, saídas e saldo permaneceram relativamente próximos entre os períodos comparados.', en:'Income, expenses, and balance remained relatively close across the compared periods.', es:'Las entradas, salidas y el saldo se mantuvieron relativamente próximos entre los períodos comparados.' },
+  tendenciaExpMelhoraAmbos: { pt:'A melhora combina aumento das entradas com redução das saídas.', en:'The improvement combines higher income with lower expenses.', es:'La mejora combina un aumento de las entradas con una reducción de las salidas.' },
+  tendenciaExpMelhoraSaidas: { pt:'A melhora veio principalmente da redução das saídas.', en:'The improvement came mainly from lower expenses.', es:'La mejora vino principalmente de la reducción de las salidas.' },
+  tendenciaExpMelhoraEntradas: { pt:'A melhora veio principalmente do aumento das entradas.', en:'The improvement came mainly from higher income.', es:'La mejora vino principalmente del aumento de las entradas.' },
+  tendenciaExpMelhoraCombinacao: { pt:'O saldo recente melhorou pela combinação das movimentações registradas.', en:'The recent balance improved due to the combination of recorded transactions.', es:'El saldo reciente mejoró por la combinación de los movimientos registrados.' },
+  tendenciaExpPioraAmbos: { pt:'A mudança combina redução das entradas com aumento das saídas.', en:'The change combines lower income with higher expenses.', es:'El cambio combina una reducción de las entradas con un aumento de las salidas.' },
+  tendenciaExpPioraSaidas: { pt:'A mudança veio principalmente do aumento das saídas.', en:'The change came mainly from higher expenses.', es:'El cambio vino principalmente del aumento de las salidas.' },
+  tendenciaExpPioraEntradas: { pt:'A mudança veio principalmente da redução das entradas.', en:'The change came mainly from lower income.', es:'El cambio vino principalmente de la reducción de las entradas.' },
+  tendenciaExpPioraCombinacao: { pt:'O saldo recente diminuiu pela combinação das movimentações registradas.', en:'The recent balance decreased due to the combination of recorded transactions.', es:'El saldo reciente disminuyó por la combinación de los movimientos registrados.' },
 
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
