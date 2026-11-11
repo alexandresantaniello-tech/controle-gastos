@@ -3059,9 +3059,9 @@ async function compartilharPlanejamento() {
   }
   try {
     await navigator.clipboard.writeText(texto);
-    if (statusEl) statusEl.textContent = 'Planejamento copiado para a área de transferência.';
+    if (statusEl) statusEl.textContent = t('planejamentoCopiado');
   } catch (err) {
-    if (statusEl) statusEl.textContent = 'Não foi possível compartilhar o Planejamento neste dispositivo.';
+    if (statusEl) statusEl.textContent = t('planejamentoCompartilharErro');
   }
 }
 
@@ -3162,7 +3162,7 @@ let cameraStream = null;
 
 async function abrirCameraComprovante() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    status.textContent = 'A câmera direta não está disponível neste navegador. Use a galeria.';
+    status.textContent = t('cameraIndisponivel');
     status.className = 'status error';
     return;
   }
@@ -3175,8 +3175,8 @@ async function abrirCameraComprovante() {
     cameraOverlay.classList.add('aberto');
   } catch (err) {
     status.textContent = err && err.name === 'NotAllowedError'
-      ? 'Permita o acesso à câmera para tirar a foto.'
-      : 'Não foi possível abrir a câmera. Você ainda pode escolher a foto da galeria.';
+      ? t('cameraPermissao')
+      : t('cameraErroGaleria');
     status.className = 'status error';
   }
 }
@@ -3980,7 +3980,7 @@ async function registrarTransacoesRecebidas(transacoes, origemRegistro = 'compro
   const semData = transacoes.filter(t => !t.erro && !parseData(t.data));
   let dataParaTodos = null;
   if (semData.length > 1) {
-    const usarMesma = await modalConfirmar(`${semData.length} transações sem data identificada. Usar a mesma data pra todas?`);
+    const usarMesma = await modalConfirmar(t('semDataMesmaData', { quantidade: semData.length }));
     if (usarMesma) {
       const escolhida = await abrirSeletorData(new Date().toISOString().slice(0, 10));
       if (escolhida) {
@@ -4502,7 +4502,7 @@ function iniciarCorrecaoVoz(ev) {
   const status=document.getElementById('statusCorrecaoVoz');
   if (!confirmacaoDados || reconhecimentoCorrecaoVoz) return;
   if (!SpeechRecognitionClasse) {
-    status.textContent='A correção por voz não está disponível neste navegador.';
+    status.textContent=t('correcaoVozIndisponivel');
     status.className='status error';
     return;
   }
@@ -4510,23 +4510,23 @@ function iniciarCorrecaoVoz(ev) {
   const recognition=new SpeechRecognitionClasse();
   recognition.lang='pt-BR'; recognition.interimResults=false; recognition.maxAlternatives=1;
   reconhecimentoCorrecaoVoz=recognition; correcaoVozCapturou=false;
-  textoBtn.textContent='Ouvindo... solte para aplicar';
-  status.textContent='Diga o campo e a correção. Ex.: “Observação: TV Box”.';
+  textoBtn.textContent=t('correcaoVozOuvindo');
+  status.textContent=t('correcaoVozInstrucao');
   status.className='status';
   recognition.onresult=(event)=>{
     correcaoVozCapturou=true;
     const texto=event.results[0][0].transcript;
     const ok=aplicarCorrecaoVozLocal(texto);
-    status.textContent=ok ? 'Correção aplicada. Confira antes de confirmar.' : 'Não entendi qual campo corrigir. Ex.: “Observação: TV Box”.';
+    status.textContent=ok ? t('correcaoVozAplicada') : t('correcaoVozNaoEntendi');
     status.className=ok ? 'status' : 'status error';
-    textoBtn.textContent='Segure para corrigir por voz';
+    textoBtn.textContent=t('segureCorrigirVoz');
   };
   recognition.onerror=(event)=>{
     reconhecimentoCorrecaoVoz=null;
-    if(event.error!=='no-speech'&&event.error!=='aborted'){status.textContent='Não conseguimos ouvir. Tente novamente.';status.className='status error';}
-    textoBtn.textContent='Segure para corrigir por voz';
+    if(event.error!=='no-speech'&&event.error!=='aborted'){status.textContent=t('correcaoVozOuvirErro');status.className='status error';}
+    textoBtn.textContent=t('segureCorrigirVoz');
   };
-  recognition.onend=()=>{reconhecimentoCorrecaoVoz=null;textoBtn.textContent='Segure para corrigir por voz';};
+  recognition.onend=()=>{reconhecimentoCorrecaoVoz=null;textoBtn.textContent=t('segureCorrigirVoz');};
   recognition.start();
 }
 
@@ -5499,6 +5499,22 @@ const TRADUCOES2 = {
   perfilRegistros: { pt:'registros', en:'records', es:'registros' },
   perfilDeTotal: { pt:'{atual} de {total}', en:'{atual} of {total}', es:'{atual} de {total}' },
 
+  planejamentoCopiado: { pt:'Planejamento copiado para a área de transferência.', en:'Planning copied to the clipboard.', es:'Planificación copiada al portapapeles.' },
+  planejamentoCompartilharErro: { pt:'Não foi possível compartilhar o Planejamento neste dispositivo.', en:'Planning could not be shared on this device.', es:'No fue posible compartir la Planificación en este dispositivo.' },
+  cameraIndisponivel: { pt:'A câmera direta não está disponível neste navegador. Use a galeria.', en:'Direct camera access is not available in this browser. Use the gallery.', es:'El acceso directo a la cámara no está disponible en este navegador. Usa la galería.' },
+  cameraPermissao: { pt:'Permita o acesso à câmera para tirar a foto.', en:'Allow camera access to take the photo.', es:'Permite el acceso a la cámara para tomar la foto.' },
+  cameraErroGaleria: { pt:'Não foi possível abrir a câmera. Você ainda pode escolher a foto da galeria.', en:'The camera could not be opened. You can still choose a photo from the gallery.', es:'No fue posible abrir la cámara. Aún puedes elegir una foto de la galería.' },
+  semDataMesmaData: { pt:'{quantidade} transações sem data identificada. Usar a mesma data pra todas?', en:'{quantidade} transactions have no identified date. Use the same date for all?', es:'{quantidade} movimientos no tienen fecha identificada. ¿Usar la misma fecha para todos?' },
+  correcaoVozIndisponivel: { pt:'A correção por voz não está disponível neste navegador.', en:'Voice correction is not available in this browser.', es:'La corrección por voz no está disponible en este navegador.' },
+  correcaoVozOuvindo: { pt:'Ouvindo... solte para aplicar', en:'Listening... release to apply', es:'Escuchando... suelta para aplicar' },
+  correcaoVozInstrucao: { pt:'Diga o campo e a correção. Ex.: “Observação: TV Box”.', en:'Say the field and correction. Example: “Note: TV Box”.', es:'Di el campo y la corrección. Ej.: “Observación: TV Box”.' },
+  correcaoVozAplicada: { pt:'Correção aplicada. Confira antes de confirmar.', en:'Correction applied. Review it before confirming.', es:'Corrección aplicada. Revísala antes de confirmar.' },
+  correcaoVozNaoEntendi: { pt:'Não entendi qual campo corrigir. Ex.: “Observação: TV Box”.', en:'I could not identify which field to correct. Example: “Note: TV Box”.', es:'No entendí qué campo corregir. Ej.: “Observación: TV Box”.' },
+  correcaoVozOuvirErro: { pt:'Não conseguimos ouvir. Tente novamente.', en:'We could not hear you. Try again.', es:'No pudimos oírte. Inténtalo de nuevo.' },
+  lancamentoSalvo: { pt:'Lançamento salvo.', en:'Entry saved.', es:'Movimiento guardado.' },
+  transacoesApagadas: { pt:'{quantidade} transações apagadas.', en:'{quantidade} transactions deleted.', es:'{quantidade} movimientos eliminados.' },
+  transacoesRestauradasTexto: { pt:'{quantidade} transação(ões) restaurada(s) do texto colado.', en:'{quantidade} transaction(s) restored from pasted text.', es:'{quantidade} movimiento(s) restaurado(s) del texto pegado.' },
+
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
 // - necessario pra frases com valor dinamico no meio (ex: "Excluir {qtd}
@@ -6168,7 +6184,7 @@ function salvarDinheiro() {
   atualizarFormaPagamentoDinheiro();
   instituicaoDinheiroAtual = '';
   atualizarInstituicaoDinheiro();
-  statusEl.textContent = 'Lançamento salvo.';
+  statusEl.textContent = t('lancamentoSalvo');
   statusEl.className = 'status';
   periodoDespesaFixaAtual = null;
   atualizarTextoPeriodoDespesaFixa();
@@ -6601,7 +6617,7 @@ async function apagarTodasTransacoes() {
   // terminar depois do apagar e escrever transacao/progresso de novo.
   importacaoEpoca++;
   renderizar();
-  statusEl.textContent = `${total} transações apagadas.`;
+  statusEl.textContent = t('transacoesApagadas', { quantidade: total });
   statusEl.className = 'status';
 }
 
@@ -6815,7 +6831,7 @@ function importarCsvTexto() {
     const novas = candidatas.filter(t => !chavesAtuais.has(chaveDe(t)));
 
     salvarTransacoes([...atuais, ...novas]);
-    statusEl.textContent = `${novas.length} transação(ões) restaurada(s) do texto colado.`;
+    statusEl.textContent = t('transacoesRestauradasTexto', { quantidade: novas.length });
     statusEl.className = 'status';
     textoEl.value = '';
     renderizar();
