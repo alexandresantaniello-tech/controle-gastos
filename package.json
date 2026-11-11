@@ -4,7 +4,12 @@
   "description": "App de controle de gastos por leitura de comprovante",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "native:sync": "npx cap sync",
+    "ios:sync": "npx cap sync ios",
+    "android:sync": "npx cap sync android",
+    "ios:open": "npx cap open ios",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
@@ -14,6 +19,12 @@
     "express-rate-limit": "^8.6.1",
     "mercadopago": "^2.13.0",
     "multer": "^1.4.5-lts.1",
-    "sharp": "^0.33.5"
+    "sharp": "^0.33.5",
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/android": "^8.0.0"
   }
 }
