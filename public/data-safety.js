@@ -9,6 +9,10 @@
   const SNAPSHOT_KEY = 'sifia_transacoes_snapshot';
   const SNAPSHOT_META_KEY = 'sifia_transacoes_snapshot_meta';
   const MAX_SNAPSHOTS = 5;
+  const DB_NAME = 'sifia_financeiro';
+  const DB_VERSION = 1;
+  const DB_STORE = 'safety';
+  const DB_TX_KEY = 'transactions_latest';
 
   function parseArray(raw) {
     if (raw === null) return { status: 'missing', data: null };
@@ -64,6 +68,63 @@
     return true;
   }
 
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) return reject(new Error('IndexedDB indisponível'));
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error('Falha ao abrir IndexedDB'));
+    });
+  }
+
+  async function mirrorToIndexedDb(reason = 'mirror') {
+    const raw = localStorage.getItem(TX_KEY);
+    const parsed = parseArray(raw);
+    if (parsed.status !== 'ok' || parsed.data.length === 0) return false;
+
+    const db = await openDb();
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put({
+          raw,
+          count: parsed.data.length,
+          updatedAt: new Date().toISOString(),
+          reason
+        }, DB_TX_KEY);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('Falha ao espelhar dados'));
+        tx.onabort = () => reject(tx.error || new Error('Espelhamento abortado'));
+      });
+      return true;
+    } finally {
+      db.close();
+    }
+  }
+
+  async function inspectIndexedDb() {
+    try {
+      const db = await openDb();
+      try {
+        const value = await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, 'readonly');
+          const req = tx.objectStore(DB_STORE).get(DB_TX_KEY);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error || new Error('Falha ao ler espelho'));
+        });
+        return value ? { status: 'ok', count: value.count, updatedAt: value.updatedAt } : { status: 'missing' };
+      } finally {
+        db.close();
+      }
+    } catch (err) {
+      return { status: 'unavailable', message: err && err.message ? err.message : String(err) };
+    }
+  }
+
   function getRecoveryState() {
     const current = inspect();
     const snapshots = readSnapshots().map(({ createdAt, reason, count }) => ({ createdAt, reason, count }));
@@ -74,10 +135,13 @@
 
   // Snapshot somente de dados válidos já existentes. Nenhuma gravação na chave de transações.
   try { snapshot('startup'); } catch (_) {}
+  mirrorToIndexedDb('startup').catch(err => console.warn('[Sifia] Espelho IndexedDB indisponível.', err));
 
   window.SifiaDataSafety = Object.freeze({
     inspect,
     snapshot,
+    mirrorToIndexedDb,
+    inspectIndexedDb,
     getRecoveryState,
     transactionKey: TX_KEY
   });
