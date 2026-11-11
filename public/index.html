@@ -605,6 +605,7 @@
 #uploadHistoricoCard .historico-beneficio{display:flex;flex-direction:column;gap:3px;padding:11px 12px;background:var(--secondary);border:1px solid var(--border);border-radius:10px}
 #uploadHistoricoCard .historico-beneficio strong{font-size:13px;color:var(--foreground)}
 #uploadHistoricoCard .historico-beneficio span{font-size:12px;color:var(--muted-foreground)}
+#uploadHistoricoCard .historico-beneficio .historico-restantes{margin-top:5px;padding-top:7px;border-top:1px solid rgba(135,170,192,.18);font-size:12px;color:#b8d9f2}
 #uploadHistoricoCard .historico-rodape{margin:0;text-align:center;font-size:11px;line-height:1.4;color:var(--muted-foreground)}
 #uploadHistoricoCard .historico-arquivo{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:18px 12px;border:1px dashed #4a9bd4;border-radius:12px;cursor:pointer;color:#e6f5ff;min-height:110px}
 #uploadHistoricoCard .historico-arquivo-icone{font-size:28px;color:#70c5ff;line-height:1}
@@ -615,6 +616,7 @@
 #uploadHistoricoCard .historico-senha{display:block;box-sizing:border-box;width:100%;min-width:0;padding:13px 14px;border-radius:9px;border:1px solid #315475;background:#061b31;color:#f4faff;font-size:14px}
 #uploadHistoricoCard .historico-privacidade{margin:0;padding:10px 12px;background:rgba(35,126,205,.14);border-radius:9px;color:#b8d9f2;font-size:12px;line-height:1.45}
 #uploadHistoricoCard .historico-botao{display:block;box-sizing:border-box;width:100%;margin:0;min-height:48px}
+#uploadHistoricoCard .historico-botao:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45)}
 #uploadHistoricoCard #statusHistorico:empty{display:none}
 </style>
 </head>
@@ -814,18 +816,17 @@
   <div id="blocoHistorico" class="historico-importacao">
     <h3 class="historico-titulo">Importar extrato</h3>
     <p class="historico-descricao" style="font-size:15px;color:var(--foreground);">Traga seu histórico financeiro para o Sifia.</p>
-    <div class="historico-beneficio"><strong>Benefício de boas-vindas</strong><span>3 meses de histórico · até 4 bancos</span></div>
+    <div class="historico-beneficio"><strong>Benefício de boas-vindas</strong><span>3 meses de histórico · até 4 bancos</span><p class="historico-restantes" id="avisoBancosRestantes"></p></div>
     <p class="historico-descricao">Selecione um extrato bancário em PDF. O Sifia identifica as movimentações e organiza seu histórico.</p>
-    <p class="historico-restantes" id="avisoBancosRestantes"></p>
     <label class="historico-arquivo" for="arquivoHistorico">
       <span class="historico-arquivo-icone" aria-hidden="true">⇧</span>
       <span class="historico-arquivo-titulo">Escolher extrato em PDF</span>
       <span class="historico-arquivo-nome" id="historicoNomeArquivo">Nenhum arquivo selecionado</span>
     </label>
-    <input type="file" id="arquivoHistorico" accept="application/pdf" class="historico-input-arquivo" aria-label="Selecionar extrato em PDF" onchange="document.getElementById('historicoNomeArquivo').textContent = this.files && this.files.length ? this.files[0].name : 'Nenhum arquivo selecionado'">
+    <input type="file" id="arquivoHistorico" accept="application/pdf" class="historico-input-arquivo" aria-label="Selecionar extrato em PDF" onchange="atualizarArquivoHistoricoSelecionado(this)">
     <input type="password" id="senhaHistorico" class="historico-senha" data-i18n-placeholder="senhaPdfPlaceholder" placeholder="Senha do PDF (se necessário)" autocomplete="off">
     <p class="historico-privacidade">🔒 PDF com senha? Informe acima. Sua senha é usada somente no seu aparelho.</p>
-    <button onclick="importarHistorico()" id="btnImportarHistorico" class="historico-botao" data-i18n="importarHistoricoBotao">Importar histórico</button>
+    <button onclick="importarHistorico()" id="btnImportarHistorico" class="historico-botao" data-i18n="importarHistoricoBotao" disabled>Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
     <p class="historico-rodape">As movimentações importadas ficam disponíveis no Histórico.</p>
   </div>
@@ -3364,6 +3365,14 @@ function atualizarAvisoBancosRestantes() {
   if (!el) return;
   const restantes = LIMITE_BANCOS_BOAS_VINDAS - lerBancosConcluidos().length;
   el.textContent = restantes + ' de ' + LIMITE_BANCOS_BOAS_VINDAS + ' bancos disponíveis.';
+}
+
+function atualizarArquivoHistoricoSelecionado(input) {
+  const nome = document.getElementById('historicoNomeArquivo');
+  const botao = document.getElementById('btnImportarHistorico');
+  const arquivo = input && input.files && input.files.length ? input.files[0] : null;
+  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : 'Nenhum arquivo selecionado';
+  if (botao) botao.disabled = !arquivo;
 }
 
 function atualizarDataMaisRecenteHistorico(data) {
