@@ -2440,12 +2440,12 @@ let tipoNovoItemPlanejamento = 'saida';
 function atualizarTextoTipoNovoItemPlanejamento() {
   const el = document.getElementById('textoTipoNovoItem');
   if (!el) return;
-  el.textContent = tipoNovoItemPlanejamento === 'entrada' ? 'ENTRADA PREVISTA' : 'SAÍDA PREVISTA';
+  el.textContent = tipoNovoItemPlanejamento === 'entrada' ? t('entradaPrevistaUpper') : t('saidaPrevistaUpper');
   el.className = tipoNovoItemPlanejamento === 'entrada' ? 'entrada' : 'saida';
 }
 async function editarTipoNovoItemPlanejamento() {
   if (itemEditandoId) return;
-  const novo = await modalSelecionar('O que você está planejando?', [['saida','Saída prevista'],['entrada','Entrada prevista']], tipoNovoItemPlanejamento);
+  const novo = await modalSelecionar(t('oQuePlanejando'), [['saida',t('saidaPrevista')],['entrada',t('entradaPrevista')]], tipoNovoItemPlanejamento);
   if (novo === null) return;
   tipoNovoItemPlanejamento = novo;
   atualizarTextoTipoNovoItemPlanejamento();
@@ -3131,7 +3131,7 @@ function atualizarIndicadorUso() {
   const uso = lerUsoMensal();
   const el = document.getElementById('usoLimite');
   if (!el) return;
-  el.textContent = `${uso.contagem} comprovante${uso.contagem === 1 ? '' : 's'} usado${uso.contagem === 1 ? '' : 's'} esse mês.`;
+  el.textContent = t(uso.contagem === 1 ? 'comprovanteUsadoMes' : 'comprovantesUsadosMes', { quantidade: uso.contagem });
   el.className = 'uso-limite';
 }
 
@@ -4724,7 +4724,7 @@ function renderizarSemData(todas) {
     const detalhes = div.querySelector('.detalhes');
     if (detalhes) {
       const link = document.createElement('span');
-      link.textContent = ' · corrigir data';
+      link.textContent = t('corrigirData');
       link.style.color = '#5b8cff';
       link.style.cursor = 'pointer';
       link.onclick = () => editarData(t.id);
@@ -5515,6 +5515,27 @@ const TRADUCOES2 = {
   transacoesApagadas: { pt:'{quantidade} transações apagadas.', en:'{quantidade} transactions deleted.', es:'{quantidade} movimientos eliminados.' },
   transacoesRestauradasTexto: { pt:'{quantidade} transação(ões) restaurada(s) do texto colado.', en:'{quantidade} transaction(s) restored from pasted text.', es:'{quantidade} movimiento(s) restaurado(s) del texto pegado.' },
 
+  entradaPrevistaUpper: { pt:'ENTRADA PREVISTA', en:'EXPECTED INCOME', es:'ENTRADA PREVISTA' },
+  saidaPrevistaUpper: { pt:'SAÍDA PREVISTA', en:'EXPECTED EXPENSE', es:'SALIDA PREVISTA' },
+  entradaPrevista: { pt:'Entrada prevista', en:'Expected income', es:'Entrada prevista' },
+  saidaPrevista: { pt:'Saída prevista', en:'Expected expense', es:'Salida prevista' },
+  oQuePlanejando: { pt:'O que você está planejando?', en:'What are you planning?', es:'¿Qué estás planificando?' },
+  selecioneData: { pt:'Selecione a data', en:'Select date', es:'Selecciona la fecha' },
+  informeDataInicio: { pt:'Informe a data de início.', en:'Enter the start date.', es:'Indica la fecha de inicio.' },
+  informeData: { pt:'Informe a data.', en:'Enter the date.', es:'Indica la fecha.' },
+  receitaUpper: { pt:'RECEITA', en:'INCOME', es:'INGRESO' },
+  despesaUpper: { pt:'DESPESA', en:'EXPENSE', es:'GASTO' },
+  receitaRecorrentePergunta: { pt:'Esta é uma receita recorrente?', en:'Is this recurring income?', es:'¿Es un ingreso recurrente?' },
+  despesaRecorrentePergunta: { pt:'Esta é uma despesa recorrente?', en:'Is this a recurring expense?', es:'¿Es un gasto recurrente?' },
+  comprovanteUsadoMes: { pt:'{quantidade} comprovante usado esse mês.', en:'{quantidade} receipt used this month.', es:'{quantidade} comprobante usado este mes.' },
+  comprovantesUsadosMes: { pt:'{quantidade} comprovantes usados esse mês.', en:'{quantidade} receipts used this month.', es:'{quantidade} comprobantes usados este mes.' },
+  corrigirData: { pt:' · corrigir data', en:' · correct date', es:' · corregir fecha' },
+  transacoesCompartilhadasAdicionadas: { pt:'{quantidade} transações compartilhadas adicionadas.', en:'{quantidade} shared transactions added.', es:'{quantidade} movimientos compartidos añadidos.' },
+  transacaoCompartilhadaAdicionada: { pt:'Transação compartilhada adicionada.', en:'Shared transaction added.', es:'Movimiento compartido añadido.' },
+  instrucaoVozCompleta: { pt:'Fale naturalmente: se foi entrada ou saída, o valor, a forma de pagamento, o local e a instituição. A data já é hoje automaticamente, e a observação você pode adicionar depois tocando na transação. Exemplo: “Paguei 35 reais no débito, no mercado, pelo banco X.”', en:'Speak naturally: say whether it was income or an expense, the amount, payment method, place, and institution. The date is automatically set to today, and you can add a note later by tapping the transaction. Example: “I paid 35 by debit at the market using bank X.”', es:'Habla con naturalidad: indica si fue una entrada o salida, el valor, la forma de pago, el lugar y la institución. La fecha se establece automáticamente como hoy y puedes añadir una observación después tocando el movimiento. Ejemplo: “Pagué 35 con débito en el mercado, por el banco X.”' },
+  textoNaoEntendido: { pt:'Não entendemos “{texto}” como uma transação. Tente de novo.', en:'We did not understand “{texto}” as a transaction. Try again.', es:'No entendimos “{texto}” como un movimiento. Inténtalo de nuevo.' },
+  vozNaoEntendida: { pt:'Não entendemos “{texto}” como uma transação. Segure o botão e tente de novo.', en:'We did not understand “{texto}” as a transaction. Hold the button and try again.', es:'No entendimos “{texto}” como un movimiento. Mantén pulsado el botón e inténtalo de nuevo.' },
+
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
 // - necessario pra frases com valor dinamico no meio (ex: "Excluir {qtd}
@@ -6019,7 +6040,7 @@ let dataDinheiroSelecionadaISO = '';
 
 function atualizarTextoDataDinheiro() {
   const [ano, mes, dia] = dataDinheiroSelecionadaISO.split('-');
-  document.getElementById('textoDataDinheiro').textContent = dataDinheiroSelecionadaISO ? `${dia}/${mes}/${ano}` : 'Selecione a data';
+  document.getElementById('textoDataDinheiro').textContent = dataDinheiroSelecionadaISO ? `${dia}/${mes}/${ano}` : t('selecioneData');
 }
 
 async function abrirCalendarioDinheiro() {
@@ -6134,7 +6155,7 @@ function salvarDinheiro() {
     return;
   }
   if (!dataISO) {
-    statusEl.textContent = periodoDespesaFixaAtual ? 'Informe a data de início.' : 'Informe a data.';
+    statusEl.textContent = periodoDespesaFixaAtual ? t('informeDataInicio') : t('informeData');
     statusEl.className = 'status error';
     return;
   }
@@ -6212,19 +6233,19 @@ function atualizarTextoPeriodoDespesaFixa(atualizarApresentacao = true) {
   const el = document.getElementById('textoPeriodoDespesaFixa');
   if (!el) return;
   if (periodoDespesaFixaAtual) {
-    const tipo = tipoDinheiroSelecionado === 'entrada' ? 'RECEITA' : 'DESPESA';
+    const tipo = tipoDinheiroSelecionado === 'entrada' ? t('receitaUpper') : t('despesaUpper');
     el.textContent = tipo + ' RECORRENTE · ' + rotuloPeriodoDespesaFixa(periodoDespesaFixaAtual).toUpperCase();
     el.classList.remove('vazio');
   } else {
-    el.textContent = 'RECORRÊNCIA · NÃO';
+    el.textContent = t('recorrenciaNao');
     el.classList.add('vazio');
   }
 }
 
 async function editarPeriodoDespesaFixa() {
   const pergunta = tipoDinheiroSelecionado === 'entrada'
-    ? 'Esta é uma receita recorrente?'
-    : 'Esta é uma despesa recorrente?';
+    ? t('receitaRecorrentePergunta')
+    : t('despesaRecorrentePergunta');
   const recorrente = await modalSelecionar(pergunta, [['nao', t('naoOpcao')], ['sim', t('simOpcao')]], periodoDespesaFixaAtual ? 'sim' : 'nao');
   if (recorrente === null) return;
   if (recorrente === 'nao') {
@@ -6905,8 +6926,8 @@ async function processarComprovanteCompartilhado() {
     }
     const adicionadas = await registrarTransacoesRecebidas(validas, 'compartilhamento_documento');
     status.textContent = adicionadas > 1
-      ? `${adicionadas} transações compartilhadas adicionadas.`
-      : 'Transação compartilhada adicionada.';
+      ? t('transacoesCompartilhadasAdicionadas', { quantidade: adicionadas })
+      : t('transacaoCompartilhadaAdicionada');
     status.className = 'status';
   } catch (err) {
     status.textContent = t('naoConseguimosProcessarComprovanteCompartilhado');
@@ -6934,7 +6955,7 @@ if (SpeechRecognitionClasse) {
 // Nenhum campo e obrigatorio de falar (o app usa "desconhecido" pro que
 // faltar), mas quanto mais a pessoa falar nessa ordem, mais completo sai.
 function textoInstrucaoVoz() {
-  return 'Fale naturalmente: se foi entrada ou saída, o valor, a forma de pagamento, o local e a instituição. A data já é hoje automaticamente, e a observação você pode adicionar depois tocando na transação. Exemplo: "Paguei 35 reais no débito, no mercado, pelo banco X."';
+  return t('instrucaoVozCompleta');
 }
 
 // Motor compartilhado entre voz, texto colado e qualquer outra entrada de
@@ -6952,7 +6973,7 @@ async function processarTextoTransacao(texto, statusEl, mensagemNaoEntendido, or
     if (dados.erro) throw new Error(dados.erro);
     const validas = (dados.transacoes || []).filter(t => !t.erro);
     if (validas.length === 0) {
-      statusEl.textContent = mensagemNaoEntendido || `Não entendemos "${texto}" como uma transação. Tente de novo.`;
+      statusEl.textContent = mensagemNaoEntendido || t('textoNaoEntendido', { texto });
       statusEl.className = 'status error';
       return false;
     }
@@ -7007,7 +7028,7 @@ function iniciarGravacaoVoz(ev) {
     const texto = event.results[0][0].transcript;
     btn.disabled = true;
     textoBtn.textContent = t('analisandoReticencias');
-    await processarTextoTransacao(texto, statusEl, `Não entendemos "${texto}" como uma transação. Segure o botão e tente de novo.`, 'voz');
+    await processarTextoTransacao(texto, statusEl, t('vozNaoEntendida', { texto }), 'voz');
     btn.disabled = false;
     textoBtn.textContent = t('btnFalarTransacaoTexto');
   };
