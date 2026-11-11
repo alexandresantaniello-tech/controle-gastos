@@ -1282,14 +1282,14 @@
     <video id="cameraVideo" autoplay playsinline muted style="width:100%; max-height:65vh; background:#000; border-radius:var(--radius-sm);"></video>
     <canvas id="cameraCanvas" style="display:none;"></canvas>
     <div style="display:flex; gap:8px; margin-top:10px;">
-      <button type="button" id="btnCapturarCamera" style="flex:1;">📷 Fotografar</button>
-      <button type="button" id="btnFecharCamera" class="secondary" style="flex:1;">Cancelar</button>
+      <button type="button" id="btnCapturarCamera" style="flex:1;">📷 <span data-i18n="fotografar">Fotografar</span></button>
+      <button type="button" id="btnFecharCamera" class="secondary" style="flex:1;" data-i18n="cancelar">Cancelar</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="zoomOverlay" onclick="fecharZoomImagem()">
-  <img id="zoomImagem" alt="Comprovante ampliado">
+  <img id="zoomImagem" alt="Comprovante ampliado" data-i18n-aria="comprovanteAmpliado">
 </div>
 
 <div class="modal-overlay centralizado" id="calendarioOverlay">
@@ -1302,7 +1302,7 @@
     <div class="calendario-dias-semana"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
     <div class="calendario-grade" id="calendarioGrade"></div>
     <div class="modal-acoes">
-      <button class="secondary" onclick="fecharCalendario(null)">Cancelar</button>
+      <button class="secondary" onclick="fecharCalendario(null)" data-i18n="cancelar">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1762,7 +1762,7 @@ function abrirDetalhesObservacao(descricaoCodificada, tipo) {
   const classeCor = tipo === 'entrada' ? 'entrada' : 'saida';
   document.getElementById('detalhesObservacaoTitulo').textContent = descricao;
   document.getElementById('detalhesObservacaoResumo').innerHTML =
-    `${transacoes.length} ${transacoes.length === 1 ? 'transação' : 'transações'} · <strong class="${classeCor}">${sinal}${formatarMoeda(total)}</strong>`;
+    `${transacoes.length} ${transacoes.length === 1 ? t('transacaoSingular') : t('transacoesPlural')} · <strong class="${classeCor}">${sinal}${formatarMoeda(total)}</strong>`;
   document.getElementById('detalhesObservacaoLista').innerHTML = transacoes
     .slice()
     .sort((a, b) => {
@@ -1824,11 +1824,11 @@ function linhasFormaPagamentoHtml(transacoes) {
     const partes = [];
     if (entrada > 0) {
       const pct = totalEntradas ? entrada / totalEntradas * 100 : 0;
-      partes.push(`<span style="text-align:right;"><strong class="entrada">+${formatarMoeda(entrada)}</strong><small style="display:block;color:var(--muted-foreground);">${formatarPercentual(pct)} das entradas</small></span>`);
+      partes.push(`<span style="text-align:right;"><strong class="entrada">+${formatarMoeda(entrada)}</strong><small style="display:block;color:var(--muted-foreground);">${t('percentualDasEntradas', { percentual: formatarPercentual(pct) })}</small></span>`);
     }
     if (saida > 0) {
       const pct = totalSaidas ? saida / totalSaidas * 100 : 0;
-      partes.push(`<span style="text-align:right;"><strong class="saida">-${formatarMoeda(saida)}</strong><small style="display:block;color:var(--muted-foreground);">${formatarPercentual(pct)} das saídas</small></span>`);
+      partes.push(`<span style="text-align:right;"><strong class="saida">-${formatarMoeda(saida)}</strong><small style="display:block;color:var(--muted-foreground);">${t('percentualDasSaidas', { percentual: formatarPercentual(pct) })}</small></span>`);
     }
     return `
     <div class="relatorio-resumo-linha">
@@ -2008,11 +2008,11 @@ async function compartilharCsv() {
 
 function interpretarObservacoesPerfil(transacoes) {
   const categorias = {
-    trabalho: { rotulo: 'Relacionadas ao trabalho', termos: ['uber','99','trabalho','cliente','corrida','combustivel','gasolina','etanol','pedagio','estacionamento'] },
-    transferencia: { rotulo: 'Possíveis transferências entre contas', termos: ['transferencia entre','entre minhas contas','minha conta','conta propria','conta própria'] },
-    emprestimo: { rotulo: 'Possíveis empréstimos/crédito', termos: ['emprestimo','empréstimo','dinheiro emprestado','credito recebido','crédito recebido'] },
-    essencial: { rotulo: 'Possíveis despesas essenciais', termos: ['aluguel','mercado','supermercado','energia','luz','agua','água','gas','gás','farmacia','farmácia','remedio','remédio','pensao','pensão'] },
-    investimento: { rotulo: 'Possíveis investimentos/aportes', termos: ['investimento','aporte','investir','aplicacao','aplicação'] }
+    trabalho: { rotulo: t('perfilSinalTrabalho'), termos: ['uber','99','trabalho','cliente','corrida','combustivel','gasolina','etanol','pedagio','estacionamento'] },
+    transferencia: { rotulo: t('perfilSinalTransferencia'), termos: ['transferencia entre','entre minhas contas','minha conta','conta propria','conta própria'] },
+    emprestimo: { rotulo: t('perfilSinalEmprestimo'), termos: ['emprestimo','empréstimo','dinheiro emprestado','credito recebido','crédito recebido'] },
+    essencial: { rotulo: t('perfilSinalEssencial'), termos: ['aluguel','mercado','supermercado','energia','luz','agua','água','gas','gás','farmacia','farmácia','remedio','remédio','pensao','pensão'] },
+    investimento: { rotulo: t('perfilSinalInvestimento'), termos: ['investimento','aporte','investir','aplicacao','aplicação'] }
   };
   const normalizar = texto => String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const resultado = { comObservacao: 0, valorComObservacao: 0, sinais: {} };
@@ -5584,6 +5584,19 @@ const TRADUCOES2 = {
   tendenciaExpPioraSaidas: { pt:'A mudança veio principalmente do aumento das saídas.', en:'The change came mainly from higher expenses.', es:'El cambio vino principalmente del aumento de las salidas.' },
   tendenciaExpPioraEntradas: { pt:'A mudança veio principalmente da redução das entradas.', en:'The change came mainly from lower income.', es:'El cambio vino principalmente de la reducción de las entradas.' },
   tendenciaExpPioraCombinacao: { pt:'O saldo recente diminuiu pela combinação das movimentações registradas.', en:'The recent balance decreased due to the combination of recorded transactions.', es:'El saldo reciente disminuyó por la combinación de los movimientos registrados.' },
+
+  fotografar: { pt:'Fotografar', en:'Take photo', es:'Fotografiar' },
+  cancelar: { pt:'Cancelar', en:'Cancel', es:'Cancelar' },
+  comprovanteAmpliado: { pt:'Comprovante ampliado', en:'Enlarged receipt', es:'Comprobante ampliado' },
+  transacaoSingular: { pt:'transação', en:'transaction', es:'movimiento' },
+  transacoesPlural: { pt:'transações', en:'transactions', es:'movimientos' },
+  percentualDasEntradas: { pt:'{percentual} das entradas', en:'{percentual} of income', es:'{percentual} de las entradas' },
+  percentualDasSaidas: { pt:'{percentual} das saídas', en:'{percentual} of expenses', es:'{percentual} de las salidas' },
+  perfilSinalTrabalho: { pt:'Relacionadas ao trabalho', en:'Work-related', es:'Relacionadas con el trabajo' },
+  perfilSinalTransferencia: { pt:'Possíveis transferências entre contas', en:'Possible transfers between accounts', es:'Posibles transferencias entre cuentas' },
+  perfilSinalEmprestimo: { pt:'Possíveis empréstimos/crédito', en:'Possible loans/credit', es:'Posibles préstamos/crédito' },
+  perfilSinalEssencial: { pt:'Possíveis despesas essenciais', en:'Possible essential expenses', es:'Posibles gastos esenciales' },
+  perfilSinalInvestimento: { pt:'Possíveis investimentos/aportes', en:'Possible investments/contributions', es:'Posibles inversiones/aportes' },
 
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
