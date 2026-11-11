@@ -618,6 +618,30 @@
 #uploadHistoricoCard .historico-botao{display:block;box-sizing:border-box;width:100%;margin:0;min-height:48px}
 #uploadHistoricoCard .historico-botao:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45)}
 #uploadHistoricoCard #statusHistorico:empty{display:none}
+#backupCard .backup-organizado{display:flex;flex-direction:column;gap:14px}
+#backupCard .backup-titulo{margin:0;font-size:19px;color:#f3f8ff}
+#backupCard .backup-intro{margin:0;color:#a9bfd4;font-size:14px;line-height:1.55}
+#backupCard .backup-bloco{display:flex;flex-direction:column;gap:11px;padding:14px;background:rgba(4,32,58,.62);border:1px solid var(--border);border-radius:12px}
+#backupCard .backup-bloco-cabecalho{display:flex;flex-direction:column;gap:4px}
+#backupCard .backup-bloco-cabecalho strong{font-size:14px;color:var(--foreground)}
+#backupCard .backup-bloco-cabecalho span{font-size:12px;line-height:1.45;color:var(--muted-foreground)}
+#backupCard .backup-acao-principal,#backupCard .backup-restaurar{width:100%;margin:0;min-height:48px}
+#backupCard .backup-restaurar:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45)}
+#backupCard .backup-arquivo{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:16px 12px;border:1px dashed #4a9bd4;border-radius:11px;cursor:pointer}
+#backupCard .backup-arquivo-icone{font-size:25px;color:#70c5ff}
+#backupCard .backup-arquivo-titulo{font-size:14px;font-weight:600;color:#e6f5ff}
+#backupCard .backup-arquivo-nome{font-size:12px;color:#9fb6ca;max-width:100%;overflow-wrap:anywhere}
+#backupCard .backup-input-arquivo{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+#backupCard .backup-alternativo,#backupCard .backup-risco{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:rgba(0,18,38,.55)}
+#backupCard .backup-alternativo summary,#backupCard .backup-risco summary{cursor:pointer;padding:13px 14px;color:#d7eafb;font-weight:600;list-style:none}
+#backupCard .backup-alternativo summary::-webkit-details-marker,#backupCard .backup-risco summary::-webkit-details-marker{display:none}
+#backupCard .backup-alternativo summary span{float:right;font-size:11px;color:var(--muted-foreground);font-weight:500}
+#backupCard .backup-alternativo-conteudo,#backupCard .backup-risco-conteudo{padding:0 14px 14px}
+#backupCard .backup-alternativo-conteudo p,#backupCard .backup-risco-conteudo p{margin:0 0 10px;color:var(--muted-foreground);font-size:12px;line-height:1.5}
+#backupCard .backup-alternativo textarea{width:100%;margin:0 0 10px}
+#backupCard .backup-alternativo button,#backupCard .backup-risco button{width:100%;margin:0}
+#backupCard .backup-risco{margin-top:4px;border-color:rgba(248,113,113,.25)}
+#backupCard .backup-risco summary{color:#f3a0a0}
 </style>
 </head>
 <body>
@@ -781,7 +805,7 @@
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
-  <div id="blocoAssinatura" style="display:none; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border);">
+<div id="blocoAssinatura" style="display:none; margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--border);">
     <label class="campo" data-i18n="assinaturaLabel" style="margin-top:0;">Assinatura</label>
     <p class="aviso-backup" data-i18n="avisoPrecoMensal">R$ 19,90/mês, cobrado via Pix.</p>
     <div id="blocoReembolso" style="display:none;">
@@ -796,20 +820,47 @@
     </div>
   </div>
 
-  <p class="aviso-backup" data-i18n="avisoBackupDados">Seus dados ficam só neste navegador — se você limpar os dados do app, trocar de celular ou desinstalar, não tem como recuperar sem um backup. Faça isso de vez em quando, principalmente antes de trocar de aparelho.</p>
-  <button onclick="fazerBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> <span data-i18n="fazerBackupBotao">Fazer backup</span></button>
 
-  <label class="campo" data-i18n="restaurarDeArquivoLabel">Restaurar de um arquivo de backup</label>
-  <input type="file" id="arquivoRestaurar" accept="application/json,.json" onchange="restaurarBackup()">
+  <div class="backup-organizado">
+    <h3 class="backup-titulo">Backup dos seus dados</h3>
+    <p class="backup-intro">Proteja seu histórico antes de trocar de aparelho, desinstalar o Sifia ou limpar os dados do app.</p>
 
-  <label class="campo" data-i18n="colarCsvLabel">Ou cole aqui o texto do CSV que você compartilhou (ex: no WhatsApp)</label>
-  <textarea id="textoCsvRestaurar" rows="4" data-i18n-placeholder="colarCsvTextareaPlaceholder" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
-  <button class="secondary" onclick="importarCsvTexto()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> <span data-i18n="restaurarDoTextoColadoBotao">Restaurar do texto colado</span></button>
+    <section class="backup-bloco">
+      <div class="backup-bloco-cabecalho"><strong>1. Criar backup</strong><span>Salve uma cópia dos seus dados neste aparelho.</span></div>
+      <button onclick="fazerBackup()" class="backup-acao-principal"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Fazer backup agora</button>
+    </section>
 
-  <div class="status" id="statusBackup"></div>
+    <section class="backup-bloco">
+      <div class="backup-bloco-cabecalho"><strong>2. Restaurar backup</strong><span>Os dados do arquivo serão combinados com os que já existem no Sifia.</span></div>
+      <label class="backup-arquivo" for="arquivoRestaurar">
+        <span class="backup-arquivo-icone">⇧</span>
+        <span class="backup-arquivo-titulo">Escolher arquivo de backup</span>
+        <span class="backup-arquivo-nome" id="backupNomeArquivo">Nenhum arquivo selecionado</span>
+      </label>
+      <input type="file" id="arquivoRestaurar" accept="application/json,.json" class="backup-input-arquivo" onchange="atualizarArquivoBackupSelecionado(this)">
+      <button class="secondary backup-restaurar" id="btnRestaurarBackup" onclick="confirmarRestauracaoBackup()" disabled>Restaurar backup</button>
+    </section>
 
-  <button class="secondary perigo" style="margin-top:24px;" onclick="apagarTodasTransacoes()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span data-i18n="apagarTodasTransacoesBotao">Apagar todas as transações</span></button>
-  <div class="status" id="statusApagarTudo"></div>
+    <details class="backup-alternativo">
+      <summary>Outra forma de recuperação <span>CSV</span></summary>
+      <div class="backup-alternativo-conteudo">
+        <p>Se você compartilhou suas movimentações em CSV, pode colar o conteúdo aqui para recuperá-las.</p>
+        <textarea id="textoCsvRestaurar" rows="4" data-i18n-placeholder="colarCsvTextareaPlaceholder" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
+        <button class="secondary" onclick="importarCsvTexto()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Restaurar do texto colado</button>
+      </div>
+    </details>
+
+    <div class="status" id="statusBackup"></div>
+
+    <details class="backup-risco">
+      <summary>Área de risco</summary>
+      <div class="backup-risco-conteudo">
+        <p>Esta ação apaga as movimentações registradas neste aparelho. Faça um backup antes se quiser preservá-las.</p>
+        <button class="secondary perigo" onclick="apagarTodasTransacoes()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span data-i18n="apagarTodasTransacoesBotao">Apagar todas as transações</span></button>
+        <div class="status" id="statusApagarTudo"></div>
+      </div>
+    </details>
+  </div>
 </div>
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
@@ -6587,6 +6638,22 @@ function mesclarPorId(atuais, recebidos) {
   return { lista: [...listaAtual, ...novos], adicionados: novos.length };
 }
 
+function atualizarArquivoBackupSelecionado(input) {
+  const arquivo = input && input.files && input.files.length ? input.files[0] : null;
+  const nome = document.getElementById('backupNomeArquivo');
+  const botao = document.getElementById('btnRestaurarBackup');
+  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : 'Nenhum arquivo selecionado';
+  if (botao) botao.disabled = !arquivo;
+}
+
+async function confirmarRestauracaoBackup() {
+  const input = document.getElementById('arquivoRestaurar');
+  if (!input || !input.files.length) return;
+  const arquivo = input.files[0];
+  const confirmou = await modalConfirmar('Restaurar "' + arquivo.name + '"? Os dados do arquivo serão combinados com os dados que já existem no Sifia.');
+  if (confirmou) restaurarBackup();
+}
+
 function restaurarBackup() {
   const input = document.getElementById('arquivoRestaurar');
   const statusEl = document.getElementById('statusBackup');
@@ -6644,6 +6711,7 @@ function restaurarBackup() {
         : t('backupRestauradoV1Status', { qtd: transacoes.adicionados });
       statusEl.className = 'status';
       input.value = '';
+      atualizarArquivoBackupSelecionado(input);
       renderizar();
     } catch (err) {
       statusEl.textContent = t('arquivoInvalidoCorrompido');
