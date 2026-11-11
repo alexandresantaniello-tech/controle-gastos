@@ -602,6 +602,10 @@
 #uploadHistoricoCard .historico-descricao{font-size:14px;line-height:1.55;color:#a9bfd4;margin:0}
 #uploadHistoricoCard .historico-restantes{font-size:12px;line-height:1.4;color:#8ca8c2;margin:0}
 #uploadHistoricoCard .historico-restantes:empty{display:none}
+#uploadHistoricoCard .historico-beneficio{display:flex;flex-direction:column;gap:3px;padding:11px 12px;background:var(--secondary);border:1px solid var(--border);border-radius:10px}
+#uploadHistoricoCard .historico-beneficio strong{font-size:13px;color:var(--foreground)}
+#uploadHistoricoCard .historico-beneficio span{font-size:12px;color:var(--muted-foreground)}
+#uploadHistoricoCard .historico-rodape{margin:0;text-align:center;font-size:11px;line-height:1.4;color:var(--muted-foreground)}
 #uploadHistoricoCard .historico-arquivo{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;padding:18px 12px;border:1px dashed #4a9bd4;border-radius:12px;cursor:pointer;color:#e6f5ff;min-height:110px}
 #uploadHistoricoCard .historico-arquivo-icone{font-size:28px;color:#70c5ff;line-height:1}
 #uploadHistoricoCard .historico-arquivo-titulo{font-size:15px;font-weight:600}
@@ -754,7 +758,7 @@
   </div>
   <div class="upload-toggle" id="planejamentoToggle" onclick="alternarPlanejamento()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg><span class="toggle-texto" data-i18n="navPlanejamento">Planejamento</span></div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto" data-i18n="navManual">Manual</span></div>
-  <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto" data-i18n="navUpload">Upload</span></div>
+  <div class="upload-toggle" id="uploadHistoricoToggle" onclick="alternarUploadHistorico()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg><span class="toggle-texto" data-i18n="navUpload">Importar extrato</span></div>
   <div class="upload-toggle" id="backupToggle" onclick="alternarBackup()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="toggle-texto" data-i18n="navBackup">Backup</span></div>
   <div class="upload-toggle" id="idiomaToggle" onclick="alternarIdioma()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="toggle-texto" data-i18n="navIdioma">Idioma</span></div>
 </div>
@@ -808,19 +812,22 @@
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico" class="historico-importacao">
-    <h3 class="historico-titulo" data-i18n="beneficioBoasVindasLabel">Importe seu histórico financeiro</h3>
-    <p class="historico-descricao" data-i18n="avisoImportarExtrato">Importe seus extratos bancários em PDF e organize até três meses de movimentações de até quatro bancos.</p>
+    <h3 class="historico-titulo">Importar extrato</h3>
+    <p class="historico-descricao" style="font-size:15px;color:var(--foreground);">Traga seu histórico financeiro para o Sifia.</p>
+    <div class="historico-beneficio"><strong>Benefício de boas-vindas</strong><span>3 meses de histórico · até 4 bancos</span></div>
+    <p class="historico-descricao">Selecione um extrato bancário em PDF. O Sifia identifica as movimentações e organiza seu histórico.</p>
     <p class="historico-restantes" id="avisoBancosRestantes"></p>
     <label class="historico-arquivo" for="arquivoHistorico">
       <span class="historico-arquivo-icone" aria-hidden="true">⇧</span>
-      <span class="historico-arquivo-titulo">Selecione seu extrato em PDF</span>
+      <span class="historico-arquivo-titulo">Escolher extrato em PDF</span>
       <span class="historico-arquivo-nome" id="historicoNomeArquivo">Nenhum arquivo selecionado</span>
     </label>
     <input type="file" id="arquivoHistorico" accept="application/pdf" class="historico-input-arquivo" aria-label="Selecionar extrato em PDF" onchange="document.getElementById('historicoNomeArquivo').textContent = this.files && this.files.length ? this.files[0].name : 'Nenhum arquivo selecionado'">
     <input type="password" id="senhaHistorico" class="historico-senha" data-i18n-placeholder="senhaPdfPlaceholder" placeholder="Senha do PDF (se necessário)" autocomplete="off">
-    <p class="historico-privacidade">♢ Sua senha é utilizada somente no aparelho.</p>
-    <button onclick="importarHistorico()" id="btnImportarHistorico" class="historico-botao" data-i18n="importarHistoricoBotao">Importar extrato</button>
+    <p class="historico-privacidade">🔒 PDF com senha? Informe acima. Sua senha é usada somente no seu aparelho.</p>
+    <button onclick="importarHistorico()" id="btnImportarHistorico" class="historico-botao" data-i18n="importarHistoricoBotao">Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
+    <p class="historico-rodape">As movimentações importadas ficam disponíveis no Histórico.</p>
   </div>
 </div>
 
