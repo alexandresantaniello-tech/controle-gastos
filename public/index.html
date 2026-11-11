@@ -5654,7 +5654,7 @@ const TRADUCOES2 = {
   idiomaDescricao: { pt:'Escolha o idioma usado na interface do Sifia. Seus registros financeiros não são alterados.', en:'Choose the language used in the Sifia interface. Your financial records are not changed.', es:'Elige el idioma usado en la interfaz de Sifia. Tus registros financieros no se modifican.' },
   idiomaAtualLabel: { pt:'Idioma atual', en:'Current language', es:'Idioma actual' },
   idiomaHomologado: { pt:'Homologado', en:'Reviewed', es:'Revisado' },
-  idiomaHomologadosInfo: { pt:'Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.', en:'At this stage, Sifia is available in Português, English, and Español.', es:'En esta etapa, Sifia está disponible en Português, English y Español.' },
+  idiomaHomologadosInfo: { pt:'Nesta fase, o Sifia está disponível em Português, English e Español.', en:'At this stage, Sifia is available in Português, English, and Español.', es:'En esta etapa, Sifia está disponible en Português, English y Español.' },
 
   trimestreNumeroAno: { pt:'{numero}º trimestre de {ano}', en:'Q{numero} {ano}', es:'{numero}.º trimestre de {ano}' },
   semestreNumeroAno: { pt:'{numero}º semestre de {ano}', en:'H{numero} {ano}', es:'{numero}.º semestre de {ano}' },
@@ -5675,9 +5675,7 @@ function t(chave, vars) {
 
 const IDIOMAS_HOMOLOGADOS = ['pt', 'en', 'es'];
 function listaOpcoesIdioma() {
-  const homologados = IDIOMAS_HOMOLOGADOS.map(codigo => [codigo, NOMES_IDIOMA[codigo]]);
-  const demais = Object.entries(NOMES_IDIOMA).filter(([codigo]) => !IDIOMAS_HOMOLOGADOS.includes(codigo));
-  return [...homologados, ...demais];
+  return IDIOMAS_SUPORTADOS.map(codigo => [codigo, NOMES_IDIOMA[codigo]]);
 }
 // Chamada por escolherIdioma() e alternarIdioma(), mas nunca tinha sido
 // definida - toda troca de idioma ou abertura do card de Idioma estourava
