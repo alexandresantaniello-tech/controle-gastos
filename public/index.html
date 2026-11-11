@@ -646,6 +646,18 @@
 </head>
 <body>
 
+<div class="modal-overlay centralizado" id="recuperacaoDadosOverlay" style="display:none;z-index:10000;">
+  <div class="modal-caixa" style="max-width:390px;">
+    <h3 style="margin:0 0 8px;">Recuperação de dados</h3>
+    <p id="recuperacaoDadosTexto" class="aviso-backup" style="margin:0 0 14px;"></p>
+    <div style="display:flex;gap:8px;">
+      <button type="button" onclick="fecharRecuperacaoDados()" style="flex:1;">Agora não</button>
+      <button type="button" id="btnRestaurarDadosSeguranca" onclick="restaurarDadosSeguranca()" style="flex:1;">Restaurar dados</button>
+    </div>
+    <p id="statusRecuperacaoDados" class="status" style="margin:10px 0 0;"></p>
+  </div>
+</div>
+
 <div class="modal-overlay centralizado" id="confirmarTransacaoOverlay">
   <div class="modal-caixa" style="max-width:380px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
@@ -7430,11 +7442,47 @@ async function cancelarRenovacao() {
   }
 }
 
+async function verificarRecuperacaoDadosSeguranca() {
+  if (!window.SifiaDataSafety) return;
+  const state = await window.SifiaDataSafety.canRecoverFromIndexedDb();
+  if (!state.canRecover) return;
+  const overlay = document.getElementById('recuperacaoDadosOverlay');
+  const texto = document.getElementById('recuperacaoDadosTexto');
+  if (!overlay || !texto) return;
+  texto.textContent = `O Sifia encontrou uma cópia protegida com ${state.count} registro(s). Os dados principais estão ausentes ou não puderam ser lidos. Nada será restaurado sem sua confirmação.`;
+  overlay.style.display = 'flex';
+}
+
+function fecharRecuperacaoDados() {
+  const overlay = document.getElementById('recuperacaoDadosOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function restaurarDadosSeguranca() {
+  const botao = document.getElementById('btnRestaurarDadosSeguranca');
+  const status = document.getElementById('statusRecuperacaoDados');
+  if (botao) botao.disabled = true;
+  if (status) status.textContent = 'Validando a cópia protegida…';
+  try {
+    const result = await window.SifiaDataSafety.recoverFromIndexedDb();
+    if (!result.restored) throw new Error('A restauração não pôde ser realizada com segurança.');
+    if (status) status.textContent = `${result.count} registro(s) restaurado(s). Reabrindo o Sifia…`;
+    setTimeout(() => location.reload(), 700);
+  } catch (err) {
+    if (status) {
+      status.textContent = err && err.message ? err.message : 'Não foi possível restaurar os dados.';
+      status.className = 'status error';
+    }
+    if (botao) botao.disabled = false;
+  }
+}
+
 limparPrefixoLocalAntigo();
 processarComprovanteCompartilhado();
 popularSeletorIdioma();
 aplicarTraducoes();
 renderizar();
+verificarRecuperacaoDadosSeguranca().catch(err => console.warn('[Sifia] Falha ao verificar recuperação.', err));
 carregarTaxasCambio().then(() => {
   popularSeletorMoeda();
   atualizarInfoCambio();
