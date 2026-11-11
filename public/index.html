@@ -822,29 +822,29 @@
 
 
   <div class="backup-organizado">
-    <h3 class="backup-titulo">Backup dos seus dados</h3>
-    <p class="backup-intro">Proteja seu histórico antes de trocar de aparelho, desinstalar o Sifia ou limpar os dados do app.</p>
+    <h3 class="backup-titulo" data-i18n="backupDadosTitulo">Backup dos seus dados</h3>
+    <p class="backup-intro" data-i18n="backupDadosIntro">Proteja seu histórico antes de trocar de aparelho, desinstalar o Sifia ou limpar os dados do app.</p>
 
     <section class="backup-bloco">
-      <div class="backup-bloco-cabecalho"><strong>1. Criar backup</strong><span>Salve uma cópia dos seus dados neste aparelho.</span></div>
-      <button onclick="fazerBackup()" class="backup-acao-principal"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> Fazer backup agora</button>
+      <div class="backup-bloco-cabecalho"><strong data-i18n="backupCriarTitulo">1. Criar backup</strong><span data-i18n="backupCriarDescricao">Salve uma cópia dos seus dados neste aparelho.</span></div>
+      <button onclick="fazerBackup()" class="backup-acao-principal"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 7l4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg> <span data-i18n="backupFazerAgora">Fazer backup agora</span></button>
     </section>
 
     <section class="backup-bloco">
-      <div class="backup-bloco-cabecalho"><strong>2. Restaurar backup</strong><span>Os dados do arquivo serão combinados com os que já existem no Sifia.</span></div>
+      <div class="backup-bloco-cabecalho"><strong data-i18n="backupRestaurarTitulo">2. Restaurar backup</strong><span data-i18n="backupRestaurarDescricao">Os dados do arquivo serão combinados com os que já existem no Sifia.</span></div>
       <label class="backup-arquivo" for="arquivoRestaurar">
         <span class="backup-arquivo-icone">⇧</span>
-        <span class="backup-arquivo-titulo">Escolher arquivo de backup</span>
-        <span class="backup-arquivo-nome" id="backupNomeArquivo">Nenhum arquivo selecionado</span>
+        <span class="backup-arquivo-titulo" data-i18n="backupEscolherArquivo">Escolher arquivo de backup</span>
+        <span class="backup-arquivo-nome" id="backupNomeArquivo" data-i18n="nenhumArquivoSelecionado">Nenhum arquivo selecionado</span>
       </label>
       <input type="file" id="arquivoRestaurar" accept="application/json,.json" class="backup-input-arquivo" onchange="atualizarArquivoBackupSelecionado(this)">
-      <button class="secondary backup-restaurar" id="btnRestaurarBackup" onclick="confirmarRestauracaoBackup()" disabled>Restaurar backup</button>
+      <button class="secondary backup-restaurar" id="btnRestaurarBackup" onclick="confirmarRestauracaoBackup()" data-i18n="backupRestaurarBotao" disabled>Restaurar backup</button>
     </section>
 
     <details class="backup-alternativo">
-      <summary>Outra forma de recuperação <span>CSV</span></summary>
+      <summary><span data-i18n="backupOutraRecuperacao">Outra forma de recuperação</span> <span>CSV</span></summary>
       <div class="backup-alternativo-conteudo">
-        <p>Se você compartilhou suas movimentações em CSV, pode colar o conteúdo aqui para recuperá-las.</p>
+        <p data-i18n="backupCsvDescricao">Se você compartilhou suas movimentações em CSV, pode colar o conteúdo aqui para recuperá-las.</p>
         <textarea id="textoCsvRestaurar" rows="4" data-i18n-placeholder="colarCsvTextareaPlaceholder" placeholder="Cole aqui o conteúdo do CSV compartilhado"></textarea>
         <button class="secondary" onclick="importarCsvTexto()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Restaurar do texto colado</button>
       </div>
@@ -853,9 +853,9 @@
     <div class="status" id="statusBackup"></div>
 
     <details class="backup-risco">
-      <summary>Área de risco</summary>
+      <summary data-i18n="backupAreaRisco">Área de risco</summary>
       <div class="backup-risco-conteudo">
-        <p>Esta ação apaga as movimentações registradas neste aparelho. Faça um backup antes se quiser preservá-las.</p>
+        <p data-i18n="backupAreaRiscoDescricao">Esta ação apaga as movimentações registradas neste aparelho. Faça um backup antes se quiser preservá-las.</p>
         <button class="secondary perigo" onclick="apagarTodasTransacoes()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span data-i18n="apagarTodasTransacoesBotao">Apagar todas as transações</span></button>
         <div class="status" id="statusApagarTudo"></div>
       </div>
@@ -865,21 +865,21 @@
 
 <div class="card" id="uploadHistoricoCard" style="display:none;">
   <div id="blocoHistorico" class="historico-importacao">
-    <h3 class="historico-titulo">Importar extrato</h3>
-    <p class="historico-descricao" style="font-size:15px;color:var(--foreground);">Traga seu histórico financeiro para o Sifia.</p>
-    <div class="historico-beneficio"><strong>Benefício de boas-vindas</strong><span>3 meses de histórico · até 4 bancos</span><p class="historico-restantes" id="avisoBancosRestantes"></p></div>
-    <p class="historico-descricao">Selecione um extrato bancário em PDF. O Sifia identifica as movimentações e organiza seu histórico.</p>
+    <h3 class="historico-titulo" data-i18n="historicoTitulo">Importar extrato</h3>
+    <p class="historico-descricao" style="font-size:15px;color:var(--foreground);" data-i18n="historicoIntro">Traga seu histórico financeiro para o Sifia.</p>
+    <div class="historico-beneficio"><strong data-i18n="historicoBeneficioTitulo">Benefício de boas-vindas</strong><span data-i18n="historicoBeneficioDescricao">3 meses de histórico · até 4 bancos</span><p class="historico-restantes" id="avisoBancosRestantes"></p></div>
+    <p class="historico-descricao" data-i18n="historicoDescricao">Selecione um extrato bancário em PDF. O Sifia identifica as movimentações e organiza seu histórico.</p>
     <label class="historico-arquivo" for="arquivoHistorico">
       <span class="historico-arquivo-icone" aria-hidden="true">⇧</span>
-      <span class="historico-arquivo-titulo">Escolher extrato em PDF</span>
-      <span class="historico-arquivo-nome" id="historicoNomeArquivo">Nenhum arquivo selecionado</span>
+      <span class="historico-arquivo-titulo" data-i18n="historicoEscolherPdf">Escolher extrato em PDF</span>
+      <span class="historico-arquivo-nome" id="historicoNomeArquivo" data-i18n="nenhumArquivoSelecionado">Nenhum arquivo selecionado</span>
     </label>
     <input type="file" id="arquivoHistorico" accept="application/pdf" class="historico-input-arquivo" aria-label="Selecionar extrato em PDF" onchange="atualizarArquivoHistoricoSelecionado(this)">
     <input type="password" id="senhaHistorico" class="historico-senha" data-i18n-placeholder="senhaPdfPlaceholder" placeholder="Senha do PDF (se necessário)" autocomplete="off">
-    <p class="historico-privacidade">🔒 PDF com senha? Informe acima. Sua senha é usada somente no seu aparelho.</p>
+    <p class="historico-privacidade" data-i18n="historicoSenhaPrivacidade">🔒 PDF com senha? Informe acima. Sua senha é usada somente no seu aparelho.</p>
     <button onclick="importarHistorico()" id="btnImportarHistorico" class="historico-botao" data-i18n="importarHistoricoBotao" disabled>Importar histórico</button>
     <div class="status" id="statusHistorico"></div>
-    <p class="historico-rodape">As movimentações importadas ficam disponíveis no Histórico.</p>
+    <p class="historico-rodape" data-i18n="historicoRodape">As movimentações importadas ficam disponíveis no Histórico.</p>
   </div>
 </div>
 
@@ -3415,14 +3415,14 @@ function atualizarAvisoBancosRestantes() {
   const el = document.getElementById('avisoBancosRestantes');
   if (!el) return;
   const restantes = LIMITE_BANCOS_BOAS_VINDAS - lerBancosConcluidos().length;
-  el.textContent = restantes + ' de ' + LIMITE_BANCOS_BOAS_VINDAS + ' bancos disponíveis.';
+  el.textContent = t('bancosDisponiveis', { restantes, total: LIMITE_BANCOS_BOAS_VINDAS });
 }
 
 function atualizarArquivoHistoricoSelecionado(input) {
   const nome = document.getElementById('historicoNomeArquivo');
   const botao = document.getElementById('btnImportarHistorico');
   const arquivo = input && input.files && input.files.length ? input.files[0] : null;
-  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : 'Nenhum arquivo selecionado';
+  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : t('nenhumArquivoSelecionado');
   if (botao) botao.disabled = !arquivo;
 }
 
@@ -5479,6 +5479,31 @@ const TRADUCOES2 = {
   "privacidade-backup-resposta": { pt:"Não trate o armazenamento local como um backup automático externo.\n\nSe você quiser preservar uma cópia para recuperação ou troca de aparelho, utilize a função de Backup e guarde o arquivo gerado em local seguro." },
   "privacidade-termos-pergunta": { pt:"Onde encontro os Termos de Uso e a Política de Privacidade?" },
   "privacidade-termos-resposta": { pt:"Os documentos jurídicos ficam disponíveis dentro do Sifia nas respectivas opções de Termos de Uso e Política de Privacidade.\n\nEles explicam com mais detalhes as regras do serviço, tratamento de dados, assinatura e responsabilidades." },
+  backupDadosTitulo: { pt:'Backup dos seus dados', en:'Backup your data', es:'Copia de seguridad de tus datos' },
+  backupDadosIntro: { pt:'Proteja seu histórico antes de trocar de aparelho, desinstalar o Sifia ou limpar os dados do app.', en:'Protect your history before changing devices, uninstalling Sifia, or clearing app data.', es:'Protege tu historial antes de cambiar de dispositivo, desinstalar Sifia o borrar los datos de la app.' },
+  backupCriarTitulo: { pt:'1. Criar backup', en:'1. Create backup', es:'1. Crear copia de seguridad' },
+  backupCriarDescricao: { pt:'Salve uma cópia dos seus dados neste aparelho.', en:'Save a copy of your data on this device.', es:'Guarda una copia de tus datos en este dispositivo.' },
+  backupFazerAgora: { pt:'Fazer backup agora', en:'Back up now', es:'Crear copia ahora' },
+  backupRestaurarTitulo: { pt:'2. Restaurar backup', en:'2. Restore backup', es:'2. Restaurar copia de seguridad' },
+  backupRestaurarDescricao: { pt:'Os dados do arquivo serão combinados com os que já existem no Sifia.', en:'Data from the file will be combined with data already in Sifia.', es:'Los datos del archivo se combinarán con los que ya existen en Sifia.' },
+  backupEscolherArquivo: { pt:'Escolher arquivo de backup', en:'Choose backup file', es:'Elegir archivo de copia' },
+  nenhumArquivoSelecionado: { pt:'Nenhum arquivo selecionado', en:'No file selected', es:'Ningún archivo seleccionado' },
+  backupRestaurarBotao: { pt:'Restaurar backup', en:'Restore backup', es:'Restaurar copia' },
+  backupOutraRecuperacao: { pt:'Outra forma de recuperação', en:'Another recovery method', es:'Otra forma de recuperación' },
+  backupCsvDescricao: { pt:'Se você compartilhou suas movimentações em CSV, pode colar o conteúdo aqui para recuperá-las.', en:'If you shared your transactions as CSV, paste the content here to recover them.', es:'Si compartiste tus movimientos en CSV, pega aquí el contenido para recuperarlos.' },
+  backupAreaRisco: { pt:'Área de risco', en:'Risk area', es:'Área de riesgo' },
+  backupAreaRiscoDescricao: { pt:'Esta ação apaga as movimentações registradas neste aparelho. Faça um backup antes se quiser preservá-las.', en:'This action deletes transactions stored on this device. Create a backup first if you want to keep them.', es:'Esta acción elimina los movimientos guardados en este dispositivo. Haz una copia antes si quieres conservarlos.' },
+  historicoTitulo: { pt:'Importar extrato', en:'Import statement', es:'Importar extracto' },
+  historicoIntro: { pt:'Traga seu histórico financeiro para o Sifia.', en:'Bring your financial history into Sifia.', es:'Lleva tu historial financiero a Sifia.' },
+  historicoBeneficioTitulo: { pt:'Benefício de boas-vindas', en:'Welcome benefit', es:'Beneficio de bienvenida' },
+  historicoBeneficioDescricao: { pt:'3 meses de histórico · até 4 bancos', en:'3 months of history · up to 4 banks', es:'3 meses de historial · hasta 4 bancos' },
+  historicoDescricao: { pt:'Selecione um extrato bancário em PDF. O Sifia identifica as movimentações e organiza seu histórico.', en:'Select a bank statement in PDF. Sifia identifies the transactions and organizes your history.', es:'Selecciona un extracto bancario en PDF. Sifia identifica los movimientos y organiza tu historial.' },
+  historicoEscolherPdf: { pt:'Escolher extrato em PDF', en:'Choose PDF statement', es:'Elegir extracto en PDF' },
+  historicoSenhaPrivacidade: { pt:'🔒 PDF com senha? Informe acima. Sua senha é usada somente no seu aparelho.', en:'🔒 Password-protected PDF? Enter it above. Your password is used only on your device.', es:'🔒 ¿PDF con contraseña? Escríbela arriba. Tu contraseña se usa solo en tu dispositivo.' },
+  historicoRodape: { pt:'As movimentações importadas ficam disponíveis no Histórico.', en:'Imported transactions are available in History.', es:'Los movimientos importados quedan disponibles en Historial.' },
+  bancosDisponiveis: { pt:'{restantes} de {total} bancos disponíveis.', en:'{restantes} of {total} banks available.', es:'{restantes} de {total} bancos disponibles.' },
+  restaurarBackupConfirmacao: { pt:'Restaurar “{arquivo}”? Os dados do arquivo serão combinados com os dados que já existem no Sifia.', en:'Restore “{arquivo}”? Data from the file will be combined with data already in Sifia.', es:'¿Restaurar “{arquivo}”? Los datos del archivo se combinarán con los que ya existen en Sifia.' },
+
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
 // - necessario pra frases com valor dinamico no meio (ex: "Excluir {qtd}
@@ -6642,7 +6667,7 @@ function atualizarArquivoBackupSelecionado(input) {
   const arquivo = input && input.files && input.files.length ? input.files[0] : null;
   const nome = document.getElementById('backupNomeArquivo');
   const botao = document.getElementById('btnRestaurarBackup');
-  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : 'Nenhum arquivo selecionado';
+  if (nome) nome.textContent = arquivo ? arquivo.name + ' ✓' : t('nenhumArquivoSelecionado');
   if (botao) botao.disabled = !arquivo;
 }
 
@@ -6650,7 +6675,7 @@ async function confirmarRestauracaoBackup() {
   const input = document.getElementById('arquivoRestaurar');
   if (!input || !input.files.length) return;
   const arquivo = input.files[0];
-  const confirmou = await modalConfirmar('Restaurar "' + arquivo.name + '"? Os dados do arquivo serão combinados com os dados que já existem no Sifia.');
+  const confirmou = await modalConfirmar(t('restaurarBackupConfirmacao', { arquivo: arquivo.name }));
   if (confirmou) restaurarBackup();
 }
 
