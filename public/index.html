@@ -3871,6 +3871,10 @@ function salvarTransacoes(lista) {
   if (window.SifiaDataSafety) window.SifiaDataSafety.snapshot('before-write');
   lista.forEach(normalizarInstituicaoPorFormaPagamento);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+  if (window.SifiaDataSafety) {
+    window.SifiaDataSafety.mirrorToIndexedDb('after-write')
+      .catch(err => console.warn('[Sifia] Não foi possível atualizar o espelho IndexedDB.', err));
+  }
   return true;
 }
 
