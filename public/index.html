@@ -681,7 +681,7 @@
     </div>
     <div class="nota" id="confObservacao" onclick="confEditarCampo('observacao')" style="margin-top:10px; cursor:pointer;"></div>
     <button id="btnCorrecaoVoz" class="secondary" style="display:none; width:100%; margin-top:10px; touch-action:none; user-select:none;" onpointerdown="iniciarCorrecaoVoz(event)" onpointerup="pararCorrecaoVoz(event)" onpointercancel="pararCorrecaoVoz(event)" onpointerleave="pararCorrecaoVoz(event)">
-      🎙 <span id="textoCorrecaoVoz">Segure para corrigir por voz</span>
+      🎙 <span id="textoCorrecaoVoz" data-i18n="segureCorrigirVoz">Segure para corrigir por voz</span>
     </button>
     <div class="status" id="statusCorrecaoVoz" style="min-height:0;"></div>
     <div class="status" id="confAvisoMemoria" style="display:none; color:var(--primary);"></div>
@@ -733,18 +733,18 @@
 
 <div class="summary">
   <div class="box">
-    <div class="label" id="rotuloEntradas">Entradas</div>
+    <div class="label" id="rotuloEntradas" data-i18n="entradas">Entradas</div>
     <div class="value entrada" id="totalEntradas">R$ 0,00</div>
   </div>
   <div class="box">
-    <div class="label" id="rotuloSaidas">Saídas</div>
+    <div class="label" id="rotuloSaidas" data-i18n="saidas">Saídas</div>
     <div class="value saida" id="totalSaidas">R$ 0,00</div>
   </div>
 </div>
 
 <div class="card saldo-card">
   <div class="saldo-linha">
-    <span class="label" id="rotuloSaldo">Saldo</span>
+    <span class="label" id="rotuloSaldo" data-i18n="saldo">Saldo</span>
     <span class="cristal-toggle" id="cristalToggle" onclick="alternarVisibilidadeSaldo()"></span>
   </div>
   <div class="value" id="saldo">R$ 0,00</div>
@@ -762,16 +762,16 @@
 
 <div class="card" id="cardListaMes" style="display:none;">
   <div id="listaTransacoes"></div>
-  <div class="empty" id="emptyMsg">Nenhuma transação neste mês.</div>
+  <div class="empty" id="emptyMsg" data-i18n="nenhumaTransacaoMes">Nenhuma transação neste mês.</div>
 </div>
 
 <div class="card" id="cardSemData" style="display:none;">
-  <div class="grupo-dia" style="margin-top:0;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Sem data reconhecida (não aparecem em nenhum mês até corrigir)</div>
+  <div class="grupo-dia" style="margin-top:0;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <span data-i18n="semDataReconhecida">Sem data reconhecida (não aparecem em nenhum mês até corrigir)</span></div>
   <div id="listaSemData"></div>
 </div>
 
-<button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto">Registro por Voz</span></button>
-<p style="text-align:center; margin:6px 0 0;"><span onclick="colarTextoTransacao()" id="rotuloColarTexto" style="color:var(--primary); font-size:0.78rem; cursor:pointer;">ou cole um texto copiado</span></p>
+<button class="btn-adicionar-principal" id="btnFalarTransacao" onmousedown="iniciarGravacaoVoz(event)" onmouseup="pararGravacaoVoz(event)" onmouseleave="pararGravacaoVoz(event)" ontouchstart="iniciarGravacaoVoz(event)" ontouchend="pararGravacaoVoz(event)" ontouchcancel="pararGravacaoVoz(event)" style="display:none; user-select:none; -webkit-user-select:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="btnFalarTransacaoTexto" data-i18n="registroPorVoz">Registro por Voz</span></button>
+<p style="text-align:center; margin:6px 0 0;"><span onclick="colarTextoTransacao()" id="rotuloColarTexto" data-i18n="colarTextoCopiado" style="color:var(--primary); font-size:0.78rem; cursor:pointer;">ou cole um texto copiado</span></p>
 <div class="status" id="statusVoz"></div>
 
 <button class="secondary" id="btnAdicionarPrincipal" onclick="alternarUpload()" style="width:100%; margin-top:0; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span id="btnAdicionarPrincipalTexto">Adicionar comprovante</span></button>
@@ -890,8 +890,8 @@
     <p class="aviso-backup" id="dicaZoom" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> <span data-i18n="dicaZoomTexto">Toque na imagem pra ampliar e conferir antes de analisar</span></p>
     <input type="file" id="fileInput" accept="image/*">
     <div style="display:flex; gap:8px; margin-top:10px;">
-      <button type="button" id="btnCameraComprovante" style="flex:1;">📷 Tirar foto</button>
-      <button type="button" id="btnGaleriaComprovante" style="flex:1;">🖼️ Escolher da galeria</button>
+      <button type="button" id="btnCameraComprovante" style="flex:1;">📷 <span data-i18n="tirarFoto">Tirar foto</span></button>
+      <button type="button" id="btnGaleriaComprovante" style="flex:1;">🖼️ <span data-i18n="escolherGaleria">Escolher da galeria</span></button>
     </div>
   </div>
   <p class="aviso-backup" id="dicaIphone" style="display:none;"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg> <span data-i18n="avisoIphoneCompartilhamento">No iOS, o compartilhamento direto de outros apps pro Sifia ainda não é possível (incompatibilidade entre os sistemas). Salve a imagem do comprovante e escolha ela aqui em cima.</span></p>
@@ -940,7 +940,7 @@
 
   <div id="blocoDespesaRecorrente" style="margin-top:14px;display:none;">
     <div class="campo-clicavel" id="periodoDespesaFixa" onclick="editarPeriodoDespesaFixa()">
-      <span id="textoPeriodoDespesaFixa" class="vazio">RECORRÊNCIA · NÃO</span>
+      <span id="textoPeriodoDespesaFixa" class="vazio" data-i18n="recorrenciaNao">RECORRÊNCIA · NÃO</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
     </div>
   </div>
@@ -959,21 +959,21 @@
     <button class="nav" onclick="mudarPeriodo(1)">›</button>
   </div>
   <div class="relatorio-filtros" id="filtrosRelatorio">
-    <button class="ativo" data-filtro-tipo="todos" onclick="definirFiltroRelatorio('tipo','todos')">Todos</button>
-    <button data-filtro-tipo="entrada" onclick="definirFiltroRelatorio('tipo','entrada')">Entradas</button>
-    <button data-filtro-tipo="saida" onclick="definirFiltroRelatorio('tipo','saida')">Saídas</button>
-    <button data-filtro-pagamento="todos" onclick="definirFiltroRelatorio('pagamento','todos')">Pagamento: todos</button>
+    <button class="ativo" data-filtro-tipo="todos" onclick="definirFiltroRelatorio('tipo','todos')" data-i18n="todos">Todos</button>
+    <button data-filtro-tipo="entrada" onclick="definirFiltroRelatorio('tipo','entrada')" data-i18n="entradas">Entradas</button>
+    <button data-filtro-tipo="saida" onclick="definirFiltroRelatorio('tipo','saida')" data-i18n="saidas">Saídas</button>
+    <button data-filtro-pagamento="todos" onclick="definirFiltroRelatorio('pagamento','todos')" data-i18n="pagamentoTodos">Pagamento: todos</button>
     <button data-filtro-pagamento="pix" onclick="definirFiltroRelatorio('pagamento','pix')">Pix</button>
-    <button data-filtro-pagamento="debito" onclick="definirFiltroRelatorio('pagamento','debito')">Débito</button>
-    <button data-filtro-pagamento="credito" onclick="definirFiltroRelatorio('pagamento','credito')">Crédito</button>
-    <button data-filtro-pagamento="especie" onclick="definirFiltroRelatorio('pagamento','especie')">Espécie</button>
+    <button data-filtro-pagamento="debito" onclick="definirFiltroRelatorio('pagamento','debito')" data-i18n="debito">Débito</button>
+    <button data-filtro-pagamento="credito" onclick="definirFiltroRelatorio('pagamento','credito')" data-i18n="credito">Crédito</button>
+    <button data-filtro-pagamento="especie" onclick="definirFiltroRelatorio('pagamento','especie')" data-i18n="especie">Espécie</button>
   </div>
   <div id="resumoRelatorio"></div>
   <div class="relatorio-acoes">
     <button data-i18n="compartilharResumo" onclick="compartilharResumo()">Compartilhar resumo</button>
     <button class="secondary" data-i18n="compartilharPlanilhaCsv" onclick="compartilharCsv()">Compartilhar planilha (CSV)</button>
   </div>
-  <button class="secondary perigo" id="btnApagarPeriodo" style="margin-top:12px; display:none;" onclick="apagarTransacoesDoPeriodo()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span id="btnApagarPeriodoTexto">Apagar transações</span></button>
+  <button class="secondary perigo" id="btnApagarPeriodo" style="margin-top:12px; display:none;" onclick="apagarTransacoesDoPeriodo()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> <span id="btnApagarPeriodoTexto" data-i18n="apagarTransacoes">Apagar transações</span></button>
   <div class="status" id="statusRelatorio"></div>
 </div>
 
@@ -989,7 +989,7 @@
   </div>
 
   <div id="formNovoItemPlanejamento" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
-    <label class="campo">Tipo</label>
+    <label class="campo" data-i18n="tipoLabel">Tipo</label>
     <div class="campo-clicavel" id="campoTipoNovoItem" onclick="editarTipoNovoItemPlanejamento()">
       <span id="textoTipoNovoItem">SAÍDA PREVISTA</span>
       <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -1005,8 +1005,8 @@
     <label class="campo" data-i18n="valorDeixeBrancoLabel" style="margin-top:14px;">Valor (deixe em branco se ainda não souber)</label>
     <input type="number" id="valorNovoItemPlanejamento" step="0.01" min="0" placeholder="0,00">
 
-    <label class="campo" style="margin-top:14px;">Observação (opcional)</label>
-    <input type="text" id="observacaoNovoItemPlanejamento" placeholder="Ex: última parcela, cliente João, valor aproximado">
+    <label class="campo" style="margin-top:14px;" data-i18n="observacaoOpcional">Observação (opcional)</label>
+    <input type="text" id="observacaoNovoItemPlanejamento" data-i18n-placeholder="observacaoPlanejamentoPlaceholder" placeholder="Ex: última parcela, cliente João, valor aproximado">
 
     <div class="campo-clicavel" id="campoRecorrenteNovoItem" onclick="editarRecorrenciaNovoItemPlanejamento()" style="margin-top:14px;">
       <span id="textoRecorrenteNovoItem" class="vazio" data-i18n="recorrenteQuestion">É RECORRENTE?</span>
@@ -1024,7 +1024,7 @@
     </div>
   </div>
   <div id="botaoCompartilharPlanejamentoWrap" style="text-align:center; margin-top:14px;">
-    <button class="secondary" onclick="compartilharPlanejamento()">Compartilhar Planejamento</button>
+    <button class="secondary" onclick="compartilharPlanejamento()" data-i18n="compartilharPlanejamento">Compartilhar Planejamento</button>
   </div>
   <div class="status" id="statusPlanejamento"></div>
 </div>
@@ -1267,10 +1267,10 @@
   <div class="modal-caixa" style="width:min(94vw,520px); max-height:82vh; display:flex; flex-direction:column;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
       <div>
-        <div style="font-size:0.72rem; color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.05em;">Transações deste resumo</div>
+        <div style="font-size:0.72rem; color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.05em;" data-i18n="transacoesDesteResumo">Transações deste resumo</div>
         <h3 id="detalhesObservacaoTitulo" style="margin:3px 0 0;"></h3>
       </div>
-      <button type="button" class="secondary" onclick="fecharDetalhesObservacao()" style="width:auto; margin:0; padding:7px 12px;">Fechar</button>
+      <button type="button" class="secondary" onclick="fecharDetalhesObservacao()" style="width:auto; margin:0; padding:7px 12px;" data-i18n="fechar">Fechar</button>
     </div>
     <div id="detalhesObservacaoResumo" style="font-size:0.85rem; color:var(--muted-foreground); margin-bottom:8px;"></div>
     <div id="detalhesObservacaoLista" style="overflow-y:auto; min-height:0;"></div>
@@ -5503,6 +5503,29 @@ const TRADUCOES2 = {
   historicoRodape: { pt:'As movimentações importadas ficam disponíveis no Histórico.', en:'Imported transactions are available in History.', es:'Los movimientos importados quedan disponibles en Historial.' },
   bancosDisponiveis: { pt:'{restantes} de {total} bancos disponíveis.', en:'{restantes} of {total} banks available.', es:'{restantes} de {total} bancos disponibles.' },
   restaurarBackupConfirmacao: { pt:'Restaurar “{arquivo}”? Os dados do arquivo serão combinados com os dados que já existem no Sifia.', en:'Restore “{arquivo}”? Data from the file will be combined with data already in Sifia.', es:'¿Restaurar “{arquivo}”? Los datos del archivo se combinarán con los que ya existen en Sifia.' },
+
+  segureCorrigirVoz: { pt:'Segure para corrigir por voz', en:'Hold to correct by voice', es:'Mantén pulsado para corregir por voz' },
+  entradas: { pt:'Entradas', en:'Income', es:'Entradas' },
+  saidas: { pt:'Saídas', en:'Expenses', es:'Salidas' },
+  saldo: { pt:'Saldo', en:'Balance', es:'Saldo' },
+  nenhumaTransacaoMes: { pt:'Nenhuma transação neste mês.', en:'No transactions this month.', es:'No hay movimientos este mes.' },
+  semDataReconhecida: { pt:'Sem data reconhecida (não aparecem em nenhum mês até corrigir)', en:'Date not recognized (these will not appear in any month until corrected)', es:'Fecha no reconocida (no aparecerán en ningún mes hasta corregirla)' },
+  registroPorVoz: { pt:'Registro por Voz', en:'Voice entry', es:'Registro por voz' },
+  colarTextoCopiado: { pt:'ou cole um texto copiado', en:'or paste copied text', es:'o pega un texto copiado' },
+  tirarFoto: { pt:'Tirar foto', en:'Take photo', es:'Tomar foto' },
+  escolherGaleria: { pt:'Escolher da galeria', en:'Choose from gallery', es:'Elegir de la galería' },
+  recorrenciaNao: { pt:'RECORRÊNCIA · NÃO', en:'RECURRING · NO', es:'RECURRENCIA · NO' },
+  todos: { pt:'Todos', en:'All', es:'Todos' },
+  pagamentoTodos: { pt:'Pagamento: todos', en:'Payment: all', es:'Pago: todos' },
+  debito: { pt:'Débito', en:'Debit', es:'Débito' },
+  credito: { pt:'Crédito', en:'Credit', es:'Crédito' },
+  especie: { pt:'Espécie', en:'Cash', es:'Efectivo' },
+  apagarTransacoes: { pt:'Apagar transações', en:'Delete transactions', es:'Eliminar movimientos' },
+  observacaoOpcional: { pt:'Observação (opcional)', en:'Note (optional)', es:'Observación (opcional)' },
+  observacaoPlanejamentoPlaceholder: { pt:'Ex: última parcela, cliente João, valor aproximado', en:'Ex: last installment, client John, approximate amount', es:'Ej.: última cuota, cliente Juan, valor aproximado' },
+  compartilharPlanejamento: { pt:'Compartilhar Planejamento', en:'Share Planning', es:'Compartir Planificación' },
+  transacoesDesteResumo: { pt:'Transações deste resumo', en:'Transactions in this summary', es:'Movimientos de este resumen' },
+  fechar: { pt:'Fechar', en:'Close', es:'Cerrar' },
 
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
