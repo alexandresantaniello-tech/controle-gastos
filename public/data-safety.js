@@ -125,6 +125,66 @@
     }
   }
 
+  async function readIndexedDbMirror() {
+    const db = await openDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(DB_TX_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error || new Error('Falha ao ler espelho'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function canRecoverFromIndexedDb() {
+    const currentRaw = localStorage.getItem(TX_KEY);
+    const current = parseArray(currentRaw);
+    // Nunca oferece recuperação sobre uma base válida, inclusive uma base legitimamente vazia.
+    if (current.status === 'ok') return { canRecover: false, reason: 'primary-valid' };
+
+    try {
+      const mirror = await readIndexedDbMirror();
+      if (!mirror || typeof mirror.raw !== 'string') return { canRecover: false, reason: 'mirror-missing' };
+      const parsedMirror = parseArray(mirror.raw);
+      if (parsedMirror.status !== 'ok' || parsedMirror.data.length === 0) {
+        return { canRecover: false, reason: 'mirror-invalid' };
+      }
+      return {
+        canRecover: true,
+        reason: current.status,
+        count: parsedMirror.data.length,
+        updatedAt: mirror.updatedAt || null
+      };
+    } catch (err) {
+      return { canRecover: false, reason: 'mirror-unavailable' };
+    }
+  }
+
+  async function recoverFromIndexedDb() {
+    const eligibility = await canRecoverFromIndexedDb();
+    if (!eligibility.canRecover) return { restored: false, reason: eligibility.reason };
+
+    const mirror = await readIndexedDbMirror();
+    const parsedMirror = parseArray(mirror.raw);
+    if (parsedMirror.status !== 'ok' || parsedMirror.data.length === 0) {
+      return { restored: false, reason: 'mirror-invalid' };
+    }
+
+    // A única escrita na chave principal ocorre após dupla validação e apenas
+    // quando a base principal não é válida.
+    localStorage.setItem(TX_KEY, mirror.raw);
+    snapshot('recovered-from-indexeddb');
+    return {
+      restored: true,
+      count: parsedMirror.data.length,
+      recoveredAt: new Date().toISOString(),
+      sourceUpdatedAt: mirror.updatedAt || null
+    };
+  }
+
   function getRecoveryState() {
     const current = inspect();
     const snapshots = readSnapshots().map(({ createdAt, reason, count }) => ({ createdAt, reason, count }));
@@ -142,6 +202,8 @@
     snapshot,
     mirrorToIndexedDb,
     inspectIndexedDb,
+    canRecoverFromIndexedDb,
+    recoverFromIndexedDb,
     getRecoveryState,
     transactionKey: TX_KEY
   });
