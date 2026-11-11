@@ -13,6 +13,7 @@
   const DB_VERSION = 1;
   const DB_STORE = 'safety';
   const DB_TX_KEY = 'transactions_latest';
+  const RECOVERY_FLAG_KEY = 'sifia_recovery_available';
 
   function parseArray(raw) {
     if (raw === null) return { status: 'missing', data: null };
@@ -196,6 +197,14 @@
   // Snapshot somente de dados válidos já existentes. Nenhuma gravação na chave de transações.
   try { snapshot('startup'); } catch (_) {}
   mirrorToIndexedDb('startup').catch(err => console.warn('[Sifia] Espelho IndexedDB indisponível.', err));
+  canRecoverFromIndexedDb().then(state => {
+    if (state.canRecover) {
+      sessionStorage.setItem(RECOVERY_FLAG_KEY, JSON.stringify(state));
+      console.warn('[Sifia] Há uma cópia de recuperação disponível no IndexedDB.', state);
+    } else {
+      sessionStorage.removeItem(RECOVERY_FLAG_KEY);
+    }
+  }).catch(() => {});
 
   window.SifiaDataSafety = Object.freeze({
     inspect,
@@ -205,6 +214,7 @@
     canRecoverFromIndexedDb,
     recoverFromIndexedDb,
     getRecoveryState,
+    recoveryFlagKey: RECOVERY_FLAG_KEY,
     transactionKey: TX_KEY
   });
 })();
