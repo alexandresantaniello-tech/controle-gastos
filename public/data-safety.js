@@ -131,6 +131,33 @@
     }
   }
 
+  const MIGRATIONS = Object.freeze({});
+
+  async function migrateSchemaIfNeeded() {
+    await ensureSchemaMetadata();
+    const meta = await inspectSchema();
+    if (meta.status !== 'ok') return { migrated: false, reason: meta.status };
+    if (meta.schemaVersion === DATA_SCHEMA_VERSION) {
+      return { migrated: false, reason: 'up-to-date', version: DATA_SCHEMA_VERSION };
+    }
+    if (meta.schemaVersion > DATA_SCHEMA_VERSION) {
+      return { migrated: false, reason: 'newer-schema', version: meta.schemaVersion };
+    }
+
+    // Migrações futuras devem ser cadastradas uma a uma em MIGRATIONS.
+    // Na ausência de uma migração explícita, os dados permanecem intocados.
+    let version = meta.schemaVersion;
+    while (version < DATA_SCHEMA_VERSION) {
+      const migration = MIGRATIONS[version];
+      if (typeof migration !== 'function') {
+        return { migrated: false, reason: 'migration-missing', from: version, to: DATA_SCHEMA_VERSION };
+      }
+      await migration();
+      version += 1;
+    }
+    return { migrated: true, version };
+  }
+
   async function mirrorToIndexedDb(reason = 'mirror') {
     const raw = localStorage.getItem(TX_KEY);
     const parsed = parseArray(raw);
@@ -245,7 +272,9 @@
 
   // Snapshot somente de dados válidos já existentes. Nenhuma gravação na chave de transações.
   try { snapshot('startup'); } catch (_) {}
-  ensureSchemaMetadata().catch(err => console.warn('[Sifia] Metadados de esquema indisponíveis.', err));
+  ensureSchemaMetadata()
+    .then(() => migrateSchemaIfNeeded())
+    .catch(err => console.warn('[Sifia] Versionamento de esquema indisponível.', err));
   mirrorToIndexedDb('startup').catch(err => console.warn('[Sifia] Espelho IndexedDB indisponível.', err));
   canRecoverFromIndexedDb().then(state => {
     if (state.canRecover) {
@@ -262,6 +291,7 @@
     mirrorToIndexedDb,
     inspectIndexedDb,
     inspectSchema,
+    migrateSchemaIfNeeded,
     canRecoverFromIndexedDb,
     recoverFromIndexedDb,
     getRecoveryState,
