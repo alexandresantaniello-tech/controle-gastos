@@ -13,6 +13,8 @@
   const DB_VERSION = 1;
   const DB_STORE = 'safety';
   const DB_TX_KEY = 'transactions_latest';
+  const DB_META_KEY = 'schema_meta';
+  const DATA_SCHEMA_VERSION = 1;
   const RECOVERY_FLAG_KEY = 'sifia_recovery_available';
 
   function parseArray(raw) {
@@ -80,6 +82,53 @@
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error || new Error('Falha ao abrir IndexedDB'));
     });
+  }
+
+  async function ensureSchemaMetadata() {
+    const db = await openDb();
+    try {
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        const store = tx.objectStore(DB_STORE);
+        const req = store.get(DB_META_KEY);
+        req.onsuccess = () => {
+          const existing = req.result || null;
+          if (!existing) {
+            store.put({
+              schemaVersion: DATA_SCHEMA_VERSION,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              migrations: []
+            }, DB_META_KEY);
+          }
+        };
+        req.onerror = () => reject(req.error || new Error('Falha ao ler metadados do esquema'));
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error || new Error('Falha ao registrar esquema'));
+        tx.onabort = () => reject(tx.error || new Error('Registro de esquema abortado'));
+      });
+    } finally {
+      db.close();
+    }
+  }
+
+  async function inspectSchema() {
+    try {
+      const db = await openDb();
+      try {
+        const meta = await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, 'readonly');
+          const req = tx.objectStore(DB_STORE).get(DB_META_KEY);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error || new Error('Falha ao ler esquema'));
+        });
+        return meta ? { status: 'ok', ...meta } : { status: 'missing' };
+      } finally {
+        db.close();
+      }
+    } catch (err) {
+      return { status: 'unavailable', message: err && err.message ? err.message : String(err) };
+    }
   }
 
   async function mirrorToIndexedDb(reason = 'mirror') {
@@ -196,6 +245,7 @@
 
   // Snapshot somente de dados válidos já existentes. Nenhuma gravação na chave de transações.
   try { snapshot('startup'); } catch (_) {}
+  ensureSchemaMetadata().catch(err => console.warn('[Sifia] Metadados de esquema indisponíveis.', err));
   mirrorToIndexedDb('startup').catch(err => console.warn('[Sifia] Espelho IndexedDB indisponível.', err));
   canRecoverFromIndexedDb().then(state => {
     if (state.canRecover) {
@@ -211,10 +261,12 @@
     snapshot,
     mirrorToIndexedDb,
     inspectIndexedDb,
+    inspectSchema,
     canRecoverFromIndexedDb,
     recoverFromIndexedDb,
     getRecoveryState,
     recoveryFlagKey: RECOVERY_FLAG_KEY,
-    transactionKey: TX_KEY
+    transactionKey: TX_KEY,
+    dataSchemaVersion: DATA_SCHEMA_VERSION
   });
 })();
