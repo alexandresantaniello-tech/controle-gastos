@@ -1313,6 +1313,7 @@
   </div>
 </div>
 
+<script src="data-safety.js"></script>
 <script>
 // O pdf.js so serve pra funcao de importar extrato bancario (presente de
 // boas-vindas), usada raramente - carregar ele em toda abertura do app
@@ -3823,8 +3824,13 @@ function carregarTransacoes() {
   if (!raw) return [];
   try {
     const dados = JSON.parse(raw);
-    return Array.isArray(dados) ? dados : [];
+    if (!Array.isArray(dados)) {
+      console.error('[Sifia] Armazenamento de transações inválido; leitura bloqueada.');
+      return [];
+    }
+    return dados;
   } catch (err) {
+    console.error('[Sifia] Falha ao interpretar transações; dados originais preservados.', err);
     return [];
   }
 }
@@ -3838,8 +3844,34 @@ function normalizarInstituicaoPorFormaPagamento(dados) {
 }
 
 function salvarTransacoes(lista) {
+  if (!Array.isArray(lista)) {
+    console.error('[Sifia] Gravação bloqueada: lista de transações inválida.');
+    return false;
+  }
+
+  const rawAtual = localStorage.getItem(STORAGE_KEY);
+  if (rawAtual) {
+    try {
+      const atual = JSON.parse(rawAtual);
+      if (!Array.isArray(atual)) {
+        console.error('[Sifia] Gravação bloqueada: armazenamento atual está corrompido.');
+        return false;
+      }
+      if (atual.length > 0 && lista.length === 0) {
+        console.error('[Sifia] Gravação vazia bloqueada para proteger registros existentes.');
+        if (window.SifiaDataSafety) window.SifiaDataSafety.snapshot('blocked-empty-write');
+        return false;
+      }
+    } catch (err) {
+      console.error('[Sifia] Gravação bloqueada: não foi possível validar os dados atuais.', err);
+      return false;
+    }
+  }
+
+  if (window.SifiaDataSafety) window.SifiaDataSafety.snapshot('before-write');
   lista.forEach(normalizarInstituicaoPorFormaPagamento);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
+  return true;
 }
 
 // Limpeza unica (2026-07-26): antes da forma de pagamento virar campo
