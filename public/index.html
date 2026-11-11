@@ -800,8 +800,14 @@
 
 <div class="card" id="idiomaCard" style="display:none;">
   <div class="grupo-dia" data-i18n="navIdioma" style="margin-top:0;">Idioma</div>
-  <p id="idiomaAtualTexto" class="aviso-backup" style="margin-top:0;"></p>
-  <button data-i18n="escolherIdiomaBotao" onclick="escolherIdioma()" style="width:100%;">🌐 Escolher idioma</button>
+  <p class="aviso-backup" style="margin-top:0;" data-i18n="idiomaDescricao">Escolha o idioma usado na interface do Sifia. Seus registros financeiros não são alterados.</p>
+  <div style="padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:12px 0;">
+    <small style="display:block;color:var(--muted-foreground);margin-bottom:4px;" data-i18n="idiomaAtualLabel">Idioma atual</small>
+    <strong id="idiomaAtualTexto"></strong>
+    <span id="idiomaHomologadoBadge" style="display:none;margin-left:7px;font-size:.72rem;padding:3px 7px;border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);" data-i18n="idiomaHomologado">Homologado</span>
+  </div>
+  <button onclick="escolherIdioma()" style="width:100%;">🌐 <span data-i18n="escolherIdiomaBotao">Escolher idioma</span></button>
+  <p class="aviso-backup" style="margin:12px 0 0;" data-i18n="idiomaHomologadosInfo">Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.</p>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
@@ -5598,6 +5604,11 @@ const TRADUCOES2 = {
   perfilSinalEssencial: { pt:'Possíveis despesas essenciais', en:'Possible essential expenses', es:'Posibles gastos esenciales' },
   perfilSinalInvestimento: { pt:'Possíveis investimentos/aportes', en:'Possible investments/contributions', es:'Posibles inversiones/aportes' },
 
+  idiomaDescricao: { pt:'Escolha o idioma usado na interface do Sifia. Seus registros financeiros não são alterados.', en:'Choose the language used in the Sifia interface. Your financial records are not changed.', es:'Elige el idioma usado en la interfaz de Sifia. Tus registros financieros no se modifican.' },
+  idiomaAtualLabel: { pt:'Idioma atual', en:'Current language', es:'Idioma actual' },
+  idiomaHomologado: { pt:'Homologado', en:'Reviewed', es:'Revisado' },
+  idiomaHomologadosInfo: { pt:'Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.', en:'Português, English, and Español have a complete interface review. Other languages remain available and use progressive translation with a safe fallback.', es:'Português, English y Español tienen una revisión completa de la interfaz. Los demás idiomas siguen disponibles y usan traducción progresiva con un fallback seguro.' },
+
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
 // - necessario pra frases com valor dinamico no meio (ex: "Excluir {qtd}
@@ -5612,8 +5623,11 @@ function t(chave, vars) {
   return texto;
 }
 
+const IDIOMAS_HOMOLOGADOS = ['pt', 'en', 'es'];
 function listaOpcoesIdioma() {
-  return Object.entries(NOMES_IDIOMA);
+  const homologados = IDIOMAS_HOMOLOGADOS.map(codigo => [codigo, NOMES_IDIOMA[codigo]]);
+  const demais = Object.entries(NOMES_IDIOMA).filter(([codigo]) => !IDIOMAS_HOMOLOGADOS.includes(codigo));
+  return [...homologados, ...demais];
 }
 // Chamada por escolherIdioma() e alternarIdioma(), mas nunca tinha sido
 // definida - toda troca de idioma ou abertura do card de Idioma estourava
@@ -5624,6 +5638,8 @@ function listaOpcoesIdioma() {
 function atualizarCardIdioma() {
   const el = document.getElementById('idiomaAtualTexto');
   if (el) el.textContent = NOMES_IDIOMA[idiomaSelecionado] || idiomaSelecionado;
+  const badge = document.getElementById('idiomaHomologadoBadge');
+  if (badge) badge.style.display = IDIOMAS_HOMOLOGADOS.includes(idiomaSelecionado) ? 'inline-block' : 'none';
 }
 async function escolherIdioma() {
   const novo = await modalSelecionar(t('seletorIdiomaPergunta'), listaOpcoesIdioma(), idiomaSelecionado);
@@ -5673,6 +5689,7 @@ function mudarIdioma(novo) {
   localStorage.setItem(IDIOMA_KEY, novo);
   popularSeletorIdioma();
   aplicarTraducoes();
+  atualizarCardIdioma();
   renderizar();
 }
 
