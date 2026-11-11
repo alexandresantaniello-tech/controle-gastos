@@ -3363,9 +3363,7 @@ function atualizarAvisoBancosRestantes() {
   const el = document.getElementById('avisoBancosRestantes');
   if (!el) return;
   const restantes = LIMITE_BANCOS_BOAS_VINDAS - lerBancosConcluidos().length;
-  el.textContent = restantes > 0
-    ? t('aindaPodeImportarBancos', { restantes, plural: restantes === 1 ? '' : 's' })
-    : t('usouBeneficioBoasVindas');
+  el.textContent = restantes + ' de ' + LIMITE_BANCOS_BOAS_VINDAS + ' bancos disponíveis.';
 }
 
 function atualizarDataMaisRecenteHistorico(data) {
