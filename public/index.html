@@ -780,7 +780,7 @@
   <div class="upload-toggle" id="relatorioToggle" onclick="alternarRelatorio()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="19" y1="20" x2="19" y2="9"/></svg><span class="toggle-texto" data-i18n="navRelatorios">Relatórios</span></div>
   <div class="upload-toggle" id="perfilFinanceiroToggle" onclick="alternarPerfilFinanceiro()" title="Meu Perfil Financeiro Sifia">
     <svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-5 4 3 5-7"/></svg>
-    <span class="toggle-texto">Meu Perfil</span>
+    <span class="toggle-texto" data-i18n="meuPerfil">Meu Perfil</span>
   </div>
   <div class="upload-toggle" id="planejamentoToggle" onclick="alternarPlanejamento()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg><span class="toggle-texto" data-i18n="navPlanejamento">Planejamento</span></div>
   <div class="upload-toggle" id="dinheiroToggle" onclick="alternarDinheiro()"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span class="toggle-texto" data-i18n="navManual">Manual</span></div>
@@ -792,10 +792,10 @@
 
 
 <div class="card" id="perfilFinanceiroCard" style="display:none;">
-  <div class="grupo-dia" style="margin-top:0;">Meu Perfil Financeiro Sifia</div>
-  <p class="aviso-backup" style="margin-top:6px;">Uma visão histórica da sua vida financeira, calculada no seu aparelho com base nas movimentações efetivamente registradas no Sifia. Valores apenas previstos ou recorrências que ainda não foram registrados como movimentação não entram nas médias, saldos e evolução deste perfil.</p>
+  <div class="grupo-dia" style="margin-top:0;" data-i18n="perfilTitulo">Meu Perfil Financeiro Sifia</div>
+  <p class="aviso-backup" style="margin-top:6px;" data-i18n="perfilIntro">Uma visão histórica da sua vida financeira, calculada no seu aparelho com base nas movimentações efetivamente registradas no Sifia. Valores apenas previstos ou recorrências que ainda não foram registrados como movimentação não entram nas médias, saldos e evolução deste perfil.</p>
   <div id="perfilFinanceiroConteudo"></div>
-  <p class="aviso-backup" style="margin-top:16px;">Este perfil é informativo. Não é score de crédito, promessa de aprovação ou recomendação de empréstimo.</p>
+  <p class="aviso-backup" style="margin-top:16px;" data-i18n="perfilAviso">Este perfil é informativo. Não é score de crédito, promessa de aprovação ou recomendação de empréstimo.</p>
 </div>
 
 <div class="card" id="idiomaCard" style="display:none;">
@@ -2135,44 +2135,38 @@ function analisarTendenciaFinanceira(evolucao) {
   return { situacao, saldoAntigo, saldoRecente, rendaAntiga, rendaRecente, gastoAntigo, gastoRecente, explicacao, mesesPorGrupo: tamanho };
 }
 
+function rotuloTendenciaPerfil(situacao) {
+  return situacao === 'melhorando' ? t('perfilMelhorando') : situacao === 'piorando' ? t('perfilPiorando') : t('perfilEstavel');
+}
+
 function textoCompartilharPerfilFinanceiro() {
   const p = calcularPerfilFinanceiroSifia();
   if (!p) return '';
   const tendencia = analisarTendenciaFinanceira(p.evolucao);
   const obs = p.leituraObservacoes;
   const coberturaObs = p.registros ? (obs.comObservacao / p.registros) * 100 : 0;
-  let texto = 'Meu Perfil Financeiro Sifia\n\n';
-  texto += 'Período observado: ' + p.mesesAnalisados + (p.mesesAnalisados === 1 ? ' mês' : ' meses') + '\n';
-  texto += 'Registros analisados: ' + p.registros + '\n';
-  texto += 'Entradas médias mensais registradas: ' + formatarMoeda(p.mediaEntradas) + '\n';
-  texto += 'Gastos médios mensais registrados: ' + formatarMoeda(p.mediaSaidas) + '\n';
-  texto += 'Saldo médio mensal: ' + formatarMoeda(p.saldoMedio) + '\n';
-  texto += 'Despesas fixas mensais estimadas: ' + formatarMoeda(p.custoFixoMensal) + '\n';
-  texto += 'Meses com saldo não negativo: ' + p.mesesPositivos + ' de ' + p.mesesAnalisados + ' (' + p.percentualPositivos.toFixed(0) + '%)\n';
-
-  texto += '\nContexto das Observações\n';
-  texto += 'Registros com Observação: ' + obs.comObservacao + ' de ' + p.registros + ' (' + coberturaObs.toFixed(0) + '%)\n';
-  Object.entries(obs.sinais)
-    .filter(([, s]) => s.quantidade > 0)
-    .sort((a, b) => b[1].valor - a[1].valor)
-    .forEach(([chave, s]) => {
-      texto += '- ' + obs.categorias[chave].rotulo + ': ' + s.quantidade + (s.quantidade === 1 ? ' registro' : ' registros') + ' · ' + formatarMoeda(s.valor) + '\n';
-    });
-
-  texto += '\nEvolução financeira\n';
-  if (tendencia) {
-    texto += 'Tendência observada: ' + tendencia.situacao + '\n';
-    texto += 'O que mudou: ' + tendencia.explicacao + '\n';
-    texto += 'Saldo médio recente: ' + formatarMoeda(tendencia.saldoRecente) + ' · período anterior: ' + formatarMoeda(tendencia.saldoAntigo) + '\n';
-  } else {
-    texto += 'Tendência observada: ainda são necessários pelo menos dois meses de registros.\n';
-  }
-  p.evolucao.forEach(m => {
-    texto += '- ' + m.label + ': Entradas ' + formatarMoeda(m.entradas) + ' · Saídas ' + formatarMoeda(m.saidas) + ' · Saldo ' + formatarMoeda(m.saldo) + '\n';
+  const meses = p.mesesAnalisados + ' ' + (p.mesesAnalisados === 1 ? t('perfilMes') : t('perfilMeses'));
+  let texto = t('perfilTitulo') + '\n\n';
+  texto += t('perfilPeriodoObservado') + ': ' + meses + '\n';
+  texto += t('perfilRegistrosAnalisados') + ': ' + p.registros + '\n';
+  texto += t('perfilMediaEntradas') + ': ' + formatarMoeda(p.mediaEntradas) + '\n';
+  texto += t('perfilMediaSaidas') + ': ' + formatarMoeda(p.mediaSaidas) + '\n';
+  texto += t('perfilSaldoMedio') + ': ' + formatarMoeda(p.saldoMedio) + '\n';
+  texto += t('perfilDespesasFixas') + ': ' + formatarMoeda(p.custoFixoMensal) + '\n';
+  texto += t('perfilMesesNaoNegativos') + ': ' + t('perfilDeTotal', { atual: p.mesesPositivos, total: p.mesesAnalisados }) + ' (' + p.percentualPositivos.toFixed(0) + '%)\n';
+  texto += '\n' + t('perfilContextoObservacoes') + '\n';
+  texto += t('perfilRegistrosObservacao') + ': ' + t('perfilDeTotal', { atual: obs.comObservacao, total: p.registros }) + ' (' + coberturaObs.toFixed(0) + '%)\n';
+  Object.entries(obs.sinais).filter(([, x]) => x.quantidade > 0).sort((a,b) => b[1].valor-a[1].valor).forEach(([chave,x]) => {
+    texto += '- ' + obs.categorias[chave].rotulo + ': ' + x.quantidade + ' ' + (x.quantidade === 1 ? t('perfilRegistro') : t('perfilRegistros')) + ' · ' + formatarMoeda(x.valor) + '\n';
   });
-
-  texto += '\nAnálise baseada somente em movimentações efetivamente registradas. Valores previstos ou recorrências ainda não registradas não entram nas médias, saldos e evolução deste perfil.\n';
-  texto += 'Perfil informativo — não é score de crédito, previsão, promessa de aprovação ou recomendação financeira.';
+  texto += '\n' + t('perfilEvolucao') + '\n';
+  if (tendencia) {
+    texto += t('perfilTendencia') + ': ' + rotuloTendenciaPerfil(tendencia.situacao) + '\n';
+    texto += t('perfilOQueMudou') + ': ' + tendencia.explicacao + '\n';
+    texto += t('perfilSaldoRecente') + ': ' + formatarMoeda(tendencia.saldoRecente) + ' · ' + t('perfilPeriodoAnterior') + ': ' + formatarMoeda(tendencia.saldoAntigo) + '\n';
+  } else texto += t('perfilTendencia') + ': ' + t('perfilDoisMeses') + '\n';
+  p.evolucao.forEach(m => { texto += '- ' + m.label + ': ' + t('entradas') + ' ' + formatarMoeda(m.entradas) + ' · ' + t('saidas') + ' ' + formatarMoeda(m.saidas) + ' · ' + t('saldo') + ' ' + formatarMoeda(m.saldo) + '\n'; });
+  texto += '\n' + t('perfilAnaliseBase') + '\n' + t('perfilAvisoCompartilhar');
   return texto;
 }
 
@@ -2181,104 +2175,39 @@ async function compartilharPerfilFinanceiro() {
   const statusEl = document.getElementById('statusPerfilFinanceiro');
   if (!texto) return;
   if (navigator.share) {
-    try {
-      await navigator.share({ title: 'Meu Perfil Financeiro Sifia', text: texto });
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-    }
+    try { await navigator.share({ title: t('perfilTitulo'), text: texto }); return; }
+    catch (err) { if (err.name === 'AbortError') return; }
   }
   try {
     await navigator.clipboard.writeText(texto);
-    if (statusEl) statusEl.textContent = 'Meu Perfil copiado para a área de transferência.';
+    if (statusEl) statusEl.textContent = t('perfilCopiado');
   } catch (err) {
-    if (statusEl) statusEl.textContent = 'Não foi possível compartilhar o Meu Perfil neste dispositivo.';
+    if (statusEl) statusEl.textContent = t('perfilCompartilharErro');
   }
 }
 
 function renderizarPerfilFinanceiro() {
   const el = document.getElementById('perfilFinanceiroConteudo');
   const p = calcularPerfilFinanceiroSifia();
-  if (!p) {
-    el.innerHTML = '<div class="empty">Registre movimentações para o Sifia começar a construir seu perfil financeiro.</div>';
-    return;
-  }
-  const linha = (rotulo, valor, classe) => `
-    <div class="relatorio-resumo-linha">
-      <span>${rotulo}</span>
-      <strong class="${classe || ''}">${valor}</strong>
-    </div>`;
+  if (!p) { el.innerHTML = '<div class="empty">' + t('perfilSemDados') + '</div>'; return; }
+  const linha = (rotulo, valor, classe) => '<div class="relatorio-resumo-linha"><span>' + rotulo + '</span><strong class="' + (classe || '') + '">' + valor + '</strong></div>';
   const tendencia = analisarTendenciaFinanceira(p.evolucao);
   const maiorAbs = Math.max(1, ...p.evolucao.map(m => Math.max(m.entradas, m.saidas)));
   const mesesHtml = p.evolucao.map(m => {
-    const larguraEntrada = Math.max(2, (m.entradas / maiorAbs) * 100);
-    const larguraSaida = Math.max(2, (m.saidas / maiorAbs) * 100);
-    return `<div style="padding:10px 0; border-bottom:1px solid var(--border);">
-      <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:7px;">
-        <strong style="text-transform:capitalize;">${escapeHtml(m.label)}</strong>
-        <strong class="${m.saldo >= 0 ? 'entrada' : 'saida'}">${formatarMoeda(m.saldo)}</strong>
-      </div>
-      <div style="display:grid; grid-template-columns:62px 1fr auto; gap:7px; align-items:center; font-size:.78rem;">
-        <span>Entradas</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:${larguraEntrada}%;height:100%;background:var(--success);"></span></span><span>${formatarMoeda(m.entradas)}</span>
-        <span>Saídas</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:${larguraSaida}%;height:100%;background:var(--destructive);"></span></span><span>${formatarMoeda(m.saidas)}</span>
-      </div>
-    </div>`;
+    const larguraEntrada = Math.max(2, (m.entradas / maiorAbs) * 100), larguraSaida = Math.max(2, (m.saidas / maiorAbs) * 100);
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--border);"><div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:7px;"><strong style="text-transform:capitalize;">'+escapeHtml(m.label)+'</strong><strong class="'+(m.saldo>=0?'entrada':'saida')+'">'+formatarMoeda(m.saldo)+'</strong></div><div style="display:grid;grid-template-columns:62px 1fr auto;gap:7px;align-items:center;font-size:.78rem;"><span>'+t('entradas')+'</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:'+larguraEntrada+'%;height:100%;background:var(--success);"></span></span><span>'+formatarMoeda(m.entradas)+'</span><span>'+t('saidas')+'</span><span style="height:7px;background:var(--border);border-radius:8px;overflow:hidden;"><span style="display:block;width:'+larguraSaida+'%;height:100%;background:var(--destructive);"></span></span><span>'+formatarMoeda(m.saidas)+'</span></div></div>';
   }).join('');
-
-  let tendenciaHtml = '<p class="aviso-backup" style="margin:8px 0 0;">Precisamos de pelo menos dois meses de registros para identificar uma tendência.</p>';
+  let tendenciaHtml = '<p class="aviso-backup" style="margin:8px 0 0;">'+t('perfilDoisMeses')+'</p>';
   if (tendencia) {
-    const classe = tendencia.situacao === 'melhorando' ? 'entrada' : (tendencia.situacao === 'piorando' ? 'saida' : '');
-    const frase = tendencia.situacao === 'melhorando'
-      ? 'Seu saldo médio recente está melhor que no início do período observado.'
-      : tendencia.situacao === 'piorando'
-        ? 'Seu saldo médio recente está abaixo do início do período observado.'
-        : 'Seu saldo médio recente está próximo do início do período observado.';
-    tendenciaHtml = `<div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);">
-      <div style="display:flex;justify-content:space-between;gap:12px;"><span>Tendência observada</span><strong class="${classe}" style="text-transform:capitalize;">${tendencia.situacao}</strong></div>
-      <p class="aviso-backup" style="margin:6px 0 0;">${frase}</p><p class="aviso-backup" style="margin:6px 0 0;"><strong>O que mudou:</strong> ${tendencia.explicacao}</p><p class="aviso-backup" style="margin:6px 0 0;">Saldo médio recente: <strong>${formatarMoeda(tendencia.saldoRecente)}</strong> · período anterior: <strong>${formatarMoeda(tendencia.saldoAntigo)}</strong>. Leitura histórica, não previsão.</p>
-    </div>`;
+    const classe=tendencia.situacao==='melhorando'?'entrada':(tendencia.situacao==='piorando'?'saida':'');
+    const frase=tendencia.situacao==='melhorando'?t('perfilFraseMelhorando'):tendencia.situacao==='piorando'?t('perfilFrasePiorando'):t('perfilFraseEstavel');
+    tendenciaHtml='<div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);"><div style="display:flex;justify-content:space-between;gap:12px;"><span>'+t('perfilTendencia')+'</span><strong class="'+classe+'">'+rotuloTendenciaPerfil(tendencia.situacao)+'</strong></div><p class="aviso-backup" style="margin:6px 0 0;">'+frase+'</p><p class="aviso-backup" style="margin:6px 0 0;"><strong>'+t('perfilOQueMudou')+':</strong> '+tendencia.explicacao+'</p><p class="aviso-backup" style="margin:6px 0 0;">'+t('perfilSaldoRecente')+': <strong>'+formatarMoeda(tendencia.saldoRecente)+'</strong> · '+t('perfilPeriodoAnterior')+': <strong>'+formatarMoeda(tendencia.saldoAntigo)+'</strong>. '+t('perfilLeituraHistorica')+'</p></div>';
   }
-
-  const obs = p.leituraObservacoes;
-  const coberturaObs = p.registros ? (obs.comObservacao / p.registros) * 100 : 0;
-  const sinaisObsHtml = Object.entries(obs.sinais)
-    .filter(([, s]) => s.quantidade > 0)
-    .sort((a, b) => b[1].valor - a[1].valor)
-    .map(([chave, s]) => {
-      const rotulo = obs.categorias[chave].rotulo;
-      return linha(rotulo, s.quantidade + (s.quantidade === 1 ? ' registro' : ' registros') + ' · ' + formatarMoeda(s.valor));
-    }).join('');
-  const leituraObsHtml = `
-    <div style="margin-top:22px;">
-      <div class="grupo-dia" style="margin:0;">Contexto das Observações</div>
-      <p class="aviso-backup" style="margin:5px 0 8px;">O Sifia agora usa suas Observações como contexto para compreender melhor as movimentações. O texto original não é alterado e estes sinais são hipóteses, não classificações definitivas.</p>
-      ${linha('Registros com Observação', obs.comObservacao + ' de ' + p.registros + ' (' + coberturaObs.toFixed(0) + '%)')}
-      ${sinaisObsHtml || '<p class="aviso-backup" style="margin:8px 0 0;">Ainda não encontramos padrões suficientes nas Observações registradas.</p>'}
-    </div>`;
-
-  el.innerHTML = `
-    <div style="margin-top:14px;">
-      ${linha('Período observado', p.mesesAnalisados + (p.mesesAnalisados === 1 ? ' mês' : ' meses'))}
-      ${linha('Registros analisados', String(p.registros))}
-      ${linha('Entradas médias mensais registradas', formatarMoeda(p.mediaEntradas), 'entrada')}
-      ${linha('Gastos médios mensais registrados', formatarMoeda(p.mediaSaidas), 'saida')}
-      ${linha('Saldo médio mensal', formatarMoeda(p.saldoMedio), p.saldoMedio >= 0 ? 'entrada' : 'saida')}
-      ${linha('Despesas fixas mensais estimadas', formatarMoeda(p.custoFixoMensal))}
-      ${linha('Meses com saldo não negativo', p.mesesPositivos + ' de ' + p.mesesAnalisados + ' (' + p.percentualPositivos.toFixed(0) + '%)')}
-    </div>
-    ${leituraObsHtml}
-    <div style="margin-top:22px;">
-      <div class="grupo-dia" style="margin:0;">Evolução financeira</div>
-      <p class="aviso-backup" style="margin:5px 0 4px;">Entradas, saídas e saldo mês a mês mostram somente o que foi efetivamente registrado. Previsões e recorrências ainda não registradas não entram nesta evolução. Por isso, os valores podem ser diferentes do painel principal ou dos Relatórios, que podem considerar recorrências conhecidas.</p>
-      ${tendenciaHtml}
-      <div style="margin-top:8px;">${mesesHtml}</div>
-    </div>
-    <div style="margin-top:18px; padding:14px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--secondary);">
-      <strong>Clareza hoje. Histórico para o futuro.</strong>
-      <p class="aviso-backup" style="margin:6px 0 0;">Quanto mais você registra sua vida financeira no Sifia, mais completa fica esta visão. Seus dados financeiros continuam no seu aparelho.</p>
-    </div>
-    <button onclick="compartilharPerfilFinanceiro()" style="width:100%; margin-top:16px;">Compartilhar Meu Perfil</button>
-    <div class="status" id="statusPerfilFinanceiro"></div>`;
+  const obs=p.leituraObservacoes, coberturaObs=p.registros?(obs.comObservacao/p.registros)*100:0;
+  const sinaisObsHtml=Object.entries(obs.sinais).filter(([,x])=>x.quantidade>0).sort((a,b)=>b[1].valor-a[1].valor).map(([chave,x])=>linha(obs.categorias[chave].rotulo,x.quantidade+' '+(x.quantidade===1?t('perfilRegistro'):t('perfilRegistros'))+' · '+formatarMoeda(x.valor))).join('');
+  const leituraObsHtml='<div style="margin-top:22px;"><div class="grupo-dia" style="margin:0;">'+t('perfilContextoObservacoes')+'</div><p class="aviso-backup" style="margin:5px 0 8px;">'+t('perfilObservacoesDescricao')+'</p>'+linha(t('perfilRegistrosObservacao'),t('perfilDeTotal',{atual:obs.comObservacao,total:p.registros})+' ('+coberturaObs.toFixed(0)+'%)')+(sinaisObsHtml||'<p class="aviso-backup" style="margin:8px 0 0;">'+t('perfilSemPadroes')+'</p>')+'</div>';
+  const meses=p.mesesAnalisados+' '+(p.mesesAnalisados===1?t('perfilMes'):t('perfilMeses'));
+  el.innerHTML='<div style="margin-top:14px;">'+linha(t('perfilPeriodoObservado'),meses)+linha(t('perfilRegistrosAnalisados'),String(p.registros))+linha(t('perfilMediaEntradas'),formatarMoeda(p.mediaEntradas),'entrada')+linha(t('perfilMediaSaidas'),formatarMoeda(p.mediaSaidas),'saida')+linha(t('perfilSaldoMedio'),formatarMoeda(p.saldoMedio),p.saldoMedio>=0?'entrada':'saida')+linha(t('perfilDespesasFixas'),formatarMoeda(p.custoFixoMensal))+linha(t('perfilMesesNaoNegativos'),t('perfilDeTotal',{atual:p.mesesPositivos,total:p.mesesAnalisados})+' ('+p.percentualPositivos.toFixed(0)+'%)')+'</div>'+leituraObsHtml+'<div style="margin-top:22px;"><div class="grupo-dia" style="margin:0;">'+t('perfilEvolucao')+'</div><p class="aviso-backup" style="margin:5px 0 4px;">'+t('perfilEvolucaoDescricao')+'</p>'+tendenciaHtml+'<div style="margin-top:8px;">'+mesesHtml+'</div></div><div style="margin-top:18px;padding:14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--secondary);"><strong>'+t('perfilClareza')+'</strong><p class="aviso-backup" style="margin:6px 0 0;">'+t('perfilClarezaDescricao')+'</p></div><button onclick="compartilharPerfilFinanceiro()" style="width:100%;margin-top:16px;">'+t('perfilCompartilhar')+'</button><div class="status" id="statusPerfilFinanceiro"></div>';
 }
 
 function alternarPerfilFinanceiro() {
@@ -2300,7 +2229,7 @@ function alternarPerfilFinanceiro() {
 function fecharTodasSecoes() {
   const secoes = [
     ['relatorioCard', 'relatorioToggle', t('navRelatorios')],
-    ['perfilFinanceiroCard', 'perfilFinanceiroToggle', 'Meu Perfil'],
+    ['perfilFinanceiroCard', 'perfilFinanceiroToggle', t('meuPerfil')],
     ['dinheiroCard', 'dinheiroToggle', t('navManual')],
     ['backupCard', 'backupToggle', t('navBackup')],
     ['uploadHistoricoCard', 'uploadHistoricoToggle', t('navUpload')],
@@ -5526,6 +5455,49 @@ const TRADUCOES2 = {
   compartilharPlanejamento: { pt:'Compartilhar Planejamento', en:'Share Planning', es:'Compartir Planificación' },
   transacoesDesteResumo: { pt:'Transações deste resumo', en:'Transactions in this summary', es:'Movimientos de este resumen' },
   fechar: { pt:'Fechar', en:'Close', es:'Cerrar' },
+
+  meuPerfil: { pt:'Meu Perfil', en:'My Profile', es:'Mi Perfil' },
+  perfilTitulo: { pt:'Meu Perfil Financeiro Sifia', en:'My Sifia Financial Profile', es:'Mi Perfil Financiero Sifia' },
+  perfilIntro: { pt:'Uma visão histórica da sua vida financeira, calculada no seu aparelho com base nas movimentações efetivamente registradas no Sifia. Valores apenas previstos ou recorrências que ainda não foram registrados como movimentação não entram nas médias, saldos e evolução deste perfil.', en:'A historical view of your financial life, calculated on your device from transactions actually recorded in Sifia. Forecasts and recurring items not yet recorded as transactions are excluded from this profile’s averages, balances, and trends.', es:'Una visión histórica de tu vida financiera, calculada en tu dispositivo a partir de los movimientos realmente registrados en Sifia. Las previsiones y recurrencias aún no registradas como movimientos no entran en los promedios, saldos ni evolución de este perfil.' },
+  perfilAviso: { pt:'Este perfil é informativo. Não é score de crédito, promessa de aprovação ou recomendação de empréstimo.', en:'This profile is informational. It is not a credit score, approval promise, or loan recommendation.', es:'Este perfil es informativo. No es una puntuación crediticia, promesa de aprobación ni recomendación de préstamo.' },
+  perfilSemDados: { pt:'Registre movimentações para o Sifia começar a construir seu perfil financeiro.', en:'Record transactions so Sifia can start building your financial profile.', es:'Registra movimientos para que Sifia empiece a construir tu perfil financiero.' },
+  perfilPeriodoObservado: { pt:'Período observado', en:'Observed period', es:'Período observado' },
+  perfilRegistrosAnalisados: { pt:'Registros analisados', en:'Records analyzed', es:'Registros analizados' },
+  perfilMediaEntradas: { pt:'Entradas médias mensais registradas', en:'Average monthly recorded income', es:'Entradas mensuales promedio registradas' },
+  perfilMediaSaidas: { pt:'Gastos médios mensais registrados', en:'Average monthly recorded expenses', es:'Gastos mensuales promedio registrados' },
+  perfilSaldoMedio: { pt:'Saldo médio mensal', en:'Average monthly balance', es:'Saldo mensual promedio' },
+  perfilDespesasFixas: { pt:'Despesas fixas mensais estimadas', en:'Estimated monthly fixed expenses', es:'Gastos fijos mensuales estimados' },
+  perfilMesesNaoNegativos: { pt:'Meses com saldo não negativo', en:'Months with non-negative balance', es:'Meses con saldo no negativo' },
+  perfilContextoObservacoes: { pt:'Contexto das Observações', en:'Notes context', es:'Contexto de las observaciones' },
+  perfilObservacoesDescricao: { pt:'O Sifia usa suas Observações como contexto para compreender melhor as movimentações. O texto original não é alterado e estes sinais são hipóteses, não classificações definitivas.', en:'Sifia uses your Notes as context to better understand transactions. The original text is not changed and these signals are hypotheses, not definitive classifications.', es:'Sifia usa tus Observaciones como contexto para comprender mejor los movimientos. El texto original no se modifica y estas señales son hipótesis, no clasificaciones definitivas.' },
+  perfilRegistrosObservacao: { pt:'Registros com Observação', en:'Records with Notes', es:'Registros con observación' },
+  perfilSemPadroes: { pt:'Ainda não encontramos padrões suficientes nas Observações registradas.', en:'There are not enough patterns in the recorded Notes yet.', es:'Aún no hay patrones suficientes en las observaciones registradas.' },
+  perfilEvolucao: { pt:'Evolução financeira', en:'Financial trend', es:'Evolución financiera' },
+  perfilEvolucaoDescricao: { pt:'Entradas, saídas e saldo mês a mês mostram somente o que foi efetivamente registrado. Previsões e recorrências ainda não registradas não entram nesta evolução.', en:'Monthly income, expenses, and balance show only what was actually recorded. Forecasts and recurring items not yet recorded are excluded.', es:'Las entradas, salidas y el saldo mes a mes muestran solo lo realmente registrado. Las previsiones y recurrencias aún no registradas quedan fuera.' },
+  perfilTendencia: { pt:'Tendência observada', en:'Observed trend', es:'Tendencia observada' },
+  perfilDoisMeses: { pt:'Precisamos de pelo menos dois meses de registros para identificar uma tendência.', en:'At least two months of records are needed to identify a trend.', es:'Se necesitan al menos dos meses de registros para identificar una tendencia.' },
+  perfilMelhorando: { pt:'melhorando', en:'improving', es:'mejorando' },
+  perfilPiorando: { pt:'piorando', en:'worsening', es:'empeorando' },
+  perfilEstavel: { pt:'estável', en:'stable', es:'estable' },
+  perfilFraseMelhorando: { pt:'Seu saldo médio recente está melhor que no início do período observado.', en:'Your recent average balance is better than at the beginning of the observed period.', es:'Tu saldo promedio reciente es mejor que al inicio del período observado.' },
+  perfilFrasePiorando: { pt:'Seu saldo médio recente está abaixo do início do período observado.', en:'Your recent average balance is below the beginning of the observed period.', es:'Tu saldo promedio reciente está por debajo del inicio del período observado.' },
+  perfilFraseEstavel: { pt:'Seu saldo médio recente está próximo do início do período observado.', en:'Your recent average balance is close to the beginning of the observed period.', es:'Tu saldo promedio reciente está cerca del inicio del período observado.' },
+  perfilOQueMudou: { pt:'O que mudou', en:'What changed', es:'Qué cambió' },
+  perfilSaldoRecente: { pt:'Saldo médio recente', en:'Recent average balance', es:'Saldo promedio reciente' },
+  perfilPeriodoAnterior: { pt:'período anterior', en:'previous period', es:'período anterior' },
+  perfilLeituraHistorica: { pt:'Leitura histórica, não previsão.', en:'Historical reading, not a forecast.', es:'Lectura histórica, no una previsión.' },
+  perfilClareza: { pt:'Clareza hoje. Histórico para o futuro.', en:'Clarity today. History for the future.', es:'Claridad hoy. Historial para el futuro.' },
+  perfilClarezaDescricao: { pt:'Quanto mais você registra sua vida financeira no Sifia, mais completa fica esta visão. Seus dados financeiros continuam no seu aparelho.', en:'The more of your financial life you record in Sifia, the more complete this view becomes. Your financial data remains on your device.', es:'Cuanto más registras tu vida financiera en Sifia, más completa se vuelve esta visión. Tus datos financieros permanecen en tu dispositivo.' },
+  perfilCompartilhar: { pt:'Compartilhar Meu Perfil', en:'Share My Profile', es:'Compartir Mi Perfil' },
+  perfilCopiado: { pt:'Meu Perfil copiado para a área de transferência.', en:'My Profile copied to the clipboard.', es:'Mi Perfil se copió al portapapeles.' },
+  perfilCompartilharErro: { pt:'Não foi possível compartilhar o Meu Perfil neste dispositivo.', en:'My Profile could not be shared on this device.', es:'No fue posible compartir Mi Perfil en este dispositivo.' },
+  perfilAnaliseBase: { pt:'Análise baseada somente em movimentações efetivamente registradas. Valores previstos ou recorrências ainda não registradas não entram nas médias, saldos e evolução deste perfil.', en:'Analysis based only on transactions actually recorded. Forecasts or recurring items not yet recorded are excluded from this profile’s averages, balances, and trends.', es:'Análisis basado solo en movimientos realmente registrados. Las previsiones o recurrencias aún no registradas quedan fuera de los promedios, saldos y evolución de este perfil.' },
+  perfilAvisoCompartilhar: { pt:'Perfil informativo — não é score de crédito, previsão, promessa de aprovação ou recomendação financeira.', en:'Informational profile — not a credit score, forecast, approval promise, or financial recommendation.', es:'Perfil informativo: no es puntuación crediticia, previsión, promesa de aprobación ni recomendación financiera.' },
+  perfilMes: { pt:'mês', en:'month', es:'mes' },
+  perfilMeses: { pt:'meses', en:'months', es:'meses' },
+  perfilRegistro: { pt:'registro', en:'record', es:'registro' },
+  perfilRegistros: { pt:'registros', en:'records', es:'registros' },
+  perfilDeTotal: { pt:'{atual} de {total}', en:'{atual} of {total}', es:'{atual} de {total}' },
 
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
