@@ -1,0 +1,28 @@
+name: Sifia - Integridade de Dados
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  data-integrity:
+    name: Proteger dados financeiros
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Testar integridade dos dados
+        run: npm test
