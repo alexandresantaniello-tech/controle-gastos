@@ -1,0 +1,48 @@
+name: Build Sifia Native Apps
+
+on:
+  push:
+    branches: [native-app]
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm install
+      - run: npx cap add android
+      - run: npx cap sync android
+      - name: Build Android debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sifia-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm install
+      - run: npx cap add ios
+      - run: npx cap sync ios
+      - name: Build iOS simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -derivedDataPath build-ios CODE_SIGNING_ALLOWED=NO build
+          ditto -c -k --sequesterRsrc --keepParent build-ios/Build/Products/Debug-iphonesimulator/App.app Sifia-ios-simulator.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sifia-ios-simulator
+          path: Sifia-ios-simulator.zip
