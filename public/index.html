@@ -1654,15 +1654,15 @@ function graficoEvolucaoHtml(transacoes, inicio, fim) {
   const dados = dadosEvolucaoRelatorio(transacoes,inicio,fim);
   if (!dados.length) return '';
   const max = Math.max(...dados.flatMap(x=>[x.entradas,x.saidas]),1);
-  return `<div class="grupo-dia">Evolução no período</div>
-    <div class="relatorio-grafico">${dados.map(x=>`<div class="relatorio-grafico-coluna" title="${escapeHtml(x.label)} · Entradas ${formatarMoeda(x.entradas)} · Saídas ${formatarMoeda(x.saidas)}">
+  return `<div class="grupo-dia">${t('evolucaoPeriodo')}</div>
+    <div class="relatorio-grafico">${dados.map(x=>`<div class="relatorio-grafico-coluna" title="${escapeHtml(x.label)} · ${t('rotuloEntradas')} ${formatarMoeda(x.entradas)} · ${t('rotuloSaidas')} ${formatarMoeda(x.saidas)}">
       <div class="relatorio-grafico-barras">
         <div class="relatorio-grafico-barra entrada" style="height:${Math.max(2,x.entradas/max*100)}%"></div>
         <div class="relatorio-grafico-barra saida" style="height:${Math.max(2,x.saidas/max*100)}%"></div>
       </div>
       <div class="relatorio-grafico-label">${escapeHtml(x.label)}</div>
     </div>`).join('')}</div>
-    <div style="font-size:0.68rem;color:var(--muted-foreground);text-align:center;margin-bottom:8px;"><span class="entrada">■ Entradas</span> &nbsp; <span class="saida">■ Saídas</span></div>`;
+    <div style="font-size:0.68rem;color:var(--muted-foreground);text-align:center;margin-bottom:8px;"><span class="entrada">■ ${t('rotuloEntradas')}</span> &nbsp; <span class="saida">■ ${t('rotuloSaidas')}</span></div>`;
 }
 
 // So agrupa/soma quem TEM observacao de verdade (ex: "Uber", "Combustivel")
@@ -1868,18 +1868,18 @@ function renderizarRelatorio() {
     <div class="relatorio-resumo-linha"><span>${t('saldoLabel')}</span><strong>${formatarMoeda(totais.saldo)}</strong></div>
 
     <div class="relatorio-inteligencia">
-      <div class="grupo-dia" style="margin-top:0;">Comparação com o período anterior</div>
+      <div class="grupo-dia" style="margin-top:0;">${t('comparacaoPeriodoAnterior')}</div>
       <div style="font-size:0.7rem;color:var(--muted-foreground);margin-bottom:8px;">${escapeHtml(intervaloAnterior.label)}</div>
       <div class="relatorio-comparacao-grid">
-        <div class="relatorio-metrica"><small>Entradas</small><strong class="entrada">${textoVariacao(totais.entradas,totaisAnterior.entradas)}</strong></div>
-        <div class="relatorio-metrica"><small>Saídas</small><strong class="saida">${textoVariacao(totais.saidas,totaisAnterior.saidas)}</strong></div>
-        <div class="relatorio-metrica"><small>Saldo</small><strong>${textoVariacao(totais.saldo,totaisAnterior.saldo)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('rotuloEntradas')}</small><strong class="entrada">${textoVariacao(totais.entradas,totaisAnterior.entradas)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('rotuloSaidas')}</small><strong class="saida">${textoVariacao(totais.saidas,totaisAnterior.saidas)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('saldoLabel')}</small><strong>${textoVariacao(totais.saldo,totaisAnterior.saldo)}</strong></div>
       </div>
-      <div class="grupo-dia">Médias por dia</div>
+      <div class="grupo-dia">${t('mediasPorDia')}</div>
       <div class="relatorio-comparacao-grid">
-        <div class="relatorio-metrica"><small>Entradas/dia</small><strong class="entrada">${formatarMoeda(totais.entradas/dias)}</strong></div>
-        <div class="relatorio-metrica"><small>Saídas/dia</small><strong class="saida">${formatarMoeda(totais.saidas/dias)}</strong></div>
-        <div class="relatorio-metrica"><small>Saldo/dia</small><strong>${formatarMoeda(totais.saldo/dias)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('entradasDia')}</small><strong class="entrada">${formatarMoeda(totais.entradas/dias)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('saidasDia')}</small><strong class="saida">${formatarMoeda(totais.saidas/dias)}</strong></div>
+        <div class="relatorio-metrica"><small>${t('saldoDia')}</small><strong>${formatarMoeda(totais.saldo/dias)}</strong></div>
       </div>
     </div>
     ${graficoEvolucaoHtml(transacoes,inicio,fim)}
@@ -1926,9 +1926,9 @@ function textoResumoRelatorio() {
   texto += `${t('rotuloEntradas')}: ${formatarMoeda(totais.entradas)}\n`;
   texto += `${t('rotuloSaidas')}: ${formatarMoeda(totais.saidas)}\n`;
   texto += `${t('saldoLabel')}: ${formatarMoeda(totais.saldo)}\n`;
-  texto += `\nComparação com ${intAnt.label}:\n`;
-  texto += `- Entradas: ${textoVariacao(totais.entradas,totaisAnt.entradas)}\n- Saídas: ${textoVariacao(totais.saidas,totaisAnt.saidas)}\n- Saldo: ${textoVariacao(totais.saldo,totaisAnt.saldo)}\n`;
-  texto += `\nMédias por dia:\n- Entradas: ${formatarMoeda(totais.entradas/dias)}\n- Saídas: ${formatarMoeda(totais.saidas/dias)}\n- Saldo: ${formatarMoeda(totais.saldo/dias)}\n`;
+  texto += `\n${t('comparacaoCom', { label: intAnt.label })}:\n`;
+  texto += `- ${t('rotuloEntradas')}: ${textoVariacao(totais.entradas,totaisAnt.entradas)}\n- ${t('rotuloSaidas')}: ${textoVariacao(totais.saidas,totaisAnt.saidas)}\n- ${t('saldoLabel')}: ${textoVariacao(totais.saldo,totaisAnt.saldo)}\n`;
+  texto += `\n${t('mediasPorDia')}:\n- ${t('rotuloEntradas')}: ${formatarMoeda(totais.entradas/dias)}\n- ${t('rotuloSaidas')}: ${formatarMoeda(totais.saidas/dias)}\n- ${t('saldoLabel')}: ${formatarMoeda(totais.saldo/dias)}\n`;
 
   if (transacoes.length > 0) {
     texto += `\n${t('porFormaPagamento')}:\n`;
@@ -2958,23 +2958,23 @@ function renderizarPlanejamento() {
     const saldoAindaPrevisto = aReceber - aPagar;
 
     html += `<div style="margin-bottom:14px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--secondary);">
-      <div style="font-size:.8em;color:var(--muted-foreground);margin-bottom:8px;">VISÃO DO MÊS</div>
-      <div class="relatorio-resumo-linha"><span>Entradas previstas</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
-      <div class="relatorio-resumo-linha"><span>Saídas previstas</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
-      <div class="relatorio-resumo-linha"><span>Saldo projetado</span><strong class="${saldoProjetado>=0?'entrada':'saida'}">${formatarMoeda(saldoProjetado)}</strong></div>
+      <div style="font-size:.8em;color:var(--muted-foreground);margin-bottom:8px;">${t('visaoMesUpper')}</div>
+      <div class="relatorio-resumo-linha"><span>${t('entradasPrevistas')}</span><strong class="entrada">${formatarMoeda(totalEntradas)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>${t('saidasPrevistas')}</span><strong class="saida">${formatarMoeda(totalSaidas)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>${t('saldoProjetado')}</span><strong class="${saldoProjetado>=0?'entrada':'saida'}">${formatarMoeda(saldoProjetado)}</strong></div>
     </div>
-    <div class="relatorio-resumo-linha"><span>Já recebido</span><strong class="entrada">${formatarMoeda(recebido)}</strong></div>
-    <div class="relatorio-resumo-linha"><span>A receber</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
-    <div class="relatorio-resumo-linha"><span>Já pago</span><strong class="entrada">${formatarMoeda(pago)}</strong></div>
-    <div class="relatorio-resumo-linha"><span>Falta pagar</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('jaRecebido')}</span><strong class="entrada">${formatarMoeda(recebido)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('aReceber')}</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('jaPago')}</span><strong class="entrada">${formatarMoeda(pago)}</strong></div>
+    <div class="relatorio-resumo-linha"><span>${t('faltaPagar')}</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
     <div style="margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-md);">
-      <div style="font-size:.78em;color:var(--muted-foreground);margin-bottom:5px;">DAQUI PARA FRENTE</div>
-      <div class="relatorio-resumo-linha"><span>Ainda a receber</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
-      <div class="relatorio-resumo-linha"><span>Ainda a pagar</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
-      <div class="relatorio-resumo-linha"><span>Diferença</span><strong class="${saldoAindaPrevisto>=0?'entrada':'saida'}">${formatarMoeda(saldoAindaPrevisto)}</strong></div>
+      <div style="font-size:.78em;color:var(--muted-foreground);margin-bottom:5px;">${t('daquiFrenteUpper')}</div>
+      <div class="relatorio-resumo-linha"><span>${t('aindaReceber')}</span><strong class="entrada">${formatarMoeda(aReceber)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>${t('aindaPagar')}</span><strong class="saida">${formatarMoeda(aPagar)}</strong></div>
+      <div class="relatorio-resumo-linha"><span>${t('diferenca')}</span><strong class="${saldoAindaPrevisto>=0?'entrada':'saida'}">${formatarMoeda(saldoAindaPrevisto)}</strong></div>
     </div>`;
 
-    if (itens.some(i=>!i.valor)) html += '<p class="dica-observacao" style="margin-top:6px;">Itens sem valor informado não entram nos totais.</p>';
+    if (itens.some(i=>!i.valor)) html += '<p class="dica-observacao" style="margin-top:6px;">'+t('itensSemValorTotais')+'</p>';
     const transacoes = carregarTransacoes();
 
     function renderGrupoPlanejamento(lista, titulo, ehEntrada) {
@@ -2989,19 +2989,19 @@ function renderizarPlanejamento() {
         let tempoTexto = '';
         if (!item.pago && ehMesAtual) {
           const diff = item.dia - diaHoje;
-          if (diff === 0) tempoTexto = ehEntrada ? 'previsto para hoje' : 'vence hoje';
-          else if (diff > 0) tempoTexto = diff === 1 ? 'amanhã' : `em ${diff} dias`;
+          if (diff === 0) tempoTexto = ehEntrada ? t('previstoHoje') : t('venceHoje');
+          else if (diff > 0) tempoTexto = diff === 1 ? t('amanha') : t('emDias', { dias: diff });
           else {
             const dias = Math.abs(diff);
-            tempoTexto = ehEntrada ? `recebimento pendente há ${dias} ${dias===1?'dia':'dias'}` : `${dias} ${dias===1?'dia em atraso':'dias em atraso'}`;
+            tempoTexto = ehEntrada ? t(dias===1?'recebimentoPendenteDia':'recebimentoPendenteDias', { dias }) : t(dias===1?'diaAtraso':'diasAtraso', { dias });
           }
         }
         const tagPendente = tempoTexto ? ` <span style="font-size:.75em;color:var(--muted-foreground);">(${tempoTexto})</span>` : '';
-        const acao = ehEntrada ? 'Marcar como recebido' : t('marcarComoPago');
+        const acao = ehEntrada ? t('marcarComoRecebido') : t('marcarComoPago');
         const acoes = `<span style="display:flex;gap:8px;flex-shrink:0;">${item.pago?'':`<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="marcarItemPlanejamentoComoPago('${item.id}')">${acao}</button>`}<button class="secondary" style="padding:6px 10px;font-size:.8rem;" onclick="editarItemPlanejamento('${item.id}')"><svg class="icone-toggle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button><button class="secondary perigo" style="padding:6px 10px;font-size:.8rem;" onclick="removerItemPlanejamento('${item.id}')">×</button></span>`;
         const descricaoHtml = `<span onclick="editarDescricaoItemPlanejamento('${item.id}')" style="cursor:pointer;">${escapeHtml(item.descricao)}</span>`;
         const valorHtml = `<span onclick="editarValorItemPlanejamento('${item.id}')" style="cursor:pointer;text-decoration:underline dotted;">${valorTexto}</span>`;
-        const observacaoHtml = item.observacao ? `<div style="font-size:.78em;color:var(--muted-foreground);margin-top:2px;">Obs.: ${escapeHtml(item.observacao)}</div>` : '';
+        const observacaoHtml = item.observacao ? `<div style="font-size:.78em;color:var(--muted-foreground);margin-top:2px;">${t('observacaoAbrev')}: ${escapeHtml(item.observacao)}</div>` : '';
         let forma = '';
         if (item.pago && item.transacaoId != null) {
           const tr = transacoes.find(t=>t.id===item.transacaoId);
@@ -3013,10 +3013,10 @@ function renderizarPlanejamento() {
       return grupo;
     }
 
-    html += renderGrupoPlanejamento(entradas, 'A RECEBER ESTE MÊS', true);
-    html += renderGrupoPlanejamento(saidas, 'A PAGAR ESTE MÊS', false);
+    html += renderGrupoPlanejamento(entradas, t('aReceberMesUpper'), true);
+    html += renderGrupoPlanejamento(saidas, t('aPagarMesUpper'), false);
   } else {
-    html = '<p class="dica-observacao">Nada planejado para este mês.</p>';
+    html = '<p class="dica-observacao">'+t('nadaPlanejadoMes')+'</p>';
   }
   document.getElementById('listaPlanejamento').innerHTML = html;
 }
@@ -3031,22 +3031,22 @@ function textoCompartilharPlanejamento() {
   const recebido = entradas.filter(i=>i.pago).reduce((s,i)=>s+(i.valor||0),0);
   const pago = saidas.filter(i=>i.pago).reduce((s,i)=>s+(i.valor||0),0);
   const aReceber = totalEntradas - recebido, aPagar = totalSaidas - pago;
-  let texto = 'Planejamento Sifia — ' + mesAno(mes, ano) + '\n\n';
-  texto += 'Entradas previstas: ' + formatarMoeda(totalEntradas) + '\n';
-  texto += 'Saídas previstas: ' + formatarMoeda(totalSaidas) + '\n';
-  texto += 'Saldo projetado: ' + formatarMoeda(totalEntradas-totalSaidas) + '\n';
-  texto += 'Já recebido: ' + formatarMoeda(recebido) + ' · A receber: ' + formatarMoeda(aReceber) + '\n';
-  texto += 'Já pago: ' + formatarMoeda(pago) + ' · Falta pagar: ' + formatarMoeda(aPagar) + '\n';
-  texto += 'Ainda previsto daqui para frente: ' + formatarMoeda(aReceber-aPagar) + '\n';
+  let texto = t('planejamentoSifia') + ' — ' + mesAno(mes, ano) + '\n\n';
+  texto += t('entradasPrevistas') + ': ' + formatarMoeda(totalEntradas) + '\n';
+  texto += t('saidasPrevistas') + ': ' + formatarMoeda(totalSaidas) + '\n';
+  texto += t('saldoProjetado') + ': ' + formatarMoeda(totalEntradas-totalSaidas) + '\n';
+  texto += t('jaRecebido') + ': ' + formatarMoeda(recebido) + ' · ' + t('aReceber') + ': ' + formatarMoeda(aReceber) + '\n';
+  texto += t('jaPago') + ': ' + formatarMoeda(pago) + ' · ' + t('faltaPagar') + ': ' + formatarMoeda(aPagar) + '\n';
+  texto += t('aindaPrevistoFrente') + ': ' + formatarMoeda(aReceber-aPagar) + '\n';
   if (entradas.length) {
-    texto += '\nA receber este mês\n';
-    entradas.forEach(i => { texto += '- Dia ' + i.dia + ' — ' + i.descricao + ': ' + (i.valor ? formatarMoeda(i.valor) : 'valor não informado') + (i.pago ? ' ✓' : '') + (i.observacao ? ' · ' + i.observacao : '') + '\n'; });
+    texto += '\n' + t('aReceberMes') + '\n';
+    entradas.forEach(i => { texto += '- ' + t('dia') + ' ' + i.dia + ' — ' + i.descricao + ': ' + (i.valor ? formatarMoeda(i.valor) : t('valorNaoInformado')) + (i.pago ? ' ✓' : '') + (i.observacao ? ' · ' + i.observacao : '') + '\n'; });
   }
   if (saidas.length) {
-    texto += '\nA pagar este mês\n';
-    saidas.forEach(i => { texto += '- Dia ' + i.dia + ' — ' + i.descricao + ': ' + (i.valor ? formatarMoeda(i.valor) : 'valor não informado') + (i.pago ? ' ✓' : '') + (i.observacao ? ' · ' + i.observacao : '') + '\n'; });
+    texto += '\n' + t('aPagarMes') + '\n';
+    saidas.forEach(i => { texto += '- ' + t('dia') + ' ' + i.dia + ' — ' + i.descricao + ': ' + (i.valor ? formatarMoeda(i.valor) : t('valorNaoInformado')) + (i.pago ? ' ✓' : '') + (i.observacao ? ' · ' + i.observacao : '') + '\n'; });
   }
-  texto += '\nValores previstos são planejamento. Entradas e saídas só passam a integrar as movimentações reais quando confirmadas.';
+  texto += '\n' + t('planejamentoAvisoCompartilhar');
   return texto;
 }
 
@@ -3054,7 +3054,7 @@ async function compartilharPlanejamento() {
   const texto = textoCompartilharPlanejamento();
   const statusEl = document.getElementById('statusPlanejamento');
   if (navigator.share) {
-    try { await navigator.share({ title: 'Planejamento Sifia', text: texto }); return; }
+    try { await navigator.share({ title: t('planejamentoSifia'), text: texto }); return; }
     catch (err) { if (err.name === 'AbortError') return; }
   }
   try {
@@ -5535,6 +5535,45 @@ const TRADUCOES2 = {
   instrucaoVozCompleta: { pt:'Fale naturalmente: se foi entrada ou saída, o valor, a forma de pagamento, o local e a instituição. A data já é hoje automaticamente, e a observação você pode adicionar depois tocando na transação. Exemplo: “Paguei 35 reais no débito, no mercado, pelo banco X.”', en:'Speak naturally: say whether it was income or an expense, the amount, payment method, place, and institution. The date is automatically set to today, and you can add a note later by tapping the transaction. Example: “I paid 35 by debit at the market using bank X.”', es:'Habla con naturalidad: indica si fue una entrada o salida, el valor, la forma de pago, el lugar y la institución. La fecha se establece automáticamente como hoy y puedes añadir una observación después tocando el movimiento. Ejemplo: “Pagué 35 con débito en el mercado, por el banco X.”' },
   textoNaoEntendido: { pt:'Não entendemos “{texto}” como uma transação. Tente de novo.', en:'We did not understand “{texto}” as a transaction. Try again.', es:'No entendimos “{texto}” como un movimiento. Inténtalo de nuevo.' },
   vozNaoEntendida: { pt:'Não entendemos “{texto}” como uma transação. Segure o botão e tente de novo.', en:'We did not understand “{texto}” as a transaction. Hold the button and try again.', es:'No entendimos “{texto}” como un movimiento. Mantén pulsado el botón e inténtalo de nuevo.' },
+
+  evolucaoPeriodo: { pt:'Evolução no período', en:'Trend over the period', es:'Evolución en el período' },
+  comparacaoPeriodoAnterior: { pt:'Comparação com o período anterior', en:'Comparison with the previous period', es:'Comparación con el período anterior' },
+  comparacaoCom: { pt:'Comparação com {label}', en:'Comparison with {label}', es:'Comparación con {label}' },
+  mediasPorDia: { pt:'Médias por dia', en:'Daily averages', es:'Promedios por día' },
+  entradasDia: { pt:'Entradas/dia', en:'Income/day', es:'Entradas/día' },
+  saidasDia: { pt:'Saídas/dia', en:'Expenses/day', es:'Salidas/día' },
+  saldoDia: { pt:'Saldo/dia', en:'Balance/day', es:'Saldo/día' },
+  visaoMesUpper: { pt:'VISÃO DO MÊS', en:'MONTH VIEW', es:'VISTA DEL MES' },
+  entradasPrevistas: { pt:'Entradas previstas', en:'Expected income', es:'Entradas previstas' },
+  saidasPrevistas: { pt:'Saídas previstas', en:'Expected expenses', es:'Salidas previstas' },
+  saldoProjetado: { pt:'Saldo projetado', en:'Projected balance', es:'Saldo proyectado' },
+  jaRecebido: { pt:'Já recebido', en:'Already received', es:'Ya recibido' },
+  aReceber: { pt:'A receber', en:'To receive', es:'Por recibir' },
+  jaPago: { pt:'Já pago', en:'Already paid', es:'Ya pagado' },
+  faltaPagar: { pt:'Falta pagar', en:'Still to pay', es:'Falta pagar' },
+  daquiFrenteUpper: { pt:'DAQUI PARA FRENTE', en:'FROM HERE FORWARD', es:'DE AQUÍ EN ADELANTE' },
+  aindaReceber: { pt:'Ainda a receber', en:'Still to receive', es:'Aún por recibir' },
+  aindaPagar: { pt:'Ainda a pagar', en:'Still to pay', es:'Aún por pagar' },
+  diferenca: { pt:'Diferença', en:'Difference', es:'Diferencia' },
+  itensSemValorTotais: { pt:'Itens sem valor informado não entram nos totais.', en:'Items without an amount are not included in totals.', es:'Los elementos sin valor informado no se incluyen en los totales.' },
+  previstoHoje: { pt:'previsto para hoje', en:'expected today', es:'previsto para hoy' },
+  venceHoje: { pt:'vence hoje', en:'due today', es:'vence hoy' },
+  amanha: { pt:'amanhã', en:'tomorrow', es:'mañana' },
+  emDias: { pt:'em {dias} dias', en:'in {dias} days', es:'en {dias} días' },
+  recebimentoPendenteDia: { pt:'recebimento pendente há {dias} dia', en:'receipt pending for {dias} day', es:'cobro pendiente desde hace {dias} día' },
+  recebimentoPendenteDias: { pt:'recebimento pendente há {dias} dias', en:'receipt pending for {dias} days', es:'cobro pendiente desde hace {dias} días' },
+  diaAtraso: { pt:'{dias} dia em atraso', en:'{dias} day overdue', es:'{dias} día de atraso' },
+  diasAtraso: { pt:'{dias} dias em atraso', en:'{dias} days overdue', es:'{dias} días de atraso' },
+  marcarComoRecebido: { pt:'Marcar como recebido', en:'Mark as received', es:'Marcar como recibido' },
+  observacaoAbrev: { pt:'Obs.', en:'Note', es:'Obs.' },
+  aReceberMesUpper: { pt:'A RECEBER ESTE MÊS', en:'TO RECEIVE THIS MONTH', es:'POR RECIBIR ESTE MES' },
+  aPagarMesUpper: { pt:'A PAGAR ESTE MÊS', en:'TO PAY THIS MONTH', es:'POR PAGAR ESTE MES' },
+  aReceberMes: { pt:'A receber este mês', en:'To receive this month', es:'Por recibir este mes' },
+  aPagarMes: { pt:'A pagar este mês', en:'To pay this month', es:'Por pagar este mes' },
+  nadaPlanejadoMes: { pt:'Nada planejado para este mês.', en:'Nothing planned for this month.', es:'Nada planificado para este mes.' },
+  planejamentoSifia: { pt:'Planejamento Sifia', en:'Sifia Planning', es:'Planificación Sifia' },
+  aindaPrevistoFrente: { pt:'Ainda previsto daqui para frente', en:'Still projected from here forward', es:'Aún previsto de aquí en adelante' },
+  planejamentoAvisoCompartilhar: { pt:'Valores previstos são planejamento. Entradas e saídas só passam a integrar as movimentações reais quando confirmadas.', en:'Projected amounts are planning only. Income and expenses become part of actual transactions only when confirmed.', es:'Los valores previstos son planificación. Las entradas y salidas solo pasan a formar parte de los movimientos reales cuando se confirman.' },
 
 };
 // vars (opcional) substitui placeholders tipo {qtd}/{nome} no texto traduzido
