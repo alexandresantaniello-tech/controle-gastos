@@ -819,7 +819,7 @@
     <span id="idiomaHomologadoBadge" style="display:none;margin-left:7px;font-size:.72rem;padding:3px 7px;border:1px solid var(--border);border-radius:999px;color:var(--muted-foreground);" data-i18n="idiomaHomologado">Homologado</span>
   </div>
   <button onclick="escolherIdioma()" style="width:100%;">🌐 <span data-i18n="escolherIdiomaBotao">Escolher idioma</span></button>
-  <p class="aviso-backup" style="margin:12px 0 0;" data-i18n="idiomaHomologadosInfo">Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.</p>
+  <p class="aviso-backup" style="margin:12px 0 0;" data-i18n="idiomaHomologadosInfo">Nesta fase, o Sifia está disponível em Português, English e Español.</p>
 </div>
 
 <div class="card" id="backupCard" style="display:none;">
@@ -4950,16 +4950,12 @@ const IDIOMA_KEY = 'controle_gastos_idioma_selecionado';
 // muitos paises (arabe, ingles, frances...), uma bandeira so daria a
 // impressao errada de que pertence a um pais so, igual moeda nao usa
 // bandeira de pais nenhum tambem.
-const NOMES_IDIOMA = {
-  pt: 'Português', es: 'Español', en: 'English', fr: 'Français', de: 'Deutsch',
-  it: 'Italiano', zh: '中文', ja: '日本語', ko: '한국어', ar: 'العربية',
-  hi: 'हिन्दी', ru: 'Русский', nl: 'Nederlands', pl: 'Polski', tr: 'Türkçe',
-  vi: 'Tiếng Việt', th: 'ไทย', id: 'Bahasa Indonesia', tl: 'Filipino', sw: 'Kiswahili',
-  he: 'עברית', el: 'Ελληνικά', sv: 'Svenska', no: 'Norsk', da: 'Dansk',
-  fi: 'Suomi', cs: 'Čeština', ro: 'Română', hu: 'Magyar', uk: 'Українська',
-  bn: 'বাংলা', ur: 'اردو', fa: 'فارسی', ms: 'Bahasa Melayu', pa: 'ਪੰਜਾਬੀ',
-  ta: 'தமிழ்', gu: 'ગુજરાતી', am: 'አማርኛ', ha: 'Hausa',
-};
+const IDIOMAS_SUPORTADOS = Object.freeze(['pt', 'en', 'es']);
+const NOMES_IDIOMA = Object.freeze({
+  pt: 'Português',
+  en: 'English',
+  es: 'Español',
+});
 // Chaves novas (entrada..pagamentoNaoIdentificado) cobrem o conteudo gerado
 // dinamicamente (cards de transacao/recorrencia) que antes ficava hardcoded
 // em portugues mesmo com o idioma trocado - ver renderizarTransacao,
@@ -5012,7 +5008,10 @@ const CONFIG_IDIOMA = {
   ar: { locale: 'ar', dir: 'rtl' }, he: { locale: 'he', dir: 'rtl' }, ur: { locale: 'ur', dir: 'rtl' }, fa: { locale: 'fa', dir: 'rtl' }
 };
 const idiomaSalvo = localStorage.getItem(IDIOMA_KEY);
-let idiomaSelecionado = NOMES_IDIOMA[idiomaSalvo] ? idiomaSalvo : 'pt';
+let idiomaSelecionado = IDIOMAS_SUPORTADOS.includes(idiomaSalvo) ? idiomaSalvo : 'pt';
+if (idiomaSalvo && !IDIOMAS_SUPORTADOS.includes(idiomaSalvo)) {
+  localStorage.setItem(IDIOMA_KEY, 'pt');
+}
 function configIdioma(codigo = idiomaSelecionado) { return CONFIG_IDIOMA[codigo] || { locale: codigo, dir: 'ltr' }; }
 // Usa o mes/ano igual ao formatarMoeda/formatarData ja usam pra numero e
 // data: em vez de traduzir NOMES_MESES a mao pra cada idioma (39 linhas x 12
@@ -5655,7 +5654,7 @@ const TRADUCOES2 = {
   idiomaDescricao: { pt:'Escolha o idioma usado na interface do Sifia. Seus registros financeiros não são alterados.', en:'Choose the language used in the Sifia interface. Your financial records are not changed.', es:'Elige el idioma usado en la interfaz de Sifia. Tus registros financieros no se modifican.' },
   idiomaAtualLabel: { pt:'Idioma atual', en:'Current language', es:'Idioma actual' },
   idiomaHomologado: { pt:'Homologado', en:'Reviewed', es:'Revisado' },
-  idiomaHomologadosInfo: { pt:'Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.', en:'Português, English, and Español have a complete interface review. Other languages remain available and use progressive translation with a safe fallback.', es:'Português, English y Español tienen una revisión completa de la interfaz. Los demás idiomas siguen disponibles y usan traducción progresiva con un fallback seguro.' },
+  idiomaHomologadosInfo: { pt:'Português, English e Español têm revisão completa da interface. Os demais idiomas continuam disponíveis e usam tradução progressiva com fallback seguro.', en:'At this stage, Sifia is available in Português, English, and Español.', es:'En esta etapa, Sifia está disponible en Português, English y Español.' },
 
   trimestreNumeroAno: { pt:'{numero}º trimestre de {ano}', en:'Q{numero} {ano}', es:'{numero}.º trimestre de {ano}' },
   semestreNumeroAno: { pt:'{numero}º semestre de {ano}', en:'H{numero} {ano}', es:'{numero}.º semestre de {ano}' },
@@ -5735,7 +5734,7 @@ function aplicarTraducoes() {
 }
 
 function mudarIdioma(novo) {
-  if (!NOMES_IDIOMA[novo] || !TRADUCOES[novo]) return;
+  if (!IDIOMAS_SUPORTADOS.includes(novo) || !TRADUCOES[novo]) return;
   idiomaSelecionado = novo;
   localStorage.setItem(IDIOMA_KEY, novo);
   popularSeletorIdioma();
