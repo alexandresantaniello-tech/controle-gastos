@@ -45,9 +45,18 @@ jobs:
                 <data android:mimeType="application/pdf" />
             </intent-filter>"""
           if "android.intent.action.SEND" not in s:
+              if marker not in s:
+                  raise SystemExit("Launcher intent-filter not found; share target was NOT installed")
               s = s.replace(marker, share)
           p.write_text(s)
+          if "android.intent.action.SEND" not in p.read_text():
+              raise SystemExit("Share target validation failed")
           PY
+      - name: Validate Android share target
+        run: |
+          grep -q 'android.intent.action.SEND' android/app/src/main/AndroidManifest.xml
+          grep -q 'android:mimeType="image/\\*"' android/app/src/main/AndroidManifest.xml
+          cat android/app/src/main/AndroidManifest.xml
       - name: Build Android debug APK
         run: |
           cd android
